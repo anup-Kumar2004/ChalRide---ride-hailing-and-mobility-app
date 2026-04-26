@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "240402906074",
+    "project_id": "chalride-83da6",
+    "storage_bucket": "chalride-83da6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240402906074:android:4fb2cb5f4c28f3fe87dee3",
+        "android_client_info": {
+          "package_name": "com.example.chalride"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCS6Hylwmv4HT_XeZ8rp41lMT62tBMQPC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">ChalRide</string>
+    <string name="tagline">Your ride, your way.</string>
+    <string name="select_role">How will you use ChalRide?</string>
+    <string name="i_am_rider">I\'m a Rider</string>
+    <string name="i_am_driver">I\'m a Driver</string>
+    <string name="login">Log In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="full_name">Full Name</string>
+    <string name="email_address">Email Address</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="already_have_account">Already have an account? Log in</string>
+    <string name="no_account">New here? Create an account</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="or_continue_with">or</string>
+    <string name="welcome_back">Welcome back</string>
+    <string name="create_account">Create account</string>
+    <string name="rider_subtitle">Book rides instantly</string>
+    <string name="driver_subtitle">Earn on your schedule</string>
+</resources>

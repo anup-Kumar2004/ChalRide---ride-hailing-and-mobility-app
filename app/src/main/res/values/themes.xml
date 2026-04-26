@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.ChalRide" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/bg_surface</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.ChalRide.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/bg_dark</item>
+        <item name="postSplashScreenTheme">@style/Theme.ChalRide</item>
+    </style>
+
+    <style name="ChalRide.Button.Primary" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/brand_primary</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">16sp</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="ChalRide.Button.Rider" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/rider_color</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">16sp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="android:paddingTop">18dp</item>
+        <item name="android:paddingBottom">18dp</item>
+    </style>
+
+    <style name="ChalRide.Button.Driver" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/driver_color</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">16sp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="android:paddingTop">18dp</item>
+        <item name="android:paddingBottom">18dp</item>
+    </style>
+
+    <style name="ChalRide.Button.Outline" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/brand_primary</item>
+        <item name="android:textColor">@color/brand_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+    </style>
+
+    <style name="ChalRide.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/brand_primary</item>
+        <item name="hintTextColor">@color/text_secondary</item>
+        <item name="boxBackgroundColor">@color/input_bg</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ChalRide.InputShape</item>
+    </style>
+
+    <style name="ShapeAppearance.ChalRide.InputShape" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+</resources>
