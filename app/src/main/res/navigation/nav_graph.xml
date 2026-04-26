@@ -66,4 +66,15 @@
         android:name="com.example.chalride.ui.driver.DriverHomeFragment"
         android:label="DriverHomeFragment"/>
 
+    <fragment
+        android:id="@+id/destinationSearchFragment"
+        android:name="com.example.chalride.ui.rider.DestinationSearchFragment"
+        android:label="DestinationSearchFragment">
+        <action
+            android:id="@+id/action_destination_to_rider_home"
+            app:destination="@id/riderHomeFragment"
+            app:popUpTo="@id/riderHomeFragment"
+            app:popUpToInclusive="true"/>
+    </fragment>
+
 </navigation>
