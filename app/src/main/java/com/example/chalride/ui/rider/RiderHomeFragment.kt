@@ -123,6 +123,7 @@ class RiderHomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        userIsInteracting = false  // Reset on every view creation
 
         // Back button: if in search mode → exit search mode. Otherwise do nothing.
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -205,8 +206,10 @@ class RiderHomeFragment : Fragment() {
         binding.progressLocation.visibility = View.GONE
 
         confirmedPickupLocation?.let { loc ->
-            placePickupMarker(loc)
-            if (!userIsInteracting) {
+            // Use post() to defer map operations until after the MapView has completed its first layout pass.
+            // Without this, animateTo() is called before the view has dimensions and does nothing.
+            binding.mapView.post {
+                placePickupMarker(loc)
                 binding.mapView.controller.animateTo(loc)
                 binding.mapView.controller.setZoom(17.0)
             }
@@ -262,14 +265,14 @@ class RiderHomeFragment : Fragment() {
     }
 
     private fun placePickupMarker(geoPoint: GeoPoint) {
-        if (pickupMarker == null) {
-            pickupMarker = Marker(binding.mapView).apply {
-                title = "Pickup"
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            }
-            binding.mapView.overlays.add(pickupMarker)
+        // Always remove old marker first — eliminates stale-reference bug across view recreations
+        pickupMarker?.let { binding.mapView.overlays.remove(it) }
+        pickupMarker = Marker(binding.mapView).apply {
+            title = "Pickup"
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            position = geoPoint
         }
-        pickupMarker!!.position = geoPoint
+        binding.mapView.overlays.add(pickupMarker)
         binding.mapView.invalidate()
     }
 
@@ -725,6 +728,7 @@ class RiderHomeFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         if (::locationCallback.isInitialized) fusedLocationClient.removeLocationUpdates(locationCallback)
+        pickupMarker = null
         _binding = null
     }
 }

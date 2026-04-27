@@ -26,6 +26,9 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.net.URL
 import org.json.JSONArray
+import android.graphics.Color
+import android.widget.ArrayAdapter
+import android.widget.TextView
 
 class DestinationSearchFragment : Fragment() {
 
@@ -36,6 +39,7 @@ class DestinationSearchFragment : Fragment() {
     private var destinationMarker: Marker? = null
     private var selectedGeoPoint: GeoPoint? = null
     private var selectedAddress: String = ""
+    private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
 
     private val pickupAddress by lazy { arguments?.getString("pickupAddress") ?: "Current Location" }
     private val pickupLat by lazy { arguments?.getDouble("pickupLat") ?: 20.5937 }
@@ -88,6 +92,7 @@ class DestinationSearchFragment : Fragment() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 binding.btnClearSearch.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+                if ((s?.length ?: 0) < 3) hideDestinationDropdown()
             }
             override fun afterTextChanged(s: Editable?) {
                 searchJob?.cancel()
@@ -115,29 +120,49 @@ class DestinationSearchFragment : Fragment() {
 
     private suspend fun searchLocation(query: String) {
         try {
-            val result = withContext(Dispatchers.IO) {
+            val results = withContext(Dispatchers.IO) {
                 val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
-                val url = "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=1&countrycodes=in"
+                val url = "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=5&countrycodes=in"
                 val connection = URL(url).openConnection()
                 connection.setRequestProperty("User-Agent", requireContext().packageName)
                 connection.connect()
                 val response = connection.getInputStream().bufferedReader().readText()
                 val jsonArray = JSONArray(response)
-                if (jsonArray.length() > 0) {
-                    val obj = jsonArray.getJSONObject(0)
-                    Triple(obj.getDouble("lat"), obj.getDouble("lon"), obj.getString("display_name"))
-                } else null
+                (0 until jsonArray.length()).map { i ->
+                    val obj = jsonArray.getJSONObject(i)
+                    val name = obj.getString("display_name").split(",").take(3).joinToString(", ")
+                    Pair(name, GeoPoint(obj.getDouble("lat"), obj.getDouble("lon")))
+                }
             }
-            result?.let { (lat, lon, name) ->
-                val geoPoint = GeoPoint(lat, lon)
-                placeDestinationMarker(geoPoint)
-                selectedAddress = name.split(",").take(3).joinToString(", ")
-                binding.etDestinationSearch.setText(selectedAddress)
-                binding.etDestinationSearch.setSelection(selectedAddress.length)
-                binding.mapFullView.controller.animateTo(geoPoint)
-                binding.mapFullView.controller.setZoom(15.0)
+            searchResults.clear()
+            searchResults.addAll(results)
+            if (results.isNotEmpty()) showDestinationDropdown(results.map { it.first })
+            else hideDestinationDropdown()
+        } catch (_: Exception) { hideDestinationDropdown() }
+    }
+
+    private fun showDestinationDropdown(items: List<String>) {
+        val adapter = object : ArrayAdapter<String>(
+            requireContext(), android.R.layout.simple_list_item_1, items
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent)
+                (view as? TextView)?.apply {
+                    setTextColor(Color.WHITE)
+                    textSize = 13f
+                    setPadding(32, 22, 32, 22)
+                    setBackgroundColor(Color.TRANSPARENT)
+                }
+                return view
             }
-        } catch (e: Exception) { /* silently fail */ }
+        }
+        binding.lvDestinationResults.adapter = adapter
+        binding.lvDestinationResults.visibility = View.VISIBLE
+    }
+
+    private fun hideDestinationDropdown() {
+        binding.lvDestinationResults.visibility = View.GONE
+        searchResults.clear()
     }
 
     private fun reverseGeocode(geoPoint: GeoPoint) {
@@ -180,11 +205,27 @@ class DestinationSearchFragment : Fragment() {
             binding.etDestinationSearch.setText("")
             selectedGeoPoint = null
             selectedAddress = ""
+            hideDestinationDropdown()
             destinationMarker?.let {
                 binding.mapFullView.overlays.remove(it)
                 binding.mapFullView.invalidate()
             }
             destinationMarker = null
+        }
+
+        binding.lvDestinationResults.setOnItemClickListener { _, _, position, _ ->
+            if (position >= searchResults.size) return@setOnItemClickListener
+            val (label, geoPoint) = searchResults[position]
+            hideDestinationDropdown()
+            selectedAddress = label
+            selectedGeoPoint = geoPoint
+            binding.etDestinationSearch.setText(label)
+            binding.etDestinationSearch.setSelection(label.length)
+            placeDestinationMarker(geoPoint)
+            binding.mapFullView.controller.animateTo(geoPoint)
+            binding.mapFullView.controller.setZoom(15.0)
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.hideSoftInputFromWindow(binding.etDestinationSearch.windowToken, 0)
         }
 
         binding.fabGps.setOnClickListener {
