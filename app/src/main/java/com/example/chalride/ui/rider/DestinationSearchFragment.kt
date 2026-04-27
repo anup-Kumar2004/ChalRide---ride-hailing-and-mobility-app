@@ -12,7 +12,6 @@ import android.content.Context
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.example.chalride.R
 import com.example.chalride.databinding.FragmentDestinationSearchBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,10 +37,7 @@ class DestinationSearchFragment : Fragment() {
     private var selectedGeoPoint: GeoPoint? = null
     private var selectedAddress: String = ""
 
-    // Receive pickup info from RiderHomeFragment
-    private val pickupAddress by lazy {
-        arguments?.getString("pickupAddress") ?: "Current Location"
-    }
+    private val pickupAddress by lazy { arguments?.getString("pickupAddress") ?: "Current Location" }
     private val pickupLat by lazy { arguments?.getDouble("pickupLat") ?: 20.5937 }
     private val pickupLng by lazy { arguments?.getDouble("pickupLng") ?: 78.9629 }
 
@@ -62,10 +58,8 @@ class DestinationSearchFragment : Fragment() {
         setupSearch()
         setupClickListeners()
 
-        // Auto-open keyboard
         binding.etDestinationSearch.requestFocus()
-        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE)
-                as InputMethodManager
+        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(binding.etDestinationSearch, InputMethodManager.SHOW_IMPLICIT)
     }
 
@@ -78,7 +72,6 @@ class DestinationSearchFragment : Fragment() {
         binding.mapFullView.controller.setZoom(14.0)
         binding.mapFullView.controller.setCenter(startPoint)
 
-        // Tap on map to select destination
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
                 placeDestinationMarker(p)
@@ -94,15 +87,14 @@ class DestinationSearchFragment : Fragment() {
         binding.etDestinationSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                binding.btnClearSearch.visibility =
-                    if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+                binding.btnClearSearch.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
             }
             override fun afterTextChanged(s: Editable?) {
                 searchJob?.cancel()
                 val query = s.toString().trim()
                 if (query.length >= 3) {
                     searchJob = lifecycleScope.launch {
-                        delay(500) // debounce
+                        delay(500)
                         searchLocation(query)
                     }
                 }
@@ -133,14 +125,9 @@ class DestinationSearchFragment : Fragment() {
                 val jsonArray = JSONArray(response)
                 if (jsonArray.length() > 0) {
                     val obj = jsonArray.getJSONObject(0)
-                    Triple(
-                        obj.getDouble("lat"),
-                        obj.getDouble("lon"),
-                        obj.getString("display_name")
-                    )
+                    Triple(obj.getDouble("lat"), obj.getDouble("lon"), obj.getString("display_name"))
                 } else null
             }
-
             result?.let { (lat, lon, name) ->
                 val geoPoint = GeoPoint(lat, lon)
                 placeDestinationMarker(geoPoint)
@@ -150,9 +137,7 @@ class DestinationSearchFragment : Fragment() {
                 binding.mapFullView.controller.animateTo(geoPoint)
                 binding.mapFullView.controller.setZoom(15.0)
             }
-        } catch (e: Exception) {
-            // Silently fail
-        }
+        } catch (e: Exception) { /* silently fail */ }
     }
 
     private fun reverseGeocode(geoPoint: GeoPoint) {
@@ -165,8 +150,7 @@ class DestinationSearchFragment : Fragment() {
                     connection.connect()
                     val response = connection.getInputStream().bufferedReader().readText()
                     val json = org.json.JSONObject(response)
-                    json.optString("display_name", "Selected Location")
-                        .split(",").take(3).joinToString(", ")
+                    json.optString("display_name", "Selected Location").split(",").take(3).joinToString(", ")
                 }
                 selectedAddress = address
                 binding.etDestinationSearch.setText(address)
@@ -180,8 +164,7 @@ class DestinationSearchFragment : Fragment() {
     private fun placeDestinationMarker(geoPoint: GeoPoint) {
         selectedGeoPoint = geoPoint
         if (destinationMarker == null) {
-            destinationMarker = Marker(binding.mapFullView)
-            destinationMarker!!.title = "Destination"
+            destinationMarker = Marker(binding.mapFullView).apply { title = "Destination" }
             binding.mapFullView.overlays.add(destinationMarker)
         }
         destinationMarker!!.position = geoPoint
@@ -214,31 +197,17 @@ class DestinationSearchFragment : Fragment() {
             val dest = selectedGeoPoint ?: return@setOnClickListener
             val address = selectedAddress.ifEmpty { "Selected Location" }
 
-            // Pass back to RiderHomeFragment
-            val bundle = Bundle().apply {
-                putDouble("destLat", dest.latitude)
-                putDouble("destLng", dest.longitude)
-                putString("destAddress", address)
+            // ✅ CORRECT way to pass data back — set on previous entry's savedStateHandle
+            findNavController().previousBackStackEntry?.savedStateHandle?.apply {
+                set("destLat", dest.latitude)
+                set("destLng", dest.longitude)
+                set("destAddress", address)
             }
-            findNavController().navigate(
-                R.id.action_destination_to_rider_home,
-                bundle
-            )
+            findNavController().popBackStack()
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        binding.mapFullView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        binding.mapFullView.onPause()
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
+    override fun onResume() { super.onResume(); binding.mapFullView.onResume() }
+    override fun onPause() { super.onPause(); binding.mapFullView.onPause() }
+    override fun onDestroyView() { super.onDestroyView(); _binding = null }
 }

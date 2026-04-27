@@ -59,7 +59,15 @@
     <fragment
         android:id="@+id/riderHomeFragment"
         android:name="com.example.chalride.ui.rider.RiderHomeFragment"
-        android:label="RiderHomeFragment"/>
+        android:label="RiderHomeFragment">
+        <action
+            android:id="@+id/action_rider_home_to_destination_search"
+            app:destination="@id/destinationSearchFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
+    </fragment>
 
     <fragment
         android:id="@+id/driverHomeFragment"
@@ -69,12 +77,6 @@
     <fragment
         android:id="@+id/destinationSearchFragment"
         android:name="com.example.chalride.ui.rider.DestinationSearchFragment"
-        android:label="DestinationSearchFragment">
-        <action
-            android:id="@+id/action_destination_to_rider_home"
-            app:destination="@id/riderHomeFragment"
-            app:popUpTo="@id/riderHomeFragment"
-            app:popUpToInclusive="true"/>
-    </fragment>
+        android:label="DestinationSearchFragment"/>
 
 </navigation>
