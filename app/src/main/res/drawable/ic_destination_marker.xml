@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Marker shape -->
+    <path
+        android:fillColor="#FF3D00"
+        android:pathData="M12,2C8.1,2 5,5.1 5,9c0,5.2 7,13 7,13s7,-7.8 7,-13c0,-3.9 -3.1,-7 -7,-7z"/>
+
+    <!-- Inner dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,7.5a2.5,2.5 0 1,0 0.001,0z"/>
+</vector>

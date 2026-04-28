@@ -54,6 +54,9 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.net.URL
 import java.util.Locale
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.view.isVisible
 
 class RiderHomeFragment : Fragment() {
 
@@ -151,8 +154,11 @@ class RiderHomeFragment : Fragment() {
             getLiveData<Double>("destLat").observe(viewLifecycleOwner) { lat ->
                 val lng = get<Double>("destLng") ?: return@observe
                 val address = get<String>("destAddress") ?: "Destination"
-                destLat = lat; destLng = lng; destAddress = address
-                onDestinationSelected(lat, lng, address)
+                val routeDistance = get<Double>("routeDistanceKm") ?: 0.0
+                destLat = lat
+                destLng = lng
+                destAddress = address
+                onDestinationSelected(lat, lng, address, routeDistance)
             }
         }
 
@@ -228,11 +234,17 @@ class RiderHomeFragment : Fragment() {
         binding.mapView.controller.setZoom(4.0)
 
         binding.mapView.addMapListener(object : org.osmdroid.events.MapListener {
+
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                userIsInteracting = true; return false
+                userIsInteracting = true
+                updatePulsePosition()   // 🔥 ADD THIS
+                return false
             }
+
             override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                userIsInteracting = true; return false
+                userIsInteracting = true
+                updatePulsePosition()   // 🔥 ADD THIS
+                return false
             }
         })
 
@@ -250,6 +262,15 @@ class RiderHomeFragment : Fragment() {
         binding.mapView.overlays.add(0, mapTapOverlay)
     }
 
+    private fun updatePulsePosition() {
+        val geoPoint = pickupMarker?.position ?: return
+
+        val screenPoint = binding.mapView.projection.toPixels(geoPoint, null)
+
+        binding.pulseView.x = screenPoint.x.toFloat() - binding.pulseView.width / 2f
+        binding.pulseView.y = screenPoint.y.toFloat() - binding.pulseView.height / 2f
+    }
+
     private fun setPickupFromMapTap(geoPoint: GeoPoint) {
         placePickupMarker(geoPoint)
 
@@ -265,15 +286,46 @@ class RiderHomeFragment : Fragment() {
     }
 
     private fun placePickupMarker(geoPoint: GeoPoint) {
-        // Always remove old marker first — eliminates stale-reference bug across view recreations
         pickupMarker?.let { binding.mapView.overlays.remove(it) }
+
         pickupMarker = Marker(binding.mapView).apply {
             title = "Pickup"
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             position = geoPoint
+            try {
+                icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_pickup_marker
+                )?.let { drawable ->
+                    val sizePx = (20 * resources.displayMetrics.density).toInt()
+                    val bitmap = createBitmap(sizePx, sizePx)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    drawable.setBounds(0, 0, sizePx, sizePx)
+                    drawable.draw(canvas)
+                    bitmap.toDrawable(resources)
+                }
+            } catch (_: Exception) {
+                // fallback to default marker if icon fails
+            }
+            infoWindow = null
+            setOnMarkerClickListener { _, _ -> true }
         }
         binding.mapView.overlays.add(pickupMarker)
         binding.mapView.invalidate()
+
+        // Show and start pulse on rider home map
+        binding.pulseView.animate().cancel()
+        binding.pulseView.clearAnimation()
+        binding.pulseView.visibility = View.VISIBLE
+        binding.pulseView.bringToFront()
+
+        // Position pulse over marker
+        binding.mapView.post {
+            val projection = binding.mapView.projection
+            val point = projection.toPixels(geoPoint, null)
+            binding.pulseView.x = point.x.toFloat() - binding.pulseView.width / 2f
+            binding.pulseView.y = point.y.toFloat() - binding.pulseView.height / 2f
+            startPulse(binding.pulseView)
+        }
     }
 
     // ── GPS location ────────────────────────────────────────────────────────
@@ -541,20 +593,30 @@ class RiderHomeFragment : Fragment() {
 
     // ── Destination ──────────────────────────────────────────────────────────
 
-    private fun onDestinationSelected(lat: Double, lng: Double, address: String) {
+    private fun onDestinationSelected(
+        lat: Double, lng: Double,
+        address: String,
+        routeDistanceKm: Double = 0.0
+    ) {
         binding.tvDestinationHint.text = address
         binding.tvDestinationHint.setTextColor(
             ContextCompat.getColor(requireContext(), R.color.text_primary)
         )
+
         binding.tvChooseRide.visibility = View.VISIBLE
         binding.layoutVehicles.visibility = View.VISIBLE
         binding.btnFindRide.visibility = View.VISIBLE
 
-        confirmedPickupLocation?.let { pickup ->
-            calculateFares(pickup.distanceToAsDouble(GeoPoint(lat, lng)) / 1000.0)
+        // Use actual route distance if available, else fallback to straight line
+        val distanceToUse = if (routeDistanceKm > 0) {
+            routeDistanceKm
+        } else {
+            confirmedPickupLocation?.let { pickup ->
+                pickup.distanceToAsDouble(GeoPoint(lat, lng)) / 1000.0
+            } ?: 0.0
         }
-        selectedVehicleType = ""; selectedFare = 0
-        highlightSelectedVehicle(null)
+
+        calculateFares(distanceToUse)
     }
 
     private fun calculateFares(distanceKm: Double) {
@@ -574,6 +636,24 @@ class RiderHomeFragment : Fragment() {
         )
     }
 
+    private fun startPulse(view: View) {
+        view.visibility = View.VISIBLE
+        view.scaleX = 1f
+        view.scaleY = 1f
+        view.alpha = 0.8f
+
+        view.animate()
+            .scaleX(1.8f)
+            .scaleY(1.8f)
+            .alpha(0f)
+            .setDuration(1000)
+            .withEndAction {
+                if (view.isVisible) {
+                    startPulse(view)
+                }
+            }
+            .start()
+    }
     // ── Click listeners ──────────────────────────────────────────────────────
 
     private fun setupClickListeners() {

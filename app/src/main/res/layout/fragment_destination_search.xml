@@ -6,7 +6,31 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Top search bar -->
+    <View
+        android:id="@+id/pickupPulseView"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_pulse_circle"
+        android:visibility="gone"/>
+
+    <View
+        android:id="@+id/pulseView"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_pulse_red"
+        android:visibility="gone"/>
+
+    <!-- ✅ MAP (MUST BE FIRST → background layer) -->
+    <org.osmdroid.views.MapView
+        android:id="@+id/mapFullView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- ✅ SEARCH BAR -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardSearchBar"
         android:layout_width="0dp"
@@ -67,7 +91,7 @@
                 android:layout_marginStart="48dp"
                 android:layout_marginBottom="8dp"/>
 
-            <!-- Destination search input -->
+            <!-- Destination row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -93,7 +117,9 @@
                     android:background="@null"
                     android:inputType="textNoSuggestions"
                     android:imeOptions="actionSearch"
-                    android:maxLines="1"/>
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:singleLine="true"/>
 
                 <ImageView
                     android:id="@+id/btnClearSearch"
@@ -104,42 +130,23 @@
                     android:visibility="gone"/>
             </LinearLayout>
 
-            <!-- Destination search results dropdown -->
-            <ListView
-                android:id="@+id/lvDestinationResults"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:maxHeight="220dp"
-                android:scrollbars="none"
-                android:divider="@color/divider_color"
-                android:dividerHeight="1dp"
-                android:visibility="gone" />
-
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Full screen map -->
-    <org.osmdroid.views.MapView
-        android:id="@+id/mapFullView"
+    <!-- ✅ DROPDOWN -->
+    <ListView
+        android:id="@+id/lvDestinationResults"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
+        android:maxHeight="220dp"
+        android:background="@drawable/bg_dropdown"
+        android:elevation="12dp"
+        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/cardSearchBar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/btnConfirmLocation"/>
+        app:layout_constraintStart_toStartOf="@id/cardSearchBar"
+        app:layout_constraintEnd_toEndOf="@id/cardSearchBar"/>
 
-    <!-- Center pin indicator -->
-    <ImageView
-        android:id="@+id/ivCenterPin"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:src="@drawable/bg_destination_dot"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@id/btnConfirmLocation"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
-    <!-- GPS FAB -->
+    <!-- ✅ GPS FAB -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabGps"
         android:layout_width="wrap_content"
@@ -153,7 +160,26 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/btnConfirmLocation"/>
 
-    <!-- Confirm Location button -->
+    <TextView
+        android:id="@+id/tvRouteInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
+        android:background="@drawable/bg_role_badge"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btnConfirmLocation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+
+    <!-- ✅ CONFIRM BUTTON -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnConfirmLocation"
         style="@style/ChalRide.Button.Primary"
