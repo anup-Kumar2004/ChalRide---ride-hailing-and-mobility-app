@@ -163,6 +163,16 @@ class RiderHomeFragment : Fragment() {
                 destAddress = address
                 onDestinationSelected(lat, lng, address, routeDistance)
             }
+
+
+            // ADD THIS — observe pickup unroutable signal from DestinationSearchFragment
+            getLiveData<Boolean>("pickupUnroutable").observe(viewLifecycleOwner) { unroutable ->
+                if (unroutable == true) {
+                    showPickupWarning()
+                    // Clear the flag so it doesn't re-trigger on next navigation
+                    set("pickupUnroutable", false)
+                }
+            }
         }
 
         // Start location only if we don't already have a confirmed pickup
@@ -191,6 +201,8 @@ class RiderHomeFragment : Fragment() {
         isLocationBeingFetched = false
         // ADD THIS LINE:
         fetchingMessageJob?.cancel()
+
+        hidePickupWarning()   // ← ADD THIS LINE — clears warning on any new pickup selection
         confirmedPickupLocation = geoPoint
         confirmedPickupLabel = label
         geoPoint?.let { currentLocation = it }
@@ -463,10 +475,15 @@ class RiderHomeFragment : Fragment() {
     private fun setupPickupSearchBar() {
         // Tapping EditText → enter search mode
         binding.etPickupSearch.setOnClickListener {
+            hidePickupWarning()   // ✅ ADD THIS
             if (!isInSearchMode) enterSearchMode()
         }
+
         binding.etPickupSearch.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus && !isInSearchMode) enterSearchMode()
+            if (hasFocus) {
+                hidePickupWarning()   // ✅ ADD THIS
+                if (!isInSearchMode) enterSearchMode()
+            }
         }
 
         binding.etPickupSearch.addTextChangedListener(object : TextWatcher {
@@ -474,6 +491,9 @@ class RiderHomeFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (isProgrammaticTextChange) return
                 if (!isInSearchMode) return
+
+                hidePickupWarning()   // ✅ ADD THIS
+
                 val text = s.toString().trim()
                 if (text.length >= 3) {
                     searchJob?.cancel()
@@ -615,6 +635,16 @@ class RiderHomeFragment : Fragment() {
         imm.hideSoftInputFromWindow(binding.etPickupSearch.windowToken, 0)
     }
 
+    private fun showPickupWarning() {
+        binding.dividerPickupWarning.visibility = View.VISIBLE
+        binding.layoutPickupWarning.visibility = View.VISIBLE
+    }
+
+    private fun hidePickupWarning() {
+        binding.dividerPickupWarning.visibility = View.GONE
+        binding.layoutPickupWarning.visibility = View.GONE
+    }
+
     private fun showNoResultsState(query: String) {
         binding.lvPickupResults.visibility = View.GONE
         binding.dividerPickupDropdown.visibility = View.VISIBLE
@@ -695,9 +725,9 @@ class RiderHomeFragment : Fragment() {
         fetchingMessageJob = lifecycleScope.launch {
             val messages = listOf(
                 0L    to "Fetching location...",
-                3000L to "Just a sec, hold on tight...",
-                6000L to "Almost there, bear with us...",
-                10000L to "Taking longer than usual..."
+                4000L to "Just a sec, hold on tight...",
+                8000L to "Almost there, bear with us...",
+                12000L to "Taking longer than usual..."
             )
             for ((delayMs, message) in messages) {
                 delay(delayMs)

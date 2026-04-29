@@ -28,7 +28,6 @@ import org.osmdroid.views.overlay.Marker
 import java.net.URL
 import com.example.chalride.R
 import org.json.JSONArray
-import android.graphics.Color
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.core.view.isVisible
@@ -152,7 +151,7 @@ class DestinationSearchFragment : Fragment() {
                         }
                         .start()
                 }
-                binding.btnChangeDestination.postDelayed(changeDestHideRunnable!!, 4000)
+                binding.btnChangeDestination.postDelayed(changeDestHideRunnable!!, 3000)
             }
             .start()
     }
@@ -278,6 +277,8 @@ class DestinationSearchFragment : Fragment() {
                 binding.btnConfirmLocation.text = "Confirm Destination"
                 binding.btnConfirmLocation.isEnabled = true
 
+                hideWarning()   // ✅ ADD EXACTLY HERE
+
                 // Zoom AFTER UI is updated so we can accurately measure occluded heights
                 zoomToFitRouteInSafeArea(routePoints)
 
@@ -291,29 +292,49 @@ class DestinationSearchFragment : Fragment() {
                 }
 
             } catch (e: Exception) {
-                // Log the actual error so we can debug
                 android.util.Log.e("RouteDebug", "Route fetch failed: ${e.message}", e)
-
-                // Try to read error response if it's an HTTP error
-                try {
-                    val httpConn = e.cause as? java.net.HttpURLConnection
-                    android.util.Log.e("RouteDebug", "HTTP error body: ${httpConn?.errorStream?.bufferedReader()?.readText()}")
-                } catch (_: Exception) {}
 
                 binding.btnConfirmLocation.text = "Confirm Destination"
                 binding.btnConfirmLocation.isEnabled = true
-
                 isRouteConfirmed = false
                 binding.btnChangeDestination.visibility = View.GONE
 
-                // 🔥 Detect ORS no-route error
                 val message = e.message ?: ""
 
-                if (message.contains("Could not find routable point")) {
-                    binding.tvRouteInfo.visibility = View.VISIBLE
-                    binding.tvRouteInfo.text = "❌ No drivable route available here"
-                } else {
-                    binding.tvRouteInfo.visibility = View.GONE
+                when {
+
+                    // ✅ ROUTING errors (show warning)
+                    message.contains("coordinate 0") -> {
+                        showWarning("Pickup location isn’t accessible, please go back and change your pickup spot.")
+
+                        findNavController().previousBackStackEntry?.savedStateHandle
+                            ?.set("pickupUnroutable", true)
+                    }
+
+                    message.contains("coordinate 1") -> {
+                        showWarning("Destination isn’t reachable, please select a different destination spot.")
+                    }
+
+                    message.contains("Could not find routable point") -> {
+                        showWarning("We couldn’t find a route between these locations, try changing pickup or destination spot.")
+                    }
+
+                    // ⚠️ NETWORK / SERVER ERRORS → DO NOT break UX
+                    message.contains("timeout", true) ||
+                            message.contains("Network issue. Please try again.", true) -> {
+
+                        // 🔥 Just reset button, DO NOT show warning
+                        binding.btnConfirmLocation.text = "Confirm Destination"
+                        binding.btnConfirmLocation.isEnabled = true
+
+                        // Optional: log only
+                        android.util.Log.e("RouteDebug", "Temporary network issue: $message")
+                    }
+
+                    else -> {
+                        // fallback: do nothing (like your old working code)
+                        binding.tvRouteInfo.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -405,6 +426,23 @@ class DestinationSearchFragment : Fragment() {
         }
     }
 
+    private fun showWarning(message: String) {
+        binding.cardWarning.visibility = View.VISIBLE
+        binding.tvWarningMessage.text = message
+
+        // Optional smooth animation
+        binding.cardWarning.alpha = 0f
+        binding.cardWarning.translationY = 20f
+        binding.cardWarning.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(200)
+            .start()
+    }
+
+    private fun hideWarning() {
+        binding.cardWarning.visibility = View.GONE
+    }
 
 
     private fun placePickupMarker(geoPoint: GeoPoint) {
@@ -558,6 +596,8 @@ class DestinationSearchFragment : Fragment() {
     }
 
     private fun placeDestinationMarker(geoPoint: GeoPoint) {
+        hideWarning()
+
         selectedGeoPoint = geoPoint
         destinationMarker?.let { binding.mapFullView.overlays.remove(it) }
 
@@ -728,6 +768,9 @@ class DestinationSearchFragment : Fragment() {
             routePolyline = null
 
             binding.tvRouteInfo.visibility = View.GONE
+
+
+            hideWarning()   // ✅ THIS IS THE ONLY LINE YOU NEEDED
         }
 
         binding.lvDestinationResults.setOnItemClickListener { _, _, position, _ ->
