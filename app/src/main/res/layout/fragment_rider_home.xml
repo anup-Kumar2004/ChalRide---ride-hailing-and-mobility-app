@@ -86,6 +86,14 @@
 
             </LinearLayout>
 
+            <!-- ADD this divider right before lvPickupResults -->
+            <View
+                android:id="@+id/dividerPickupDropdown"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"
+                android:visibility="gone"/>
+
             <!-- Dropdown results list — hidden by default -->
             <ListView
                 android:id="@+id/lvPickupResults"
@@ -96,6 +104,42 @@
                 android:divider="@color/divider_color"
                 android:dividerHeight="1dp"
                 android:visibility="gone" />
+
+            <!-- ADD THIS directly after lvPickupResults, inside the same LinearLayout -->
+            <LinearLayout
+                android:id="@+id/cardNoResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingTop="20dp"
+                android:paddingBottom="20dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔍"
+                    android:textSize="24sp"
+                    android:layout_marginBottom="6dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No locations found"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+
+                <TextView
+                    android:id="@+id/tvNoResultsQuery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_hint"
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"/>
+
+            </LinearLayout>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -108,9 +152,9 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="320dp"
-        android:src="@android:drawable/ic_menu_mylocation"
-        app:backgroundTint="@color/bg_card"
-        app:tint="@color/brand_primary"
+        android:src="@drawable/bg_my_location_icon"
+        app:backgroundTint="#EDE5E5"
+        app:tint="#32E091"
         app:fabSize="mini"
         app:elevation="8dp" />
 

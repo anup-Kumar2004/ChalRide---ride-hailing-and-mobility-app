@@ -57,6 +57,8 @@ class DestinationSearchFragment : Fragment() {
     private var routeDurationMin: Double = 0.0
 
     private var isSelectingFromList = false
+    private var isRouteConfirmed = false  // true once a route is successfully drawn
+    private var changeDestHideRunnable: Runnable? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentDestinationSearchBinding.inflate(inflater, container, false)
@@ -69,10 +71,14 @@ class DestinationSearchFragment : Fragment() {
         initMap()
         setupSearch()
         setupClickListeners()
-
-        binding.etDestinationSearch.requestFocus()
-        showKeyboard()
     }
+
+    /**
+     * When user accidentally taps the map while route is locked,
+     * briefly pulse the "Change Destination" button to guide them.
+     * Professional pattern used by Uber/Ola.
+     */
+
 
     private fun initMap() {
         Configuration.getInstance().userAgentValue = requireContext().packageName
@@ -86,12 +92,18 @@ class DestinationSearchFragment : Fragment() {
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                if (isRouteConfirmed) {
+                    // Route is locked — flash the change button to guide the user
+                    animateChangeDestinationHint()
+                    return true  // consume the tap, do nothing else
+                }
                 placeDestinationMarker(p)
                 reverseGeocode(p)
                 return true
             }
             override fun longPressHelper(p: GeoPoint): Boolean = false
         })
+
         binding.mapFullView.overlays.add(0, mapEventsOverlay)
 
         binding.mapFullView.addMapListener(object : org.osmdroid.events.MapListener {
@@ -106,6 +118,52 @@ class DestinationSearchFragment : Fragment() {
                 return false
             }
         })
+    }
+
+    private fun animateChangeDestinationHint() {
+        if (binding.btnChangeDestination.isVisible) return
+
+        binding.tvRouteInfo.visibility = View.INVISIBLE
+
+        binding.btnChangeDestination.visibility = View.VISIBLE
+        binding.btnChangeDestination.scaleX = 0.7f
+        binding.btnChangeDestination.scaleY = 0.7f
+        binding.btnChangeDestination.alpha = 0f
+
+        binding.btnChangeDestination.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .alpha(1f)
+            .setDuration(200)
+            .withEndAction {
+                // Store runnable so we can cancel it if route is cleared
+                changeDestHideRunnable = Runnable {
+                    binding.btnChangeDestination.animate()
+                        .alpha(0f)
+                        .translationY(20f)
+                        .setDuration(300)
+                        .withEndAction {
+                            binding.btnChangeDestination.visibility = View.GONE
+                            binding.btnChangeDestination.translationY = 0f
+                            // Only restore tvRouteInfo if route is still active
+                            if (isRouteConfirmed) {
+                                binding.tvRouteInfo.visibility = View.VISIBLE
+                            }
+                        }
+                        .start()
+                }
+                binding.btnChangeDestination.postDelayed(changeDestHideRunnable!!, 4000)
+            }
+            .start()
+    }
+
+    private fun cancelChangeDestinationHint() {
+        changeDestHideRunnable?.let { binding.btnChangeDestination.removeCallbacks(it) }
+        changeDestHideRunnable = null
+        binding.btnChangeDestination.animate().cancel()
+        binding.btnChangeDestination.visibility = View.GONE
+        binding.btnChangeDestination.alpha = 1f
+        binding.btnChangeDestination.translationY = 0f
     }
 
     private fun fetchAndDrawRoute(pickup: GeoPoint, destination: GeoPoint) {
@@ -203,14 +261,7 @@ class DestinationSearchFragment : Fragment() {
 
                 binding.mapFullView.invalidate()
 
-                // Zoom map to fit entire route
-                val boundingBox = org.osmdroid.util.BoundingBox.fromGeoPoints(routePoints)
-
-                binding.mapFullView.post {
-                    binding.mapFullView.zoomToBoundingBox(boundingBox, true, 80)
-                }
-
-                // Update confirm button with distance and ETA
+                // Update UI FIRST so element heights are measurable before zooming
                 val distanceText = if (routeDistanceKm < 1.0) {
                     "${(routeDistanceKm * 1000).toInt()} m"
                 } else {
@@ -223,9 +274,15 @@ class DestinationSearchFragment : Fragment() {
                 }
 
                 binding.tvRouteInfo.visibility = View.VISIBLE
-                binding.tvRouteInfo.text = "📍 $distanceText · ⏱ $etaText"
+                binding.tvRouteInfo.text = "$distanceText · ⏱ $etaText"
                 binding.btnConfirmLocation.text = "Confirm Destination"
                 binding.btnConfirmLocation.isEnabled = true
+
+                // Zoom AFTER UI is updated so we can accurately measure occluded heights
+                zoomToFitRouteInSafeArea(routePoints)
+
+                // Lock map against accidental taps now that route is drawn
+                isRouteConfirmed = true
 
                 // Pass route info back to RiderHomeFragment
                 findNavController().previousBackStackEntry?.savedStateHandle?.apply {
@@ -246,6 +303,9 @@ class DestinationSearchFragment : Fragment() {
                 binding.btnConfirmLocation.text = "Confirm Destination"
                 binding.btnConfirmLocation.isEnabled = true
 
+                isRouteConfirmed = false
+                binding.btnChangeDestination.visibility = View.GONE
+
                 // 🔥 Detect ORS no-route error
                 val message = e.message ?: ""
 
@@ -258,6 +318,94 @@ class DestinationSearchFragment : Fragment() {
             }
         }
     }
+
+    /**
+     * Zooms the map so the full route is visible inside the "safe area" —
+     * the visible map rectangle that is NOT covered by the top address card
+     * or the bottom route-info / confirm-button bar.
+     *
+     * Strategy:
+     *  1. Measure how many pixels each UI overlay actually covers at runtime.
+     *  2. Expand the route BoundingBox proportionally so that when OSMDroid
+     *     zooms the expanded box to fill the whole screen, the original route
+     *     lands only within the safe area.
+     *  3. Shift the expanded box's lat center to account for the asymmetry
+     *     between top and bottom occlusion heights.
+     */
+    private fun zoomToFitRouteInSafeArea(routePoints: ArrayList<GeoPoint>) {
+        binding.mapFullView.post {
+            val mapView = binding.mapFullView
+            val mapH = mapView.height
+            val mapW = mapView.width
+            if (mapH == 0 || mapW == 0 || routePoints.isEmpty()) return@post
+
+            val boundingBox = org.osmdroid.util.BoundingBox.fromGeoPoints(routePoints)
+
+            // ── Step 1: Measure actual on-screen occlusion by UI elements ─────────
+
+            val mapScreenPos = IntArray(2)
+            mapView.getLocationOnScreen(mapScreenPos)
+
+            val searchScreenPos = IntArray(2)
+            binding.etDestinationSearch.getLocationOnScreen(searchScreenPos)
+
+            val btnScreenPos = IntArray(2)
+            binding.btnConfirmLocation.getLocationOnScreen(btnScreenPos)
+            val mapBottomOnScreen = mapScreenPos[1] + mapH
+
+            // Buffer: whichever is larger — 80px flat, or 8% of map height
+            val extraBuffer = maxOf(80, (mapH * 0.08).toInt())
+
+            val topOccluded = ((searchScreenPos[1] + binding.etDestinationSearch.height)
+                    - mapScreenPos[1] + extraBuffer)
+                .coerceIn(0, mapH / 2)
+
+            val botOccluded = (mapBottomOnScreen - btnScreenPos[1] + extraBuffer)
+                .coerceIn(0, mapH / 2)
+
+            // ── Step 2: Compute route geometry first ──────────────────────────────
+
+            val origLatSpan = (boundingBox.latNorth - boundingBox.latSouth).coerceAtLeast(0.001)
+            val origLonSpan = (boundingBox.lonEast - boundingBox.lonWest).coerceAtLeast(0.001)
+            val routeLatCenter = (boundingBox.latNorth + boundingBox.latSouth) / 2.0
+            val routeLonCenter = (boundingBox.lonEast + boundingBox.lonWest) / 2.0
+
+            // Very vertical routes have near-zero lon span — give them more
+            // horizontal padding so the expanded box stays well-proportioned
+            val routeAspect = origLonSpan / origLatSpan
+            val sidePadPx = if (routeAspect < 0.3) 120 else 60
+
+            // ── Step 3: Compute safe-area dimensions ──────────────────────────────
+
+            val safeH = (mapH - topOccluded - botOccluded).coerceAtLeast(100)
+            val safeW = (mapW - 2 * sidePadPx).coerceAtLeast(100)
+
+            // ── Step 4: Scale the bounding box to fill the full screen while ──────
+            //           keeping the route inside the safe area only             ──────
+
+            val newLatSpan = origLatSpan * (mapH.toDouble() / safeH.toDouble())
+            val newLonSpan = origLonSpan * (mapW.toDouble() / safeW.toDouble())
+
+            // ── Step 5: Shift lat center so route is centered in the safe zone ────
+
+            val safeCenterOffsetPx = (topOccluded - botOccluded) / 2.0
+            val latCenterShift = safeCenterOffsetPx / mapH.toDouble() * newLatSpan
+            val adjustedLatCenter = routeLatCenter + latCenterShift
+
+            // ── Step 6: Build expanded box and zoom ───────────────────────────────
+
+            val expandedBox = org.osmdroid.util.BoundingBox(
+                adjustedLatCenter + newLatSpan / 2.0,
+                routeLonCenter    + newLonSpan / 2.0,
+                adjustedLatCenter - newLatSpan / 2.0,
+                routeLonCenter    - newLonSpan / 2.0
+            )
+
+            mapView.zoomToBoundingBox(expandedBox, true, 0)
+        }
+    }
+
+
 
     private fun placePickupMarker(geoPoint: GeoPoint) {
         pickupMarker?.let { binding.mapFullView.overlays.remove(it) }
@@ -277,7 +425,7 @@ class DestinationSearchFragment : Fragment() {
                     drawable.draw(canvas)
                     bitmap.toDrawable(resources)
                 }
-            } catch (e: Exception) { }
+            } catch (_: Exception) { }
             infoWindow = null
             setOnMarkerClickListener { _, _ -> true }
         }
@@ -327,6 +475,11 @@ class DestinationSearchFragment : Fragment() {
             }
         })
 
+        // ADD THIS INSTEAD:
+        binding.etDestinationSearch.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) binding.etDestinationSearch.isCursorVisible = true
+        }
+
         binding.etDestinationSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val query = binding.etDestinationSearch.text.toString().trim()
@@ -337,6 +490,8 @@ class DestinationSearchFragment : Fragment() {
                 true
             } else false
         }
+
+
     }
 
     private suspend fun searchLocation(query: String) {
@@ -360,38 +515,46 @@ class DestinationSearchFragment : Fragment() {
             searchResults.clear()
             searchResults.addAll(results)
 
-            if (results.isNotEmpty()) showDestinationDropdown(results.map { it.first })
-            else hideDestinationDropdown()
+            if (results.isNotEmpty()) {
+                hideNoResultsState()
+                showDestinationDropdown(results.map { it.first })
+            } else {
+                hideDestinationDropdown()
+                showNoResultsState(query)  // ← show empty state
+            }
 
         } catch (_: Exception) {
             hideDestinationDropdown()
+            showNoResultsState(query)  // ← also show on network error
         }
     }
 
     private fun showDestinationDropdown(items: List<String>) {
         val adapter = object : ArrayAdapter<String>(
-            requireContext(), android.R.layout.simple_list_item_1, items
+            requireContext(), R.layout.item_search_result, items
         ) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.WHITE)
-                    textSize = 13f
-                    setPadding(32, 22, 32, 22)
-                    setBackgroundColor(Color.TRANSPARENT)
-                }
+                val view = convertView ?: layoutInflater.inflate(
+                    R.layout.item_search_result, parent, false
+                )
+                val parts = items[position].split(",", limit = 2)
+                view.findViewById<TextView>(R.id.tvResultPrimary).text = parts[0].trim()
+                view.findViewById<TextView>(R.id.tvResultSecondary).text =
+                    if (parts.size > 1) parts[1].trim() else ""
                 return view
             }
         }
-
+        binding.dividerDropdown.visibility = View.VISIBLE
         binding.lvDestinationResults.adapter = adapter
         binding.lvDestinationResults.visibility = View.VISIBLE
     }
 
     private fun hideDestinationDropdown() {
+        binding.dividerDropdown.visibility = View.GONE
         binding.lvDestinationResults.visibility = View.GONE
         binding.lvDestinationResults.adapter = null
         searchResults.clear()
+        hideNoResultsState()
     }
 
     private fun placeDestinationMarker(geoPoint: GeoPoint) {
@@ -483,6 +646,17 @@ class DestinationSearchFragment : Fragment() {
             .start()
     }
 
+    private fun showNoResultsState(query: String) {
+        binding.lvDestinationResults.visibility = View.GONE
+        binding.dividerDropdown.visibility = View.VISIBLE
+        binding.cardNoResults.visibility = View.VISIBLE
+        binding.tvNoResultsQuery.text = "Try a different search for \"$query\""
+    }
+
+    private fun hideNoResultsState() {
+        binding.cardNoResults.visibility = View.GONE
+    }
+
     private fun reverseGeocode(geoPoint: GeoPoint) {
         lifecycleScope.launch {
             try {
@@ -500,6 +674,7 @@ class DestinationSearchFragment : Fragment() {
                 selectedAddress = address
 
                 isSelectingFromList = true   // 🔥 block TextWatcher
+                binding.etDestinationSearch.isCursorVisible = false
                 binding.etDestinationSearch.setText(address)
                 binding.etDestinationSearch.setSelection(0)   // 🔥 IMPORTANT
                 isSelectingFromList = false
@@ -525,34 +700,34 @@ class DestinationSearchFragment : Fragment() {
         }
 
         binding.btnClearSearch.setOnClickListener {
+            cancelChangeDestinationHint()  // handles chip + timer cancellation
+            isRouteConfirmed = false
+
             binding.etDestinationSearch.setText("")
+            // ADD THIS LINE right after setText(""):
+            binding.etDestinationSearch.isCursorVisible = true
+
             selectedGeoPoint = null
             selectedAddress = ""
             hideDestinationDropdown()
 
-            // Remove destination marker
             destinationMarker?.let {
                 binding.mapFullView.overlays.remove(it)
                 binding.mapFullView.invalidate()
             }
             destinationMarker = null
 
-            // Also hide and stop the red pulse
             binding.pulseView.animate().cancel()
             binding.pulseView.clearAnimation()
             binding.pulseView.visibility = View.GONE
 
-            // 🔥 REMOVE ROUTE
             routePolyline?.let {
                 binding.mapFullView.overlays.remove(it)
                 binding.mapFullView.invalidate()
             }
             routePolyline = null
 
-            // 🔥 RESET ROUTE INFO UI
             binding.tvRouteInfo.visibility = View.GONE
-
-
         }
 
         binding.lvDestinationResults.setOnItemClickListener { _, _, position, _ ->
@@ -560,12 +735,12 @@ class DestinationSearchFragment : Fragment() {
 
             val (label, geoPoint) = searchResults[position]
 
-                    selectedAddress = label
-                    selectedGeoPoint = geoPoint
+            selectedAddress = label
+            selectedGeoPoint = geoPoint
 
-                    hideDestinationDropdown()
+            hideDestinationDropdown()
 
-                    isSelectingFromList = true
+            isSelectingFromList = true
             binding.etDestinationSearch.setText(label)
             isSelectingFromList = false
 
@@ -579,6 +754,8 @@ class DestinationSearchFragment : Fragment() {
             fetchAndDrawRoute(pickup, geoPoint)
 
             hideKeyboard()
+
+            binding.etDestinationSearch.isCursorVisible = false
         }
 
         binding.fabGps.setOnClickListener {
@@ -598,6 +775,39 @@ class DestinationSearchFragment : Fragment() {
             }
 
             findNavController().popBackStack()
+        }
+
+        binding.btnChangeDestination.setOnClickListener {
+            // Cancel any pending hide animation
+            cancelChangeDestinationHint()  // ← replaces the 4 manual lines
+            isRouteConfirmed = false
+
+            // Remove current route and reset state
+            routePolyline?.let { binding.mapFullView.overlays.remove(it) }
+            routePolyline = null
+            binding.tvRouteInfo.visibility = View.GONE
+
+            // Remove destination marker and reset
+            destinationMarker?.let { binding.mapFullView.overlays.remove(it) }
+            destinationMarker = null
+            binding.pulseView.animate().cancel()
+            binding.pulseView.clearAnimation()
+            binding.pulseView.visibility = View.GONE
+
+            selectedGeoPoint = null
+            selectedAddress = ""
+            binding.mapFullView.invalidate()
+
+            val pickup = GeoPoint(pickupLat, pickupLng)
+            binding.mapFullView.controller.animateTo(pickup)
+            binding.mapFullView.controller.setZoom(14.0)
+
+            binding.etDestinationSearch.setText("")
+            binding.etDestinationSearch.requestFocus()
+            showKeyboard()
+
+            // ADD THIS LINE right after showKeyboard():
+            binding.etDestinationSearch.isCursorVisible = true
         }
     }
 

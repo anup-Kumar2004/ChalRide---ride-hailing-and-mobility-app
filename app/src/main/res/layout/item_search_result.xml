@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- Location icon with dark circular background -->
+    <FrameLayout
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:background="@drawable/bg_circle_surface"
+        android:layout_marginEnd="14dp">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/bg_location"
+            android:alpha="0.75"/>
+
+    </FrameLayout>
+
+    <!-- Primary and secondary text -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvResultPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:ellipsize="end"/>
+
+        <TextView
+            android:id="@+id/tvResultSecondary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="2dp"/>
+
+    </LinearLayout>
+
+    <!-- Arrow icon -->
+    <ImageView
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/bg_arrow"
+        android:alpha="0.4"
+        android:layout_marginStart="8dp"/>
+
+</LinearLayout>

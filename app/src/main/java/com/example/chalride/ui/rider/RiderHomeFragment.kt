@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.IntentSender
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.location.Geocoder
 import android.os.Bundle
 import android.os.Looper
@@ -69,6 +68,8 @@ class RiderHomeFragment : Fragment() {
     private lateinit var locationCallback: LocationCallback
 
     private var pickupMarker: Marker? = null
+    private var fetchingMessageJob: Job? = null
+    private var isLocationBeingFetched = false
 
     // ── Confirmed pickup state ──────────────────────────────────────────────
     // These are only updated when a location is CONFIRMED (GPS fix, search
@@ -94,6 +95,8 @@ class RiderHomeFragment : Fragment() {
     private var destLat = 0.0
     private var destLng = 0.0
     private var destAddress = ""
+
+
 
     // ── Permission launchers ────────────────────────────────────────────────
     private val locationPermissionLauncher = registerForActivityResult(
@@ -166,7 +169,10 @@ class RiderHomeFragment : Fragment() {
         // (handles returning from destination fragment)
         if (confirmedPickupLabel.isEmpty()) {
             binding.progressLocation.visibility = View.VISIBLE
+            isLocationBeingFetched = true
             checkAndRequestPermission()
+            // ADD THIS LINE:
+            startFetchingMessages()
         } else {
             // We already have a pickup — just restore the UI, no GPS needed
             restoreConfirmedPickupUI()
@@ -180,6 +186,11 @@ class RiderHomeFragment : Fragment() {
      * Passing null geoPoint = error state (no location).
      */
     private fun setConfirmedPickup(geoPoint: GeoPoint?, label: String) {
+
+        // ADD THIS LINE at the very top:
+        isLocationBeingFetched = false
+        // ADD THIS LINE:
+        fetchingMessageJob?.cancel()
         confirmedPickupLocation = geoPoint
         confirmedPickupLabel = label
         geoPoint?.let { currentLocation = it }
@@ -231,7 +242,8 @@ class RiderHomeFragment : Fragment() {
         binding.mapView.zoomController.setVisibility(
             org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER
         )
-        binding.mapView.controller.setZoom(4.0)
+        binding.mapView.controller.setZoom(5.0)
+        binding.mapView.controller.setCenter(GeoPoint(20.5937, 78.9629))
 
         binding.mapView.addMapListener(object : org.osmdroid.events.MapListener {
 
@@ -250,6 +262,9 @@ class RiderHomeFragment : Fragment() {
 
         val mapTapOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                // ADD THIS BLOCK — block map taps while GPS is still working
+                if (isLocationBeingFetched) return true
+
                 if (isInSearchMode) {
                     exitSearchMode(restoreLabel = true)
                     return true
@@ -550,34 +565,43 @@ class RiderHomeFragment : Fragment() {
             }
             searchResults.clear()
             searchResults.addAll(results)
-            if (results.isNotEmpty()) showPickupDropdown(results.map { it.first })
-            else hidePickupDropdown()
-        } catch (e: Exception) {
+            if (results.isNotEmpty()) {
+                hideNoResultsState()           // ADD THIS LINE
+                showPickupDropdown(results.map { it.first })
+            } else {
+                hidePickupDropdown()
+                showNoResultsState(query)      // ADD THIS LINE
+            }
+        } catch (_: Exception) {
             hidePickupDropdown()
+            showNoResultsState(query)          // CHANGE from just hidePickupDropdown()
         }
     }
 
     private fun showPickupDropdown(items: List<String>) {
         val adapter = object : ArrayAdapter<String>(
-            requireContext(), android.R.layout.simple_list_item_1, items
+            requireContext(), R.layout.item_search_result, items
         ) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                (view as? TextView)?.apply {
-                    setTextColor(Color.WHITE)
-                    textSize = 13f
-                    setPadding(32, 22, 32, 22)
-                    setBackgroundColor(Color.TRANSPARENT)
-                }
+                val view = convertView ?: layoutInflater.inflate(
+                    R.layout.item_search_result, parent, false
+                )
+                val parts = items[position].split(",", limit = 2)
+                view.findViewById<TextView>(R.id.tvResultPrimary).text = parts[0].trim()
+                view.findViewById<TextView>(R.id.tvResultSecondary).text =
+                    if (parts.size > 1) parts[1].trim() else ""
                 return view
             }
         }
+        binding.dividerPickupDropdown.visibility = View.VISIBLE
         binding.lvPickupResults.adapter = adapter
         binding.lvPickupResults.visibility = View.VISIBLE
     }
 
     private fun hidePickupDropdown() {
+        binding.dividerPickupDropdown.visibility = View.GONE
         binding.lvPickupResults.visibility = View.GONE
+        hideNoResultsState()
         searchResults.clear()
     }
 
@@ -589,6 +613,17 @@ class RiderHomeFragment : Fragment() {
     private fun hideKeyboard() {
         val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.etPickupSearch.windowToken, 0)
+    }
+
+    private fun showNoResultsState(query: String) {
+        binding.lvPickupResults.visibility = View.GONE
+        binding.dividerPickupDropdown.visibility = View.VISIBLE
+        binding.cardNoResults.visibility = View.VISIBLE
+        binding.tvNoResultsQuery.text = "Try a different search for \"$query\""
+    }
+
+    private fun hideNoResultsState() {
+        binding.cardNoResults.visibility = View.GONE
     }
 
     // ── Destination ──────────────────────────────────────────────────────────
@@ -654,6 +689,32 @@ class RiderHomeFragment : Fragment() {
             }
             .start()
     }
+
+    private fun startFetchingMessages() {
+        fetchingMessageJob?.cancel()
+        fetchingMessageJob = lifecycleScope.launch {
+            val messages = listOf(
+                0L    to "Fetching location...",
+                3000L to "Just a sec, hold on tight...",
+                6000L to "Almost there, bear with us...",
+                10000L to "Taking longer than usual..."
+            )
+            for ((delayMs, message) in messages) {
+                delay(delayMs)
+                // Only update if we're still fetching (not yet confirmed)
+                if (isLocationBeingFetched) {
+                    isProgrammaticTextChange = true
+                    binding.etPickupSearch.setText(message)
+                    isProgrammaticTextChange = false
+                } else {
+                    break
+                }
+            }
+        }
+    }
+
+
+
     // ── Click listeners ──────────────────────────────────────────────────────
 
     private fun setupClickListeners() {
@@ -666,6 +727,8 @@ class RiderHomeFragment : Fragment() {
             gpsHasBeenFetched = false
             locationUpdatesStarted = false
             userIsInteracting = false
+            // ADD THIS LINE:
+            isLocationBeingFetched = true
 
             if (isInSearchMode) exitSearchMode(restoreLabel = false)
 
@@ -675,6 +738,8 @@ class RiderHomeFragment : Fragment() {
             isProgrammaticTextChange = false
 
             checkAndRequestPermission()
+            // ADD THIS LINE:
+            startFetchingMessages()
         }
 
         binding.cardDestination.setOnClickListener {
