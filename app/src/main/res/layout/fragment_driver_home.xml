@@ -6,30 +6,46 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Full screen map -->
+    <!-- ── Full-screen map ── -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <!-- Top driver info card -->
+    <!-- ── Driver pulse marker overlay (positioned by Kotlin) ── -->
+    <View
+        android:id="@+id/pulseView"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_driver_pulse"
+        android:visibility="gone"/>
+
+    <!-- ── Top scrim gradient ── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="110dp"
+        android:background="@drawable/bg_map_top_scrim"
+        android:layout_gravity="top"/>
+
+    <!-- ── Top driver info card ── -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardTopBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:cardBackgroundColor="#CC0F0F1A"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="8dp">
+        android:layout_margin="12dp"
+        app:cardBackgroundColor="#EE0F0F1A"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="14dp">
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="14dp">
 
-            <!-- Profile + Name -->
+            <!-- Avatar + Name + Status -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -37,22 +53,39 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvProfileInitial"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:background="@drawable/bg_driver_circle"
-                    android:gravity="center"
-                    android:text="D"
-                    android:textColor="@color/white"
-                    android:textSize="16sp"
-                    android:fontFamily="sans-serif-medium"/>
+                <!-- Avatar circle -->
+                <FrameLayout
+                    android:layout_width="46dp"
+                    android:layout_height="46dp">
 
+                    <TextView
+                        android:id="@+id/tvProfileInitial"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_driver_avatar"
+                        android:gravity="center"
+                        android:text="D"
+                        android:textColor="@color/white"
+                        android:textSize="17sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <!-- Online status dot on avatar -->
+                    <View
+                        android:id="@+id/viewStatusDot"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/bg_status_dot_offline"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="1dp"/>
+
+                </FrameLayout>
+
+                <!-- Name + status text -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginStart="10dp">
+                    android:layout_marginStart="12dp">
 
                     <TextView
                         android:id="@+id/tvDriverName"
@@ -63,32 +96,27 @@
                         android:textSize="15sp"
                         android:fontFamily="sans-serif-medium"/>
 
-                    <!-- Online status indicator -->
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tvStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:text="Offline"
+                        android:textColor="@color/text_hint"
+                        android:textSize="12sp"
+                        android:layout_marginTop="1dp"/>
 
-                        <View
-                            android:id="@+id/viewStatusDot"
-                            android:layout_width="8dp"
-                            android:layout_height="8dp"
-                            android:background="@drawable/bg_status_dot_offline"
-                            android:layout_marginEnd="5dp"/>
-
-                        <TextView
-                            android:id="@+id/tvStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Offline"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="12sp"/>
-                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Earnings today -->
+            <!-- Divider -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="36dp"
+                android:background="@color/divider_color"
+                android:layout_marginHorizontal="14dp"
+                android:alpha="0.5"/>
+
+            <!-- Earnings block -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -99,9 +127,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="TODAY"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="10sp"
-                    android:letterSpacing="0.1"/>
+                    android:textColor="@color/text_hint"
+                    android:textSize="9sp"
+                    android:letterSpacing="0.12"
+                    android:fontFamily="sans-serif-medium"/>
 
                 <TextView
                     android:id="@+id/tvEarnings"
@@ -109,141 +138,231 @@
                     android:layout_height="wrap_content"
                     android:text="₹0"
                     android:textColor="@color/success_color"
-                    android:textSize="18sp"
-                    android:fontFamily="sans-serif-medium"/>
+                    android:textSize="20sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="1dp"/>
             </LinearLayout>
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- My location FAB -->
+    <!-- ── GPS FAB ── -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabMyLocation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="340dp"
-        android:src="@android:drawable/ic_menu_mylocation"
-        app:backgroundTint="@color/bg_card"
+        android:layout_marginBottom="310dp"
+        android:src="@drawable/bg_my_location_icon"
+        app:backgroundTint="#EDE5E5"
         app:tint="@color/driver_color"
-        app:fabSize="mini"/>
+        app:fabSize="mini"
+        app:elevation="8dp"/>
 
-    <!-- Bottom panel -->
-    <LinearLayout
-        android:id="@+id/bottomPanel"
+    <!-- ══════════════════════════════════════════════
+         BOTTOM SHEET
+    ══════════════════════════════════════════════ -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_bottom_sheet"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:background="@drawable/bg_ride_confirm_sheet"
+        android:elevation="16dp">
 
-        <!-- Drag handle -->
-        <View
-            android:layout_width="40dp"
-            android:layout_height="4dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="20dp"
-            android:background="@drawable/bg_drag_handle"/>
-
-        <!-- Status message -->
-        <TextView
-            android:id="@+id/tvStatusMessage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:text="You are currently offline"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:layout_marginBottom="6dp"/>
-
-        <TextView
-            android:id="@+id/tvStatusSubMessage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:text="Go online to start receiving ride requests"
-            android:textColor="@color/text_hint"
-            android:textSize="12sp"
-            android:gravity="center"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- GO ONLINE / OFFLINE Toggle Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnToggleOnline"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="GO ONLINE"
-            android:textSize="16sp"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.08"
-            app:backgroundTint="@color/success_color"
-            app:cornerRadius="16dp"
-            android:textColor="@color/white"/>
-
-        <!-- Stats row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="16dp">
+            android:orientation="vertical"
+            android:paddingBottom="32dp">
 
-            <!-- Trips today -->
+            <!-- Drag handle -->
+            <View
+                android:layout_width="36dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/bg_drag_handle"/>
+
+            <!-- ── Status section ── -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/bg_stat_card"
-                android:padding="12dp"
-                android:layout_marginEnd="6dp">
+                android:gravity="center_horizontal"
+                android:paddingHorizontal="24dp"
+                android:layout_marginBottom="20dp">
+
+                <!-- Animated status icon ring -->
+                <FrameLayout
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_marginBottom="14dp">
+
+                    <!-- Outer ring -->
+                    <View
+                        android:id="@+id/statusRingOuter"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:background="@drawable/bg_status_ring_offline"/>
+
+                    <!-- Inner icon -->
+                    <ImageView
+                        android:id="@+id/ivStatusIcon"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_mylocation"
+                        android:alpha="0.6"/>
+
+                </FrameLayout>
 
                 <TextView
-                    android:id="@+id/tvTripsCount"
+                    android:id="@+id/tvStatusMessage"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0"
+                    android:text="You are currently offline"
                     android:textColor="@color/text_primary"
-                    android:textSize="22sp"
-                    android:fontFamily="sans-serif-medium"/>
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:layout_marginBottom="6dp"/>
 
                 <TextView
+                    android:id="@+id/tvStatusSubMessage"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Trips"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"/>
+                    android:text="Go online to start receiving ride requests"
+                    android:textColor="@color/text_hint"
+                    android:textSize="13sp"
+                    android:gravity="center"/>
+
             </LinearLayout>
 
-            <!-- Hours online -->
+            <!-- ── GO ONLINE / OFFLINE button ── -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleOnline"
+                style="@style/ChalRide.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginBottom="20dp"
+                android:text="GO ONLINE"
+                android:textSize="15sp"
+                android:letterSpacing="0.06"
+                android:fontFamily="sans-serif-medium"
+                app:backgroundTint="@color/success_color"
+                app:cornerRadius="16dp"/>
+
+            <!-- Thin divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"
+                android:alpha="0.5"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginBottom="18dp"/>
+
+            <!-- ── Stats row ── -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/bg_stat_card"
-                android:padding="12dp"
-                android:layout_marginStart="6dp">
+                android:orientation="horizontal"
+                android:paddingHorizontal="24dp">
 
-                <TextView
-                    android:id="@+id/tvHoursOnline"
-                    android:layout_width="wrap_content"
+                <!-- Trips today -->
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="0h"
-                    android:textColor="@color/text_primary"
-                    android:textSize="22sp"
-                    android:fontFamily="sans-serif-medium"/>
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_stat_card"
+                    android:padding="14dp"
+                    android:layout_marginEnd="6dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/tvTripsCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/text_primary"
+                        android:textSize="24sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Trips"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <!-- Hours online -->
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Online"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"/>
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_stat_card"
+                    android:padding="14dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/tvHoursOnline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0h"
+                        android:textColor="@color/text_primary"
+                        android:textSize="24sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Online"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <!-- Rating -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_stat_card"
+                    android:padding="14dp"
+                    android:layout_marginStart="6dp">
+
+                    <TextView
+                        android:id="@+id/tvRating"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="24sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rating"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
             </LinearLayout>
+
         </LinearLayout>
-    </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

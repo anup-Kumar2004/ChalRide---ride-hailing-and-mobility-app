@@ -119,11 +119,25 @@ class RegisterFragment : Fragment() {
                         is AuthState.Success -> {
                             binding.progressBar.visibility = View.GONE
                             binding.btnRegister.isEnabled = true
-                            if (state.user.role == "rider") {
-                                findNavController().navigate(R.id.action_register_to_rider_home)
+
+                            val role = userRole
+
+                            if (role == "driver") {
+
+                                val bundle = Bundle().apply {
+                                    putString("name", binding.etName.text.toString())
+                                }
+
+                                findNavController().navigate(
+                                    R.id.action_register_to_driver_profile_setup,
+                                    bundle
+                                )
                             } else {
-                                findNavController().navigate(R.id.action_register_to_driver_home)
+                                findNavController().navigate(
+                                    R.id.action_register_to_rider_home
+                                )
                             }
+
                         }
                         is AuthState.Error -> {
                             binding.progressBar.visibility = View.GONE

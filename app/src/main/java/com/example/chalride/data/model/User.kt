@@ -4,7 +4,6 @@ data class User(
     val uid: String = "",
     val name: String = "",
     val email: String = "",
-    val role: String = "",       // "rider" or "driver"
-    val isOnline: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val role: String = "",   // rider or driver
+    val profileComplete: Boolean = false,   // 🔥 ADD THIS
 )

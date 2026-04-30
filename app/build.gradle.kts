@@ -52,6 +52,8 @@ dependencies {
     implementation(libs.lifecycle.runtime)
     implementation(libs.splashscreen)
 
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+
     // Firebase (BOM manages all versions automatically)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
@@ -59,6 +61,8 @@ dependencies {
     implementation(libs.firebase.database)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

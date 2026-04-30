@@ -33,28 +33,72 @@
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+
+        <!--
+            Driver login: check if profile is complete.
+            If YES  → action_login_to_driver_home  (existing)
+            If NO   → action_login_to_driver_profile_setup  (new)
+            The LoginFragment.kt decides which action to fire.
+        -->
         <action
             android:id="@+id/action_login_to_driver_home"
             app:destination="@id/driverHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_login_to_driver_profile_setup"
+            app:destination="@id/driverProfileSetupFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
     </fragment>
 
     <fragment
         android:id="@+id/registerFragment"
         android:name="com.example.chalride.ui.auth.RegisterFragment"
         android:label="RegisterFragment">
+
         <action
             android:id="@+id/action_register_to_rider_home"
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+
         <action
-            android:id="@+id/action_register_to_driver_home"
+            android:id="@+id/action_register_to_driver_profile_setup"
+            app:destination="@id/driverProfileSetupFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+    </fragment>
+
+    <!-- ══ DRIVER SETUP FLOW ══════════════════════════════════════ -->
+
+    <fragment
+        android:id="@+id/driverProfileSetupFragment"
+        android:name="com.example.chalride.ui.driver.DriverProfileSetupFragment"
+        android:label="DriverProfileSetupFragment">
+        <action
+            android:id="@+id/action_driverProfileSetup_to_driverVehicleSetup"
+            app:destination="@id/driverVehicleSetupFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/driverVehicleSetupFragment"
+        android:name="com.example.chalride.ui.driver.DriverVehicleSetupFragment"
+        android:label="DriverVehicleSetupFragment">
+        <action
+            android:id="@+id/action_driverVehicleSetup_to_driverHome"
             app:destination="@id/driverHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
     </fragment>
+
+    <!-- ══ MAIN SCREENS ══════════════════════════════════════════ -->
 
     <fragment
         android:id="@+id/riderHomeFragment"

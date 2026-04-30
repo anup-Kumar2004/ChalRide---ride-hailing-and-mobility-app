@@ -11,8 +11,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentLoginBinding
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class LoginFragment : Fragment() {
@@ -53,11 +55,16 @@ class LoginFragment : Fragment() {
 
         binding.tvGoToRegister.setOnClickListener {
             viewModel.resetState()
+
             // Pass role to RegisterFragment
             val bundle = Bundle().apply {
                 putString("userRole", userRole)
             }
-            findNavController().navigate(R.id.action_login_to_register, bundle)
+
+            findNavController().navigate(
+                R.id.action_login_to_register,
+                bundle
+            )
         }
 
         binding.tvForgotPassword.setOnClickListener {
@@ -110,7 +117,8 @@ class LoginFragment : Fragment() {
                             if (state.user.role == "rider") {
                                 findNavController().navigate(R.id.action_login_to_rider_home)
                             } else {
-                                findNavController().navigate(R.id.action_login_to_driver_home)
+                                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@collect
+                                navigateDriverAfterLogin(uid)
                             }
                         }
                         is AuthState.Error -> {
@@ -127,6 +135,33 @@ class LoginFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun navigateDriverAfterLogin(uid: String) {
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+
+                val profileComplete = doc.getBoolean("profileComplete") ?: false
+
+                if (profileComplete) {
+                    findNavController().navigate(
+                        R.id.action_login_to_driver_home
+                    )
+                } else {
+                    findNavController().navigate(
+                        R.id.action_login_to_driver_profile_setup
+                    )
+                }
+            }
+            .addOnFailureListener {
+                findNavController().navigate(
+                    R.id.action_login_to_driver_profile_setup
+                )
+            }
     }
 
     override fun onDestroyView() {

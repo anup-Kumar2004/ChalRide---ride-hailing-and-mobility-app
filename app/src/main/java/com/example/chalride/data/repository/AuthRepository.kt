@@ -24,7 +24,13 @@ class AuthRepository {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: throw Exception("User ID is null")
 
-            val user = User(uid = uid, name = name, email = email, role = role)
+            val user = User(
+                uid = uid,
+                name = name,
+                email = email,
+                role = role,
+                profileComplete = false  // 🔥 important
+            )
 
             // Store in role-specific collection — riders or drivers separately
             val collection = if (role == "rider") "riders" else "drivers"

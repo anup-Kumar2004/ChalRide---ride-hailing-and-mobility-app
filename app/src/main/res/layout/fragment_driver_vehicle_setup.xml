@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="28dp"
+        android:paddingTop="52dp"
+        android:paddingBottom="40dp">
+
+        <!-- Step indicator -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="36dp">
+
+            <View
+                android:layout_width="16dp"
+                android:layout_height="6dp"
+                android:background="@drawable/bg_step_inactive"
+                android:layout_marginEnd="6dp"/>
+
+            <View
+                android:layout_width="32dp"
+                android:layout_height="6dp"
+                android:background="@drawable/bg_step_active"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Step 2 of 2"
+                android:textColor="@color/text_hint"
+                android:textSize="12sp"/>
+        </LinearLayout>
+
+        <!-- Heading -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your Vehicle"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginBottom="6dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tell us about the vehicle you'll drive with"
+            android:textColor="@color/text_hint"
+            android:textSize="14sp"
+            android:layout_marginBottom="28dp"/>
+
+        <!-- ── Vehicle type selector ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vehicle Type"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- 2x2 grid of vehicle cards -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <!-- Bike -->
+            <LinearLayout
+                android:id="@+id/cardVehicleBike"
+                android:layout_width="0dp"
+                android:layout_height="88dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_vehicle_card_unselected"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🏍️"
+                    android:textSize="28sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvLabelBike"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bike"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
+
+            <!-- Auto -->
+            <LinearLayout
+                android:id="@+id/cardVehicleAuto"
+                android:layout_width="0dp"
+                android:layout_height="88dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_vehicle_card_unselected"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🛺"
+                    android:textSize="28sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvLabelAuto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <!-- Sedan -->
+            <LinearLayout
+                android:id="@+id/cardVehicleSedan"
+                android:layout_width="0dp"
+                android:layout_height="88dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_vehicle_card_unselected"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🚗"
+                    android:textSize="28sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvLabelSedan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sedan"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
+
+            <!-- SUV -->
+            <LinearLayout
+                android:id="@+id/cardVehicleSuv"
+                android:layout_width="0dp"
+                android:layout_height="88dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_vehicle_card_unselected"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🚙"
+                    android:textSize="28sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvLabelSuv"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SUV"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ── Make & Model ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Make &amp; Model"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilModel"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:boxBackgroundColor="@color/input_bg"
+            app:boxBackgroundMode="filled"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etModel"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="e.g. Maruti Swift, Honda Activa"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_hint"
+                android:textSize="15sp"
+                android:inputType="textCapWords"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="16dp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ── Registration plate ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Registration Plate"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPlate"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            app:boxBackgroundColor="@color/input_bg"
+            app:boxBackgroundMode="filled"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPlate"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="e.g. HR26AB1234"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_hint"
+                android:textSize="15sp"
+                android:inputType="textCapCharacters"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="16dp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ── Vehicle color ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vehicle Color"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilColor"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="36dp"
+            app:boxBackgroundColor="@color/input_bg"
+            app:boxBackgroundMode="filled"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etColor"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="e.g. White, Black, Silver"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_hint"
+                android:textSize="15sp"
+                android:inputType="textCapWords"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="16dp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ── Finish button ── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFinish"
+            style="@style/ChalRide.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:text="Start Driving →"
+            android:textSize="15sp"
+            android:letterSpacing="0.04"
+            app:cornerRadius="16dp"/>
+
+    </LinearLayout>
+</ScrollView>
