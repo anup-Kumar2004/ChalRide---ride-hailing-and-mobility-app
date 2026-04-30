@@ -285,11 +285,6 @@ class DestinationSearchFragment : Fragment() {
                 // Lock map against accidental taps now that route is drawn
                 isRouteConfirmed = true
 
-                // Pass route info back to RiderHomeFragment
-                findNavController().previousBackStackEntry?.savedStateHandle?.apply {
-                    set("routeDistanceKm", routeDistanceKm)
-                    set("routeDurationMin", routeDurationMin)
-                }
 
             } catch (e: Exception) {
                 android.util.Log.e("RouteDebug", "Route fetch failed: ${e.message}", e)
@@ -811,13 +806,21 @@ class DestinationSearchFragment : Fragment() {
             val dest = selectedGeoPoint ?: return@setOnClickListener
             val address = selectedAddress.ifEmpty { "Selected Location" }
 
-            findNavController().previousBackStackEntry?.savedStateHandle?.apply {
-                set("destLat", dest.latitude)
-                set("destLng", dest.longitude)
-                set("destAddress", address)
+            val bundle = Bundle().apply {
+                putDouble("pickupLat", pickupLat)
+                putDouble("pickupLng", pickupLng)
+                putString("pickupAddress", pickupAddress)
+                putDouble("destLat", dest.latitude)
+                putDouble("destLng", dest.longitude)
+                putString("destAddress", address)
+                putDouble("routeDistanceKm", routeDistanceKm)
+                putDouble("routeDurationMin", routeDurationMin)
             }
 
-            findNavController().popBackStack()
+            findNavController().navigate(
+                R.id.action_destination_search_to_ride_confirm,
+                bundle
+            )
         }
 
         binding.btnChangeDestination.setOnClickListener {

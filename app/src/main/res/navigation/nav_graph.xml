@@ -77,6 +77,19 @@
     <fragment
         android:id="@+id/destinationSearchFragment"
         android:name="com.example.chalride.ui.rider.DestinationSearchFragment"
-        android:label="DestinationSearchFragment"/>
+        android:label="DestinationSearchFragment">
+        <action
+            android:id="@+id/action_destination_search_to_ride_confirm"
+            app:destination="@id/rideConfirmFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/rideConfirmFragment"
+        android:name="com.example.chalride.ui.rider.RideConfirmFragment"
+        android:label="RideConfirmFragment"/>
 
 </navigation>

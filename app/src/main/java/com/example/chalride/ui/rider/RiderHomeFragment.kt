@@ -90,11 +90,6 @@ class RiderHomeFragment : Fragment() {
 
     // ── Ride booking state ──────────────────────────────────────────────────
     private var userIsInteracting = false
-    private var selectedVehicleType = ""
-    private var selectedFare = 0
-    private var destLat = 0.0
-    private var destLng = 0.0
-    private var destAddress = ""
 
 
 
@@ -154,17 +149,6 @@ class RiderHomeFragment : Fragment() {
 
         // Observe destination result
         findNavController().currentBackStackEntry?.savedStateHandle?.apply {
-            getLiveData<Double>("destLat").observe(viewLifecycleOwner) { lat ->
-                val lng = get<Double>("destLng") ?: return@observe
-                val address = get<String>("destAddress") ?: "Destination"
-                val routeDistance = get<Double>("routeDistanceKm") ?: 0.0
-                destLat = lat
-                destLng = lng
-                destAddress = address
-                onDestinationSelected(lat, lng, address, routeDistance)
-            }
-
-
             // ADD THIS — observe pickup unroutable signal from DestinationSearchFragment
             getLiveData<Boolean>("pickupUnroutable").observe(viewLifecycleOwner) { unroutable ->
                 if (unroutable == true) {
@@ -656,50 +640,6 @@ class RiderHomeFragment : Fragment() {
         binding.cardNoResults.visibility = View.GONE
     }
 
-    // ── Destination ──────────────────────────────────────────────────────────
-
-    private fun onDestinationSelected(
-        lat: Double, lng: Double,
-        address: String,
-        routeDistanceKm: Double = 0.0
-    ) {
-        binding.tvDestinationHint.text = address
-        binding.tvDestinationHint.setTextColor(
-            ContextCompat.getColor(requireContext(), R.color.text_primary)
-        )
-
-        binding.tvChooseRide.visibility = View.VISIBLE
-        binding.layoutVehicles.visibility = View.VISIBLE
-        binding.btnFindRide.visibility = View.VISIBLE
-
-        // Use actual route distance if available, else fallback to straight line
-        val distanceToUse = if (routeDistanceKm > 0) {
-            routeDistanceKm
-        } else {
-            confirmedPickupLocation?.let { pickup ->
-                pickup.distanceToAsDouble(GeoPoint(lat, lng)) / 1000.0
-            } ?: 0.0
-        }
-
-        calculateFares(distanceToUse)
-    }
-
-    private fun calculateFares(distanceKm: Double) {
-        val base = 20.0
-        binding.tvBikeFare.text = "₹${(base + distanceKm * 8.0).toInt()}"
-        binding.tvAutoFare.text = "₹${(base + distanceKm * 12.0).toInt()}"
-        binding.tvSedanFare.text = "₹${(base + distanceKm * 16.0).toInt()}"
-        binding.tvSuvFare.text = "₹${(base + distanceKm * 22.0).toInt()}"
-    }
-
-    private fun highlightSelectedVehicle(selectedCard: CardView?) {
-        listOf(binding.cardBike, binding.cardAuto, binding.cardSedan, binding.cardSuv).forEach {
-            it.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.input_bg))
-        }
-        selectedCard?.setCardBackgroundColor(
-            ContextCompat.getColor(requireContext(), R.color.bg_surface)
-        )
-    }
 
     private fun startPulse(view: View) {
         view.visibility = View.VISIBLE
@@ -725,8 +665,8 @@ class RiderHomeFragment : Fragment() {
         fetchingMessageJob = lifecycleScope.launch {
             val messages = listOf(
                 0L    to "Fetching location...",
-                4000L to "Just a sec, hold on tight...",
-                8000L to "Almost there, bear with us...",
+                6000L to "Just a sec, hold on tight...",
+                9000L to "Almost there, bear with us...",
                 12000L to "Taking longer than usual..."
             )
             for ((delayMs, message) in messages) {
@@ -777,7 +717,7 @@ class RiderHomeFragment : Fragment() {
             if (confirmedPickupLabel.isEmpty() || confirmedPickupLocation == null) {
                 Toast.makeText(
                     requireContext(),
-                    "Please wait — pickup location not set yet",
+                    "Pickup location not set yet",
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setOnClickListener
@@ -796,28 +736,6 @@ class RiderHomeFragment : Fragment() {
             openDestinationSearch()
         }
 
-        binding.cardBike.setOnClickListener {
-            selectedVehicleType = "bike"
-            selectedFare = binding.tvBikeFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
-            highlightSelectedVehicle(binding.cardBike)
-        }
-        binding.cardAuto.setOnClickListener {
-            selectedVehicleType = "auto"
-            selectedFare = binding.tvAutoFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
-            highlightSelectedVehicle(binding.cardAuto)
-        }
-        binding.cardSedan.setOnClickListener {
-            selectedVehicleType = "sedan"
-            selectedFare = binding.tvSedanFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
-            highlightSelectedVehicle(binding.cardSedan)
-        }
-        binding.cardSuv.setOnClickListener {
-            selectedVehicleType = "suv"
-            selectedFare = binding.tvSuvFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
-            highlightSelectedVehicle(binding.cardSuv)
-        }
-
-        binding.btnFindRide.setOnClickListener { findRide() }
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
@@ -832,64 +750,12 @@ class RiderHomeFragment : Fragment() {
         findNavController().navigate(R.id.action_rider_home_to_destination_search, bundle)
     }
 
-    // ── Find Ride ────────────────────────────────────────────────────────────
-
-    private fun findRide() {
-        if (selectedVehicleType.isEmpty()) {
-            Toast.makeText(requireContext(), "Please select a vehicle type", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (destLat == 0.0 && destLng == 0.0) {
-            Toast.makeText(requireContext(), "Please select a destination", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val pickup = confirmedPickupLocation ?: run {
-            Toast.makeText(requireContext(), "Pickup location not set", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        binding.btnFindRide.isEnabled = false
-        binding.btnFindRide.text = "Searching..."
-
-        FirebaseFirestore.getInstance().collection("riders").document(uid).get()
-            .addOnSuccessListener { doc ->
-                val rideData = hashMapOf(
-                    "riderId" to uid,
-                    "riderName" to (doc.getString("name") ?: "Rider"),
-                    "pickupLat" to pickup.latitude,
-                    "pickupLng" to pickup.longitude,
-                    "pickupAddress" to confirmedPickupLabel,
-                    "destLat" to destLat,
-                    "destLng" to destLng,
-                    "destAddress" to destAddress,
-                    "vehicleType" to selectedVehicleType,
-                    "estimatedFare" to selectedFare,
-                    "status" to "pending",
-                    "createdAt" to System.currentTimeMillis()
-                )
-                FirebaseFirestore.getInstance().collection("rideRequests").add(rideData)
-                    .addOnSuccessListener {
-                        binding.btnFindRide.text = "Searching for drivers..."
-                        Toast.makeText(requireContext(),
-                            "Looking for nearby $selectedVehicleType drivers...",
-                            Toast.LENGTH_LONG).show()
-                    }
-                    .addOnFailureListener { e ->
-                        binding.btnFindRide.isEnabled = true
-                        binding.btnFindRide.text = "Find a Ride"
-                        Toast.makeText(requireContext(), "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener {
-                binding.btnFindRide.isEnabled = true
-                binding.btnFindRide.text = "Find a Ride"
-            }
-    }
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
-    override fun onResume() { super.onResume(); binding.mapView.onResume() }
+    override fun onResume() {
+        super.onResume(); binding.mapView.onResume()
+    }
 
     override fun onPause() {
         super.onPause()
