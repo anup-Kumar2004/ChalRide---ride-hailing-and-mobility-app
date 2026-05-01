@@ -72,6 +72,24 @@ class DriverLocationService : Service() {
             .update(mapOf("isAvailable" to false, "isOnline" to false))
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // App was swiped away — force driver offline
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) {
+            FirebaseFirestore.getInstance()
+                .collection("drivers")
+                .document(uid)
+                .update(
+                    mapOf(
+                        "isAvailable" to false,
+                        "isOnline"    to false
+                    )
+                )
+        }
+        stopSelf()
+    }
+
     // ── Location ─────────────────────────────────────────────────────────────
 
     private fun startLocationUpdates() {

@@ -29,6 +29,7 @@ import org.osmdroid.views.overlay.Polyline
 import java.net.URL
 import androidx.core.graphics.toColorInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import kotlin.math.pow
 
 class RideConfirmFragment : Fragment() {
 
@@ -36,7 +37,6 @@ class RideConfirmFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
-
 
     private val pickupLat        by lazy { arguments?.getDouble("pickupLat")        ?: 0.0 }
     private val pickupLng        by lazy { arguments?.getDouble("pickupLng")        ?: 0.0 }
@@ -47,14 +47,72 @@ class RideConfirmFragment : Fragment() {
     private val routeDistanceKm  by lazy { arguments?.getDouble("routeDistanceKm") ?: 0.0 }
     private val routeDurationMin by lazy { arguments?.getDouble("routeDurationMin") ?: 0.0 }
 
+    private var nearbyDrivers: List<Map<String, Any>> = emptyList()
+    private val availableVehicleTypes = mutableSetOf<String>()
+
     private var selectedVehicleType = ""
     private var selectedFare = 0
 
     private var allRoutePoints: ArrayList<GeoPoint> = arrayListOf()
-
-    // The glowing dot marker that travels along the route
     private var travelingDot: Marker? = null
     private var dotAnimationRunning = false
+
+    // ── Vehicle card data — keeps all card meta in one place ──────────────
+    private data class VehicleCardMeta(
+        val type: String,
+        val card: () -> com.google.android.material.card.MaterialCardView,
+        val scrim: () -> View,
+        val fareView: () -> android.widget.TextView,
+        val unavailableView: () -> android.widget.TextView,
+        val nameView: () -> android.widget.TextView,
+        val subtitleView: () -> android.widget.TextView,
+        val emojiView: () -> android.widget.TextView
+    )
+
+    private val vehicleCards by lazy {
+        listOf(
+            VehicleCardMeta(
+                type = "bike",
+                card = { binding.cardBike },
+                scrim = { binding.scrimBike },
+                fareView = { binding.tvBikeFare },
+                unavailableView = { binding.tvBikeUnavailable },
+                nameView = { binding.tvBikeName },
+                subtitleView = { binding.tvBikeSubtitle },
+                emojiView = { binding.tvBikeEmoji }
+            ),
+            VehicleCardMeta(
+                type = "auto",
+                card = { binding.cardAuto },
+                scrim = { binding.scrimAuto },
+                fareView = { binding.tvAutoFare },
+                unavailableView = { binding.tvAutoUnavailable },
+                nameView = { binding.tvAutoName },
+                subtitleView = { binding.tvAutoSubtitle },
+                emojiView = { binding.tvAutoEmoji }
+            ),
+            VehicleCardMeta(
+                type = "sedan",
+                card = { binding.cardSedan },
+                scrim = { binding.scrimSedan },
+                fareView = { binding.tvSedanFare },
+                unavailableView = { binding.tvSedanUnavailable },
+                nameView = { binding.tvSedanName },
+                subtitleView = { binding.tvSedanSubtitle },
+                emojiView = { binding.tvSedanEmoji }
+            ),
+            VehicleCardMeta(
+                type = "suv",
+                card = { binding.cardSuv },
+                scrim = { binding.scrimSuv },
+                fareView = { binding.tvSuvFare },
+                unavailableView = { binding.tvSuvUnavailable },
+                nameView = { binding.tvSuvName },
+                subtitleView = { binding.tvSuvSubtitle },
+                emojiView = { binding.tvSuvEmoji }
+            )
+        )
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentRideConfirmBinding.inflate(inflater, container, false)
@@ -74,10 +132,7 @@ class RideConfirmFragment : Fragment() {
         setupVehicleCards()
         setupClickListeners()
 
-        // 1. INIT FIRST
         bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
-
-        // 2. CONFIGURE
         bottomSheetBehavior.apply {
             state = BottomSheetBehavior.STATE_COLLAPSED
             isDraggable = true
@@ -86,23 +141,21 @@ class RideConfirmFragment : Fragment() {
         }
 
         binding.bottomSheet.post {
-
             val screenHeight = resources.displayMetrics.heightPixels
-
-            // Collapsed = 24%
             bottomSheetBehavior.peekHeight = (screenHeight * 0.24).toInt()
-
-            // 🔥 Limit max expansion (70%)
-            bottomSheetBehavior.expandedOffset = (screenHeight * 0.3).toInt()
+            bottomSheetBehavior.expandedOffset = (screenHeight * 0.2).toInt()
         }
 
         binding.bottomSheet.setOnTouchListener { _, _ -> false }
 
-        // ✅ INIT MAP AFTER sheet is ready
+        // Show "Searching…" in badge immediately, then update after Firestore returns
+        binding.tvDriverCountBadge.text = "Searching nearby..."
+
         initMap()
+        fetchNearbyDriversAndFilterVehicles()
     }
 
-    // ── Summary ───────────────────────────────────────────────────────────────
+    // ── Route summary ─────────────────────────────────────────────────────
 
     private fun setupRideSummary() {
         binding.tvPickupAddress.text = pickupAddress
@@ -131,31 +184,176 @@ class RideConfirmFragment : Fragment() {
         binding.tvSuvFare.text   = "₹${(base + distanceKm * 22.0).toInt()}"
     }
 
-    // ── Map ───────────────────────────────────────────────────────────────────
+    // ── Vehicle card setup ────────────────────────────────────────────────
+
+    /**
+     * Registers click listeners on every card.
+     * Unavailable cards ignore taps (handled via the scrim View being on top
+     * and the card itself having clickable=false when unavailable).
+     */
+    private fun setupVehicleCards() {
+        vehicleCards.forEach { meta ->
+            meta.card().setOnClickListener {
+                if (meta.type !in availableVehicleTypes) return@setOnClickListener
+                selectVehicle(meta.type)
+            }
+        }
+    }
+
+    /**
+     * Called once Firestore returns nearby drivers.
+     * Renders every card in its correct available / unavailable state.
+     */
+    private fun renderVehicleCards() {
+        val availableCount = availableVehicleTypes.size
+
+        // Update driver count badge
+        binding.tvDriverCountBadge.text = when {
+            availableCount == 0 -> "No drivers nearby"
+            availableCount == 1 -> "1 vehicle available"
+            else                -> "$availableCount vehicle types available"
+        }
+
+        vehicleCards.forEach { meta ->
+            val isAvailable = meta.type in availableVehicleTypes
+            applyCardState(meta, isAvailable)
+        }
+
+        if (availableVehicleTypes.isEmpty()) {
+            binding.btnFindRide.isEnabled = false
+            binding.btnFindRide.text = "No drivers nearby"
+        } else {
+            binding.btnFindRide.isEnabled = true
+            binding.btnFindRide.text = "Find a Ride"
+        }
+    }
+
+    /**
+     * Makes a card visually available (normal) or unavailable (dimmed + badge).
+     */
+    private fun applyCardState(meta: VehicleCardMeta, isAvailable: Boolean) {
+        val card       = meta.card()
+        val scrim      = meta.scrim()
+        val fareView   = meta.fareView()
+        val badge      = meta.unavailableView()
+        val nameView   = meta.nameView()
+        val subtitleView = meta.subtitleView()
+
+        if (isAvailable) {
+            // ── Available state ──────────────────────────────────────────
+            card.alpha = 1f
+            card.isClickable = true
+            card.isFocusable = true
+            scrim.visibility = View.GONE
+            badge.visibility = View.GONE
+            fareView.visibility = View.VISIBLE
+            nameView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary))
+            subtitleView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+
+        } else {
+            // ── Unavailable state ────────────────────────────────────────
+            card.alpha = 0.75f          // dim the card itself
+            card.isClickable = false
+            card.isFocusable = false
+            scrim.visibility = View.VISIBLE   // dark overlay on top
+            badge.visibility = View.VISIBLE   // "Not available" pill
+            fareView.visibility = View.GONE   // hide fare — replaced by badge
+            fareView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_hint))
+            nameView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_hint))
+            subtitleView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_hint))
+
+            // If this was the selected type, deselect it
+            if (selectedVehicleType == meta.type) {
+                selectedVehicleType = ""
+                selectedFare = 0
+            }
+        }
+    }
+
+    /**
+     * Highlights the tapped card; resets all others to their available-unselected look.
+     */
+    private fun selectVehicle(type: String) {
+        selectedVehicleType = type
+        selectedFare = when (type) {
+            "bike"  -> binding.tvBikeFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
+            "auto"  -> binding.tvAutoFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
+            "sedan" -> binding.tvSedanFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
+            "suv"   -> binding.tvSuvFare.text.toString().replace("₹", "").toIntOrNull() ?: 0
+            else    -> 0
+        }
+
+        vehicleCards.forEach { meta ->
+            if (meta.type !in availableVehicleTypes) return@forEach
+
+            val card     = meta.card()
+            val fareView = meta.fareView()
+            val nameView = meta.nameView()
+
+            if (meta.type == type) {
+                // ── SELECTED state ───────────────────────────────────────
+                card.setCardBackgroundColor(
+                    ContextCompat.getColor(requireContext(), R.color.bg_surface)
+                )
+                card.cardElevation = 8f * resources.displayMetrics.density
+                card.strokeColor = ContextCompat.getColor(requireContext(), R.color.brand_primary)
+                card.strokeWidth = (1.5f * resources.displayMetrics.density).toInt()
+                nameView.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.brand_primary)
+                )
+                fareView.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.brand_primary)
+                )
+                // Scale up slightly for a "picked" feel
+                card.animate()
+                    .scaleX(1.0f)
+                    .scaleY(1.0f)
+                    .setDuration(120)
+                    .start()
+
+            } else {
+                // ── UNSELECTED available state ───────────────────────────
+                card.setCardBackgroundColor(
+                    ContextCompat.getColor(requireContext(), R.color.input_bg)
+                )
+                card.cardElevation = 0f
+                card.strokeColor = ContextCompat.getColor(requireContext(), R.color.divider_color)
+                card.strokeWidth = (1f * resources.displayMetrics.density).toInt()
+                nameView.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.text_primary)
+                )
+                fareView.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.brand_primary)
+                )
+                card.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(120)
+                    .start()
+            }
+        }
+    }
+
+    // ── Map ───────────────────────────────────────────────────────────────
 
     private fun initMap() {
         Configuration.getInstance().userAgentValue = requireContext().packageName
         binding.mapRoutePreview.setTileSource(TileSourceFactory.MAPNIK)
-
-        // Fully lock the map — no pan, no zoom, no touch at all
         binding.mapRoutePreview.setMultiTouchControls(false)
         binding.mapRoutePreview.isClickable = false
         binding.mapRoutePreview.isFocusable = false
         binding.mapRoutePreview.zoomController.setVisibility(
             org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER
         )
-        // Intercept all touch events so nothing passes through to the map
         binding.mapRoutePreview.setOnTouchListener { _, _ -> true }
 
         val pickup = GeoPoint(pickupLat, pickupLng)
         val dest   = GeoPoint(destLat, destLng)
-
         val midLat = (pickupLat + destLat) / 2.0
         val midLng = (pickupLng + destLng) / 2.0
         binding.mapRoutePreview.controller.setCenter(GeoPoint(midLat, midLng))
         binding.mapRoutePreview.controller.setZoom(5.0)
 
-        // Fetch route then draw everything instantly + start dot animation
         fetchRouteAndDisplay(pickup, dest)
     }
 
@@ -166,8 +364,7 @@ class RideConfirmFragment : Fragment() {
             infoWindow = null
             title = null
             try {
-                val drawableRes = if (isPickup) R.drawable.ic_pickup_marker
-                else          R.drawable.ic_destination_marker
+                val drawableRes = if (isPickup) R.drawable.ic_pickup_marker else R.drawable.ic_destination_marker
                 icon = ContextCompat.getDrawable(requireContext(), drawableRes)?.let { drawable ->
                     val sizePx = (18 * resources.displayMetrics.density).toInt()
                     val bitmap = createBitmap(sizePx, sizePx)
@@ -182,10 +379,6 @@ class RideConfirmFragment : Fragment() {
         binding.mapRoutePreview.overlays.add(marker)
     }
 
-    /**
-     * Fetches route, draws full polyline INSTANTLY, then starts premium animation.
-     * The route is drawn with a subtle shadow layer beneath the main line for depth.
-     */
     private fun fetchRouteAndDisplay(pickup: GeoPoint, destination: GeoPoint) {
         lifecycleScope.launch {
             try {
@@ -225,7 +418,7 @@ class RideConfirmFragment : Fragment() {
                 val points = routePoints ?: arrayListOf(pickup, destination)
                 allRoutePoints = points
 
-                // ── Shadow layer (slightly wider, dark purple) ─────────────────
+                // Shadow layer
                 val shadowLine = Polyline().apply {
                     setPoints(points)
                     outlinePaint.color = "#441A1560".toColorInt()
@@ -236,7 +429,7 @@ class RideConfirmFragment : Fragment() {
                 }
                 binding.mapRoutePreview.overlays.add(0, shadowLine)
 
-                // ── Main route line ────────────────────────────────────────────
+                // Main route line
                 val mainLine = Polyline().apply {
                     setPoints(points)
                     outlinePaint.color = "#6C63FF".toColorInt()
@@ -247,29 +440,19 @@ class RideConfirmFragment : Fragment() {
                 }
                 binding.mapRoutePreview.overlays.add(mainLine)
 
-                // ── Place markers on top ───────────────────────────────────────
                 placeMarker(pickup, isPickup = true)
                 placeMarker(destination, isPickup = false)
 
-                // ── Zoom to fit with generous padding ─────────────────────────
                 val boundingBox = org.osmdroid.util.BoundingBox.fromGeoPoints(points)
                 binding.mapRoutePreview.post {
-
                     val latSpan = boundingBox.latNorth - boundingBox.latSouth
                     val lonSpan = boundingBox.lonEast - boundingBox.lonWest
-
-                    // 🔥 Asymmetric padding
-                    val topPadding = latSpan * 0.15      // LESS top padding
-                    val bottomPadding = latSpan * 0.45   // MORE bottom padding
-                    val sidePadding = lonSpan * 0.15
-
                     val paddedBox = org.osmdroid.util.BoundingBox(
-                        boundingBox.latNorth + topPadding,
-                        boundingBox.lonEast + sidePadding,
-                        boundingBox.latSouth - bottomPadding,
-                        boundingBox.lonWest - sidePadding
+                        boundingBox.latNorth + latSpan * 0.15,
+                        boundingBox.lonEast + lonSpan * 0.15,
+                        boundingBox.latSouth - latSpan * 0.45,
+                        boundingBox.lonWest - lonSpan * 0.15
                     )
-
                     binding.mapRoutePreview.zoomToBoundingBox(paddedBox, true)
                     binding.mapRoutePreview.invalidate()
                 }
@@ -280,37 +463,26 @@ class RideConfirmFragment : Fragment() {
             } catch (_: Exception) {
                 val fallback = arrayListOf(pickup, destination)
                 allRoutePoints = fallback
-
                 val line = Polyline().apply {
                     setPoints(fallback)
                     outlinePaint.color = "#6C63FF".toColorInt()
                     outlinePaint.strokeWidth = 6f
-                    outlinePaint.pathEffect = android.graphics.DashPathEffect(
-                        floatArrayOf(20f, 12f), 0f
-                    )
+                    outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(20f, 12f), 0f)
                     outlinePaint.isAntiAlias = true
                 }
                 binding.mapRoutePreview.overlays.add(0, line)
                 placeMarker(pickup, isPickup = true)
                 placeMarker(destination, isPickup = false)
-
                 val box = org.osmdroid.util.BoundingBox.fromGeoPoints(fallback)
                 binding.mapRoutePreview.post {
-
                     val latSpan = box.latNorth - box.latSouth
                     val lonSpan = box.lonEast - box.lonWest
-
-                    val topPadding = latSpan * 0.15
-                    val bottomPadding = latSpan * 0.45
-                    val sidePadding = lonSpan * 0.15
-
                     val paddedBox = org.osmdroid.util.BoundingBox(
-                        box.latNorth + topPadding,
-                        box.lonEast + sidePadding,
-                        box.latSouth - bottomPadding,
-                        box.lonWest - sidePadding
+                        box.latNorth + latSpan * 0.15,
+                        box.lonEast + lonSpan * 0.15,
+                        box.latSouth - latSpan * 0.45,
+                        box.lonWest - lonSpan * 0.15
                     )
-
                     binding.mapRoutePreview.zoomToBoundingBox(paddedBox, true)
                     binding.mapRoutePreview.invalidate()
                 }
@@ -320,21 +492,10 @@ class RideConfirmFragment : Fragment() {
         }
     }
 
-    /**
-     * Premium three-layer orb animation:
-     *   Layer 1 — large soft outer glow (brand purple, very transparent)
-     *   Layer 2 — mid halo (brand purple, semi-transparent)
-     *   Layer 3 — bright white core
-     *
-     * Movement uses ease-in-out (sine curve) so it accelerates and decelerates
-     * smoothly instead of moving at robotic constant speed.
-     * Full loop completes in 5 seconds. Loops continuously.
-     */
     private fun startGlowingDotAnimation(points: ArrayList<GeoPoint>) {
         if (points.size < 2 || _binding == null) return
         dotAnimationRunning = true
 
-        // Build cumulative distance for position interpolation
         val cumDist = FloatArray(points.size)
         cumDist[0] = 0f
         for (i in 1 until points.size) {
@@ -343,170 +504,164 @@ class RideConfirmFragment : Fragment() {
             cumDist[i] = cumDist[i - 1] + Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
         }
         val totalDist = cumDist.last()
-
         val density = resources.displayMetrics.density
 
-        // ── Outer glow marker (large, very transparent brand purple) ──────────
         fun makeOrbBitmap(outerRadiusDp: Float, midRadiusDp: Float, coreRadiusDp: Float): android.graphics.Bitmap {
             val sizePx = (outerRadiusDp * 2 * density).toInt()
             val bmp = createBitmap(sizePx, sizePx)
             val cvs = android.graphics.Canvas(bmp)
-            val cx = sizePx / 2f
-            val cy = sizePx / 2f
-
-            // Outer soft glow
+            val cx = sizePx / 2f; val cy = sizePx / 2f
             val glowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 shader = android.graphics.RadialGradient(
                     cx, cy, outerRadiusDp * density,
-                    intArrayOf(
-                        "#556C63FF".toColorInt(),
-                        "#226C63FF".toColorInt(),
-                        android.graphics.Color.TRANSPARENT
-                    ),
+                    intArrayOf("#556C63FF".toColorInt(), "#226C63FF".toColorInt(), android.graphics.Color.TRANSPARENT),
                     floatArrayOf(0f, 0.5f, 1f),
                     android.graphics.Shader.TileMode.CLAMP
                 )
             }
             cvs.drawCircle(cx, cy, outerRadiusDp * density, glowPaint)
-
-            // Mid halo
-            val haloPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = "#886C63FF".toColorInt()
-            }
-            cvs.drawCircle(cx, cy, midRadiusDp * density, haloPaint)
-
-            // Bright white core
-            val corePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            cvs.drawCircle(cx, cy, midRadiusDp * density, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = "#886C63FF".toColorInt() })
+            cvs.drawCircle(cx, cy, coreRadiusDp * density, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 color = android.graphics.Color.WHITE
                 setShadowLayer(3f * density, 0f, 0f, "#FF6C63FF".toColorInt())
-            }
-            cvs.drawCircle(cx, cy, coreRadiusDp * density, corePaint)
-
+            })
             return bmp
         }
 
-        val orbBitmap = makeOrbBitmap(outerRadiusDp = 12f, midRadiusDp = 6f, coreRadiusDp = 3.5f)
-
+        val orbBitmap = makeOrbBitmap(12f, 6f, 3.5f)
         travelingDot = Marker(binding.mapRoutePreview).apply {
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-            infoWindow = null
-            title = null
+            infoWindow = null; title = null
             icon = orbBitmap.toDrawable(resources)
             position = points[0]
         }
         binding.mapRoutePreview.overlays.add(travelingDot)
 
-        val loopDurationMs = 5000L
-        val frameMs = 16L
-
+        val loopDurationMs = 5000L; val frameMs = 16L
         lifecycleScope.launch {
             var elapsed = 0L
             while (dotAnimationRunning && _binding != null) {
-                // Linear 0..1 within loop
                 val linearT = (elapsed % loopDurationMs).toFloat() / loopDurationMs.toFloat()
-
-                // Ease-in-out (smoothstep) so movement feels premium, not robotic
                 val t = linearT * linearT * (3f - 2f * linearT)
-
                 val targetDist = t * totalDist
-
-                // Binary search for segment
                 var lo = 0; var hi = points.size - 1
-                while (lo < hi - 1) {
-                    val mid = (lo + hi) / 2
-                    if (cumDist[mid] <= targetDist) lo = mid else hi = mid
-                }
-
+                while (lo < hi - 1) { val mid = (lo + hi) / 2; if (cumDist[mid] <= targetDist) lo = mid else hi = mid }
                 val segLen = cumDist[hi] - cumDist[lo]
                 val segT = if (segLen > 0f) (targetDist - cumDist[lo]) / segLen else 0f
-
                 val lat = points[lo].latitude  + segT * (points[hi].latitude  - points[lo].latitude)
                 val lng = points[lo].longitude + segT * (points[hi].longitude - points[lo].longitude)
-
                 travelingDot?.position = GeoPoint(lat, lng)
                 binding.mapRoutePreview.invalidate()
-
-                delay(frameMs)
-                elapsed += frameMs
+                delay(frameMs); elapsed += frameMs
             }
         }
     }
 
-    // ── Vehicle cards ─────────────────────────────────────────────────────────
+    // ── Nearby driver fetch ───────────────────────────────────────────────
 
-    private fun setupVehicleCards() {
-        listOf(
-            binding.cardBike  to "bike",
-            binding.cardAuto  to "auto",
-            binding.cardSedan to "sedan",
-            binding.cardSuv   to "suv"
-        ).forEach { (card, type) ->
-            card.setOnClickListener {
-                selectedVehicleType = type
-                selectedFare = when (type) {
-                    "bike"  -> binding.tvBikeFare.text.toString().replace("₹","").toIntOrNull() ?: 0
-                    "auto"  -> binding.tvAutoFare.text.toString().replace("₹","").toIntOrNull() ?: 0
-                    "sedan" -> binding.tvSedanFare.text.toString().replace("₹","").toIntOrNull() ?: 0
-                    "suv"   -> binding.tvSuvFare.text.toString().replace("₹","").toIntOrNull() ?: 0
-                    else    -> 0
+    private fun fetchNearbyDriversAndFilterVehicles() {
+        val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
+        val pickupGeohash = encodeGeohash(pickupLat, pickupLng, precision = 4)
+        val geohashEnd = pickupGeohash + "\uf8ff"
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .whereEqualTo("isOnline", true)
+            .whereEqualTo("isAvailable", true)
+            .whereGreaterThanOrEqualTo("geohash", pickupGeohash)
+            .whereLessThanOrEqualTo("geohash", geohashEnd)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val nearby = snapshot.documents.mapNotNull { doc ->
+                    val lat = doc.getDouble("lat") ?: return@mapNotNull null
+                    val lng = doc.getDouble("lng") ?: return@mapNotNull null
+                    val lastUpdated = doc.getLong("lastUpdated") ?: 0L
+                    if (lastUpdated < fiveMinutesAgo) return@mapNotNull null
+                    val distanceKm = haversineDistance(pickupLat, pickupLng, lat, lng)
+                    if (distanceKm <= 5.0) doc.data?.plus("driverId" to doc.id) else null
                 }
-                highlightSelectedVehicle(card)
+
+                nearbyDrivers = nearby
+                availableVehicleTypes.clear()
+                nearby.forEach { driver ->
+                    val type = driver["vehicleType"] as? String ?: return@forEach
+                    availableVehicleTypes.add(type)
+                }
+
+                // Render cards with live availability — always show all 4
+                renderVehicleCards()
             }
-        }
+            .addOnFailureListener {
+                // On failure show all as unavailable so user sees the state
+                renderVehicleCards()
+            }
     }
 
-    private fun highlightSelectedVehicle(selectedCard: CardView) {
-        listOf(binding.cardBike, binding.cardAuto, binding.cardSedan, binding.cardSuv).forEach {
-            it.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.input_bg))
-        }
-        selectedCard.setCardBackgroundColor(
-            ContextCompat.getColor(requireContext(), R.color.bg_surface)
-        )
-    }
-
-    // ── Click listeners ───────────────────────────────────────────────────────
+    // ── Click listeners ───────────────────────────────────────────────────
 
     private fun setupClickListeners() {
         binding.btnBack.setOnClickListener { findNavController().popBackStack() }
         binding.btnFindRide.setOnClickListener { findRide() }
     }
 
-    // ── Find Ride ─────────────────────────────────────────────────────────────
+    // ── Find Ride ─────────────────────────────────────────────────────────
 
     private fun findRide() {
         if (selectedVehicleType.isEmpty()) {
             Toast.makeText(requireContext(), "Please select a vehicle type", Toast.LENGTH_SHORT).show()
             return
         }
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        if (selectedVehicleType !in availableVehicleTypes) {
+            Toast.makeText(requireContext(), "This vehicle type is no longer available", Toast.LENGTH_SHORT).show()
+            return
+        }
 
+        val driversOfType = nearbyDrivers
+            .filter { it["vehicleType"] == selectedVehicleType }
+            .sortedBy {
+                val lat = it["lat"] as? Double ?: 0.0
+                val lng = it["lng"] as? Double ?: 0.0
+                haversineDistance(pickupLat, pickupLng, lat, lng)
+            }
+
+        if (driversOfType.isEmpty()) {
+            Toast.makeText(requireContext(), "No ${selectedVehicleType} available right now", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         binding.btnFindRide.isEnabled = false
         binding.btnFindRide.text = "Searching..."
 
         FirebaseFirestore.getInstance().collection("riders").document(uid).get()
             .addOnSuccessListener { doc ->
                 val rideData = hashMapOf(
-                    "riderId"       to uid,
-                    "riderName"     to (doc.getString("name") ?: "Rider"),
-                    "pickupLat"     to pickupLat,
-                    "pickupLng"     to pickupLng,
-                    "pickupAddress" to pickupAddress,
-                    "destLat"       to destLat,
-                    "destLng"       to destLng,
-                    "destAddress"   to destAddress,
-                    "vehicleType"   to selectedVehicleType,
-                    "estimatedFare" to selectedFare,
-                    "status"        to "pending",
-                    "createdAt"     to System.currentTimeMillis()
+                    "riderId"         to uid,
+                    "riderName"       to (doc.getString("name") ?: "Rider"),
+                    "pickupLat"       to pickupLat,
+                    "pickupLng"       to pickupLng,
+                    "pickupAddress"   to pickupAddress,
+                    "destLat"         to destLat,
+                    "destLng"         to destLng,
+                    "destAddress"     to destAddress,
+                    "vehicleType"     to selectedVehicleType,
+                    "estimatedFare"   to selectedFare,
+                    "status"          to "pending",
+                    "createdAt"       to System.currentTimeMillis(),
+                    "driverId"        to "",
+                    "driverName"      to "",
+                    "rejectedDrivers" to emptyList<String>()
                 )
+
                 FirebaseFirestore.getInstance().collection("rideRequests").add(rideData)
-                    .addOnSuccessListener {
-                        binding.btnFindRide.text = "Searching for drivers..."
-                        Toast.makeText(
-                            requireContext(),
-                            "Looking for nearby $selectedVehicleType drivers...",
-                            Toast.LENGTH_LONG
-                        ).show()
+                    .addOnSuccessListener { docRef ->
+                        val bundle = Bundle().apply {
+                            putString("rideRequestId", docRef.id)
+                            putString("vehicleType", selectedVehicleType)
+                            putDouble("pickupLat", pickupLat)
+                            putDouble("pickupLng", pickupLng)
+                        }
+                        findNavController().navigate(R.id.action_rideConfirm_to_rideSearching, bundle)
                     }
                     .addOnFailureListener { e ->
                         binding.btnFindRide.isEnabled = true
@@ -520,7 +675,41 @@ class RideConfirmFragment : Fragment() {
             }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    private fun haversineDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val R = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = Math.sin(dLat / 2).pow(2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLng / 2).pow(2)
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+
+    private fun encodeGeohash(lat: Double, lng: Double, precision: Int = 6): String {
+        val base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+        var minLat = -90.0; var maxLat = 90.0
+        var minLng = -180.0; var maxLng = 180.0
+        val hash = StringBuilder()
+        var bits = 0; var bitsTotal = 0; var hashValue = 0
+        while (hash.length < precision) {
+            if (bitsTotal % 2 == 0) {
+                val mid = (minLng + maxLng) / 2
+                if (lng >= mid) { hashValue = hashValue * 2 + 1; minLng = mid }
+                else { hashValue *= 2; maxLng = mid }
+            } else {
+                val mid = (minLat + maxLat) / 2
+                if (lat >= mid) { hashValue = hashValue * 2 + 1; minLat = mid }
+                else { hashValue *= 2; maxLat = mid }
+            }
+            bits++; bitsTotal++
+            if (bits == 5) { hash.append(base32[hashValue]); bits = 0; hashValue = 0 }
+        }
+        return hash.toString()
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
 
     override fun onResume() {
         super.onResume()

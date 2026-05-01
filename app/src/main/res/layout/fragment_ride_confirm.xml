@@ -87,28 +87,15 @@
                 android:layout_marginBottom="18dp"
                 android:background="@drawable/bg_drag_handle" />
 
-            <!-- ═══════════════════════════════════════════════════════════
-                 ROUTE SUMMARY  — ConstraintLayout for pixel-perfect layout
-
-                 Layout logic:
-                 • Left column  : dot (green) → stretchy line → dot (red)
-                 • Middle column: PICKUP label + address / DROP-OFF label + address
-                 • Right column : two stacked chips, each wrap_content width,
-                                  both the same width via a fixed 100dp container,
-                                  vertically centered against the WHOLE block
-
-                 Chip icon fix:
-                 • Distance uses "→" (rightwards arrow) — universally means
-                   travel distance in navigation apps, not a lollipop.
-                 • ETA keeps "⏱" — self-explanatory.
-            ═══════════════════════════════════════════════════════════ -->
+            <!-- ══════════════════════════════════════════════════════
+                 ROUTE SUMMARY
+            ══════════════════════════════════════════════════════ -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="20dp"
                 android:paddingBottom="16dp">
 
-                <!-- Green pickup dot — vertically centered on tvPickupAddress -->
                 <View
                     android:id="@+id/dotPickup"
                     android:layout_width="10dp"
@@ -118,7 +105,6 @@
                     app:layout_constraintTop_toTopOf="@id/tvPickupAddress"
                     app:layout_constraintBottom_toBottomOf="@id/tvPickupAddress" />
 
-                <!-- Connector line — stretches between the two dots -->
                 <View
                     android:id="@+id/connectorLine"
                     android:layout_width="2dp"
@@ -130,7 +116,6 @@
                     app:layout_constraintTop_toBottomOf="@id/dotPickup"
                     app:layout_constraintBottom_toTopOf="@id/dotDest" />
 
-                <!-- Red destination dot — vertically centered on tvDestAddress -->
                 <View
                     android:id="@+id/dotDest"
                     android:layout_width="10dp"
@@ -140,7 +125,6 @@
                     app:layout_constraintTop_toTopOf="@id/tvDestAddress"
                     app:layout_constraintBottom_toBottomOf="@id/tvDestAddress" />
 
-                <!-- PICKUP label -->
                 <TextView
                     android:id="@+id/labelPickup"
                     android:layout_width="0dp"
@@ -157,7 +141,6 @@
                     app:layout_constraintEnd_toStartOf="@id/chipStack"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <!-- Pickup address — up to 2 lines, full middle-column width -->
                 <TextView
                     android:id="@+id/tvPickupAddress"
                     android:layout_width="0dp"
@@ -174,7 +157,6 @@
                     app:layout_constraintEnd_toStartOf="@id/chipStack"
                     app:layout_constraintTop_toBottomOf="@id/labelPickup" />
 
-                <!-- DROP-OFF label -->
                 <TextView
                     android:id="@+id/labelDropoff"
                     android:layout_width="0dp"
@@ -192,7 +174,6 @@
                     app:layout_constraintEnd_toStartOf="@id/chipStack"
                     app:layout_constraintTop_toBottomOf="@id/tvPickupAddress" />
 
-                <!-- Destination address — up to 2 lines -->
                 <TextView
                     android:id="@+id/tvDestAddress"
                     android:layout_width="0dp"
@@ -219,7 +200,6 @@
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent">
 
-                    <!-- Distance chip — ImageView icon + distance text -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="28dp"
@@ -247,7 +227,6 @@
 
                     </LinearLayout>
 
-                    <!-- ETA chip — ImageView icon + ETA text -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="28dp"
@@ -287,276 +266,474 @@
                 android:layout_marginHorizontal="20dp"
                 android:layout_marginBottom="14dp" />
 
-            <!-- ── "Choose a ride" heading ── -->
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- ── "Choose a ride" heading row with driver count badge ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Choose a ride"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.02"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="10dp" />
+                android:layout_marginBottom="12dp">
 
-            <!-- ── Bike card ── -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardBike"
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Choose a ride"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.01" />
+
+                <!-- Live driver count badge — updated from Kotlin -->
+                <TextView
+                    android:id="@+id/tvDriverCountBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Searching..."
+                    android:textColor="@color/text_hint"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
+
+            </LinearLayout>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 VEHICLE CARDS — all 4 always visible.
+                 Available  → normal colors, clickable, fare shown
+                 Unavailable → dimmed overlay, NOT clickable, "Not available" badge
+
+                 Each card is a FrameLayout so the "Not available" scrim overlay
+                 can be stacked precisely on top of the card content.
+            ══════════════════════════════════════════════════════════════ -->
+
+            <!-- ── BIKE card ── -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="7dp"
-                app:cardBackgroundColor="@color/input_bg"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
+                android:layout_marginBottom="8dp">
 
-                <LinearLayout
+                <!-- Card content -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardBike"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="wrap_content"
-                        android:text="🏍️"
-                        android:textSize="22sp"
-                        android:gravity="center" />
+                    app:cardBackgroundColor="@color/input_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider_color"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="12dp">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
+                        <!-- Emoji icon -->
                         <TextView
+                            android:id="@+id/tvBikeEmoji"
+                            android:layout_width="36dp"
+                            android:layout_height="wrap_content"
+                            android:text="🏍️"
+                            android:textSize="24sp"
+                            android:gravity="center" />
+
+                        <!-- Name + subtitle -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:id="@+id/tvBikeName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Bike"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvBikeSubtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Fastest · 1 seat"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <!-- Right side: fare OR "Not available" pill -->
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Bike"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:fontFamily="sans-serif-medium" />
+                            android:orientation="vertical"
+                            android:gravity="end|center_vertical">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Fastest · 1 seat"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:layout_marginTop="2dp" />
+                            <TextView
+                                android:id="@+id/tvBikeFare"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₹--"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <!-- "Not available" badge — hidden when available -->
+                            <TextView
+                                android:id="@+id/tvBikeUnavailable"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Not available"
+                                android:textColor="#FF5C5C"
+                                android:textSize="10sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"
+                                android:background="@drawable/bg_unavailable_badge"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvBikeFare"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="₹--"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium" />
+                </com.google.android.material.card.MaterialCardView>
 
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                <!-- Disabled scrim overlay — shown on top when unavailable -->
+                <View
+                    android:id="@+id/scrimBike"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_scrim_rounded"
+                    android:visibility="gone" />
 
-            <!-- ── Auto card ── -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardAuto"
+            </FrameLayout>
+
+            <!-- ── AUTO card ── -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="7dp"
-                app:cardBackgroundColor="@color/input_bg"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
+                android:layout_marginBottom="8dp">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardAuto"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="wrap_content"
-                        android:text="🛺"
-                        android:textSize="22sp"
-                        android:gravity="center" />
+                    app:cardBackgroundColor="@color/input_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider_color"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="12dp">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tvAutoEmoji"
+                            android:layout_width="36dp"
                             android:layout_height="wrap_content"
-                            android:text="Auto"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:fontFamily="sans-serif-medium" />
+                            android:text="🛺"
+                            android:textSize="24sp"
+                            android:gravity="center" />
 
-                        <TextView
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:id="@+id/tvAutoName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Auto"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvAutoSubtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Affordable · 3 seats"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Affordable · 3 seats"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:layout_marginTop="2dp" />
+                            android:orientation="vertical"
+                            android:gravity="end|center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvAutoFare"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₹--"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvAutoUnavailable"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Not available"
+                                android:textColor="#FF5C5C"
+                                android:textSize="10sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"
+                                android:background="@drawable/bg_unavailable_badge"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvAutoFare"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="₹--"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium" />
+                </com.google.android.material.card.MaterialCardView>
 
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                <View
+                    android:id="@+id/scrimAuto"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_scrim_rounded"
+                    android:visibility="gone" />
 
-            <!-- ── Sedan card ── -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardSedan"
+            </FrameLayout>
+
+            <!-- ── SEDAN card ── -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="7dp"
-                app:cardBackgroundColor="@color/input_bg"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
+                android:layout_marginBottom="8dp">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSedan"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="wrap_content"
-                        android:text="🚗"
-                        android:textSize="22sp"
-                        android:gravity="center" />
+                    app:cardBackgroundColor="@color/input_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider_color"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="12dp">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tvSedanEmoji"
+                            android:layout_width="36dp"
                             android:layout_height="wrap_content"
-                            android:text="Sedan"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:fontFamily="sans-serif-medium" />
+                            android:text="🚗"
+                            android:textSize="24sp"
+                            android:gravity="center" />
 
-                        <TextView
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:id="@+id/tvSedanName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Sedan"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvSedanSubtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Comfortable · 4 seats"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Comfortable · 4 seats"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:layout_marginTop="2dp" />
+                            android:orientation="vertical"
+                            android:gravity="end|center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvSedanFare"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₹--"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvSedanUnavailable"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Not available"
+                                android:textColor="#FF5C5C"
+                                android:textSize="10sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"
+                                android:background="@drawable/bg_unavailable_badge"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvSedanFare"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="₹--"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium" />
+                </com.google.android.material.card.MaterialCardView>
 
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                <View
+                    android:id="@+id/scrimSedan"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_scrim_rounded"
+                    android:visibility="gone" />
+
+            </FrameLayout>
 
             <!-- ── SUV card ── -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardSuv"
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="20dp"
-                app:cardBackgroundColor="@color/input_bg"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
+                android:layout_marginBottom="20dp">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSuv"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="12dp">
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="wrap_content"
-                        android:text="🚙"
-                        android:textSize="22sp"
-                        android:gravity="center" />
+                    app:cardBackgroundColor="@color/input_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider_color"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="12dp">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:id="@+id/tvSuvEmoji"
+                            android:layout_width="36dp"
                             android:layout_height="wrap_content"
-                            android:text="SUV"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:fontFamily="sans-serif-medium" />
+                            android:text="🚙"
+                            android:textSize="24sp"
+                            android:gravity="center" />
 
-                        <TextView
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:id="@+id/tvSuvName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="SUV"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvSuvSubtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Premium · 6 seats"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Premium · 6 seats"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:layout_marginTop="2dp" />
+                            android:orientation="vertical"
+                            android:gravity="end|center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvSuvFare"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₹--"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/tvSuvUnavailable"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Not available"
+                                android:textColor="#FF5C5C"
+                                android:textSize="10sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp"
+                                android:background="@drawable/bg_unavailable_badge"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvSuvFare"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="₹--"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="15sp"
-                        android:fontFamily="sans-serif-medium" />
+                </com.google.android.material.card.MaterialCardView>
 
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                <View
+                    android:id="@+id/scrimSuv"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_scrim_rounded"
+                    android:visibility="gone" />
+
+            </FrameLayout>
 
             <!-- ── Find a Ride button ── -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnFindRide"
                 style="@style/ChalRide.Button.Primary"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
                 android:layout_marginBottom="10dp"
                 android:text="Find a Ride" />

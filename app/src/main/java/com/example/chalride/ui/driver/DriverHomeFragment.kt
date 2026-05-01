@@ -47,6 +47,8 @@ import com.example.chalride.ui.auth.AuthViewModel
 
 class DriverHomeFragment : Fragment() {
 
+    private var rideRequestListener: com.google.firebase.firestore.ListenerRegistration? = null
+    private var currentRideRequestId: String? = null
     private var _binding: FragmentDriverHomeBinding? = null
     private val binding get() = _binding!!
 
@@ -444,6 +446,7 @@ class DriverHomeFragment : Fragment() {
 
     private fun updateOnlineUI() {
         if (isOnline) {
+            listenForRideRequests()
             //avatar ring changes to green color
             binding.avatarRing.setBackgroundResource(R.drawable.bg_driver_avatar_online)
 
@@ -478,6 +481,10 @@ class DriverHomeFragment : Fragment() {
             binding.pulseView.visibility = View.VISIBLE
 
         } else {
+            rideRequestListener?.remove()
+            rideRequestListener = null
+            currentRideRequestId = null
+
             //avatar ring changes to red color
             binding.avatarRing.setBackgroundResource(R.drawable.bg_driver_avatar)
 
@@ -542,6 +549,147 @@ class DriverHomeFragment : Fragment() {
         requireContext().stopService(intent)
     }
 
+    private fun listenForRideRequests() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val vehicleType = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+
+        // First fetch this driver's vehicleType
+        vehicleType.get().addOnSuccessListener { doc ->
+            val myVehicleType = doc.getString("vehicleType") ?: return@addOnSuccessListener
+
+            rideRequestListener = FirebaseFirestore.getInstance()
+                .collection("rideRequests")
+                .whereEqualTo("status", "pending")
+                .whereEqualTo("vehicleType", myVehicleType)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    if (_binding == null) return@addSnapshotListener
+
+                    for (change in snapshot.documentChanges) {
+                        if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                            val doc2 = change.document
+
+                            // Skip if already handled or if this driver is in rejectedDrivers
+                            val rejectedDrivers = doc2.get("rejectedDrivers") as? List<*> ?: emptyList<String>()
+                            if (uid in rejectedDrivers) continue
+                            if (doc2.id == currentRideRequestId) continue
+
+                            currentRideRequestId = doc2.id
+
+                            val pickupLat = doc2.getDouble("pickupLat") ?: 0.0
+                            val pickupLng = doc2.getDouble("pickupLng") ?: 0.0
+                            val driverLat = currentLocation?.latitude ?: 0.0
+                            val driverLng = currentLocation?.longitude ?: 0.0
+
+                            val distanceKm = haversineDistance(driverLat, driverLng, pickupLat, pickupLng)
+
+                            showRideRequestSheet(
+                                rideRequestId = doc2.id,
+                                riderName     = doc2.getString("riderName") ?: "Rider",
+                                pickupAddress = doc2.getString("pickupAddress") ?: "",
+                                destAddress   = doc2.getString("destAddress") ?: "",
+                                vehicleType   = myVehicleType,
+                                estimatedFare = (doc2.getLong("estimatedFare") ?: 0).toInt(),
+                                distanceKm    = distanceKm
+                            )
+                            break
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun haversineDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val R = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+
+    private fun showRideRequestSheet(
+        rideRequestId: String,
+        riderName: String,
+        pickupAddress: String,
+        destAddress: String,
+        vehicleType: String,
+        estimatedFare: Int,
+        distanceKm: Double
+    ) {
+        val sheet = RideRequestSheet().apply {
+            this.rideRequestId = rideRequestId
+            this.riderName     = riderName
+            this.pickupAddress = pickupAddress
+            this.destAddress   = destAddress
+            this.vehicleType   = vehicleType
+            this.estimatedFare = estimatedFare
+            this.distanceKm    = distanceKm
+
+            onAccepted = {
+                acceptRide(rideRequestId)
+            }
+
+            onRejected = {
+                rejectRide(rideRequestId)
+                currentRideRequestId = null
+            }
+
+            onTimeout = {
+                rejectRide(rideRequestId)
+                currentRideRequestId = null
+            }
+        }
+
+        sheet.show(parentFragmentManager, RideRequestSheet.TAG)
+    }
+
+    private fun acceptRide(rideRequestId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val driverName = doc.getString("name") ?: "Driver"
+
+                FirebaseFirestore.getInstance()
+                    .collection("rideRequests")
+                    .document(rideRequestId)
+                    .update(
+                        mapOf(
+                            "status"     to "accepted",
+                            "driverId"   to uid,
+                            "driverName" to driverName,
+                            "assignedAt" to System.currentTimeMillis()
+                        )
+                    )
+                    .addOnSuccessListener {
+                        // Mark driver as unavailable — on a trip now
+                        FirebaseFirestore.getInstance()
+                            .collection("drivers")
+                            .document(uid)
+                            .update(mapOf("isAvailable" to false))
+                    }
+            }
+    }
+
+    private fun rejectRide(rideRequestId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // Add this driver to rejectedDrivers list so request goes to next driver
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .update(
+                "rejectedDrivers",
+                com.google.firebase.firestore.FieldValue.arrayUnion(uid)
+            )
+    }
+
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     override fun onResume() {
@@ -566,6 +714,8 @@ class DriverHomeFragment : Fragment() {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
         _binding = null
+
+        rideRequestListener?.remove()
     }
 
     // ── Geohash encoder ─────────────────────────────────────────────────────

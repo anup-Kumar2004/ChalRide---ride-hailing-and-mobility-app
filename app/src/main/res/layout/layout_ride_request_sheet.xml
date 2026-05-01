@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_ride_confirm_sheet"
+    android:paddingBottom="32dp">
+
+    <!-- Drag handle -->
+    <View
+        android:id="@+id/dragHandle"
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:background="@drawable/bg_drag_handle"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- NEW RIDE label -->
+    <TextView
+        android:id="@+id/tvNewRideLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="NEW RIDE REQUEST"
+        android:textColor="@color/brand_primary"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.12"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/dragHandle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Timer ring + countdown -->
+    <FrameLayout
+        android:id="@+id/timerContainer"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="14dp"
+        app:layout_constraintTop_toBottomOf="@id/tvNewRideLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:id="@+id/timerProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:progressDrawable="@drawable/bg_timer_progress"
+            android:progress="100"
+            android:rotation="-90"/>
+
+        <TextView
+            android:id="@+id/tvTimer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="15"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"/>
+
+    </FrameLayout>
+
+    <!-- Fare amount -->
+    <TextView
+        android:id="@+id/tvFare"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="₹0"
+        android:textColor="@color/success_color"
+        android:textSize="32sp"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/timerContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Vehicle type + distance chip row -->
+    <LinearLayout
+        android:id="@+id/chipRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tvFare"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvVehicleChip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:background="@drawable/bg_role_badge"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:text="AUTO"/>
+
+        <TextView
+            android:id="@+id/tvDistanceChip"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:background="@drawable/bg_role_badge"
+            android:textColor="@color/text_hint"
+            android:textSize="11sp"
+            android:layout_marginStart="8dp"
+            android:text="1.2 km away"/>
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:id="@+id/divider1"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_color"
+        android:alpha="0.3"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/chipRow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Route section -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/routeSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/divider1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Green pickup dot -->
+        <View
+            android:id="@+id/dotPickup"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_status_dot_online"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/tvPickup"
+            app:layout_constraintBottom_toBottomOf="@id/tvPickup"/>
+
+        <!-- Connector line -->
+        <View
+            android:id="@+id/connectorLine"
+            android:layout_width="2dp"
+            android:layout_height="0dp"
+            android:background="@color/text_hint"
+            android:alpha="0.3"
+            app:layout_constraintStart_toStartOf="@id/dotPickup"
+            app:layout_constraintEnd_toEndOf="@id/dotPickup"
+            app:layout_constraintTop_toBottomOf="@id/dotPickup"
+            app:layout_constraintBottom_toTopOf="@id/dotDest"/>
+
+        <!-- Red dest dot -->
+        <View
+            android:id="@+id/dotDest"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_destination_dot"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/tvDest"
+            app:layout_constraintBottom_toBottomOf="@id/tvDest"/>
+
+        <!-- Pickup address -->
+        <TextView
+            android:id="@+id/tvPickup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginStart="16dp"
+            app:layout_constraintStart_toEndOf="@id/dotPickup"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <!-- Dest address -->
+        <TextView
+            android:id="@+id/tvDest"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            app:layout_constraintStart_toEndOf="@id/dotDest"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvPickup"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Divider 2 -->
+    <View
+        android:id="@+id/divider2"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider_color"
+        android:alpha="0.3"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/routeSection"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Rider name row -->
+    <LinearLayout
+        android:id="@+id/riderRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:layout_marginTop="14dp"
+        app:layout_constraintTop_toBottomOf="@id/divider2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_driver_avatar_inner"
+            android:gravity="center"
+            android:text="👤"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/tvRiderName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginStart="12dp"
+            android:text="Rider"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CASH"
+            android:textColor="@color/text_hint"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:background="@drawable/bg_role_badge"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"/>
+
+    </LinearLayout>
+
+    <!-- Accept / Reject buttons -->
+    <LinearLayout
+        android:id="@+id/buttonRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="24dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/riderRow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Reject -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReject"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:text="Reject"
+            android:textColor="@color/error_color"
+            android:layout_marginEnd="8dp"
+            app:strokeColor="@color/error_color"
+            app:cornerRadius="14dp"/>
+
+        <!-- Accept -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAccept"
+            style="@style/ChalRide.Button.Primary"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="2"
+            android:text="Accept Ride"
+            android:layout_marginStart="8dp"
+            app:backgroundTint="@color/success_color"
+            app:cornerRadius="14dp"/>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

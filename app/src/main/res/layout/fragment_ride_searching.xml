@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark">
+
+    <!-- Pulse ring 3 (outermost) -->
+    <View
+        android:id="@+id/pulseRing3"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_search_pulse_ring"
+        android:alpha="0.15"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvSearchingLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Pulse ring 2 -->
+    <View
+        android:id="@+id/pulseRing2"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:background="@drawable/bg_search_pulse_ring"
+        android:alpha="0.25"
+        app:layout_constraintTop_toTopOf="@id/pulseRing3"
+        app:layout_constraintBottom_toBottomOf="@id/pulseRing3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Pulse ring 1 (innermost) -->
+    <View
+        android:id="@+id/pulseRing1"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:background="@drawable/bg_search_pulse_ring"
+        android:alpha="0.4"
+        app:layout_constraintTop_toTopOf="@id/pulseRing3"
+        app:layout_constraintBottom_toBottomOf="@id/pulseRing3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Center icon -->
+    <TextView
+        android:id="@+id/tvVehicleIcon"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:gravity="center"
+        android:textSize="32sp"
+        android:text="🚗"
+        app:layout_constraintTop_toTopOf="@id/pulseRing3"
+        app:layout_constraintBottom_toBottomOf="@id/pulseRing3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- "Looking for drivers" label -->
+    <TextView
+        android:id="@+id/tvSearchingLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Looking for drivers..."
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="40dp"
+        app:layout_constraintTop_toBottomOf="@id/pulseRing3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvSearchingSubLabel"/>
+
+    <TextView
+        android:id="@+id/tvSearchingSubLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="This usually takes under 30 seconds"
+        android:textColor="@color/text_hint"
+        android:textSize="13sp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tvSearchingLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvTimer"/>
+
+    <!-- Countdown timer -->
+    <TextView
+        android:id="@+id/tvTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="60s"
+        android:textColor="@color/brand_primary"
+        android:textSize="13sp"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="6dp"
+        app:layout_constraintTop_toBottomOf="@id/tvSearchingSubLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/btnCancelSearch"/>
+
+    <!-- Cancel button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelSearch"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cancel"
+        android:textColor="@color/error_color"
+        android:layout_marginBottom="60dp"
+        app:strokeColor="@color/error_color"
+        app:cornerRadius="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

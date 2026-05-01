@@ -33,13 +33,6 @@
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
-
-        <!--
-            Driver login: check if profile is complete.
-            If YES  → action_login_to_driver_home  (existing)
-            If NO   → action_login_to_driver_profile_setup  (new)
-            The LoginFragment.kt decides which action to fire.
-        -->
         <action
             android:id="@+id/action_login_to_driver_home"
             app:destination="@id/driverHomeFragment"
@@ -58,13 +51,11 @@
         android:id="@+id/registerFragment"
         android:name="com.example.chalride.ui.auth.RegisterFragment"
         android:label="RegisterFragment">
-
         <action
             android:id="@+id/action_register_to_rider_home"
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
-
         <action
             android:id="@+id/action_register_to_driver_profile_setup"
             app:destination="@id/driverProfileSetupFragment"
@@ -131,9 +122,39 @@
             app:popExitAnim="@anim/slide_out_right"/>
     </fragment>
 
+    <!-- ── rideConfirmFragment — action to rideSearching added ── -->
     <fragment
         android:id="@+id/rideConfirmFragment"
         android:name="com.example.chalride.ui.rider.RideConfirmFragment"
-        android:label="RideConfirmFragment"/>
+        android:label="RideConfirmFragment">
+        <action
+            android:id="@+id/action_rideConfirm_to_rideSearching"
+            app:destination="@id/rideSearchingFragment"
+            app:popUpTo="@id/rideConfirmFragment"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/rideSearchingFragment"
+        android:name="com.example.chalride.ui.rider.RideSearchingFragment"
+        android:label="RideSearchingFragment">
+        <action
+            android:id="@+id/action_rideSearching_to_rideLive"
+            app:destination="@id/rideLiveFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_rideSearching_to_riderHome"
+            app:destination="@id/riderHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/rideLiveFragment"
+        android:name="com.example.chalride.ui.rider.RideLiveFragment"
+        android:label="RideLiveFragment"/>
 
 </navigation>

@@ -433,10 +433,13 @@ class DestinationSearchFragment : Fragment() {
             .translationY(0f)
             .setDuration(200)
             .start()
+
+        binding.btnConfirmLocation.visibility = View.GONE
     }
 
     private fun hideWarning() {
         binding.cardWarning.visibility = View.GONE
+        binding.btnConfirmLocation.visibility = View.VISIBLE
     }
 
 
