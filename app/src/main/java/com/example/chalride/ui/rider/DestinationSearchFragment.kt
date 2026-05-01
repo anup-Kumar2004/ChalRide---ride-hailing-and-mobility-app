@@ -435,11 +435,13 @@ class DestinationSearchFragment : Fragment() {
             .start()
 
         binding.btnConfirmLocation.visibility = View.GONE
+        binding.fabGps.visibility = View.GONE
     }
 
     private fun hideWarning() {
         binding.cardWarning.visibility = View.GONE
         binding.btnConfirmLocation.visibility = View.VISIBLE
+        binding.fabGps.visibility = View.VISIBLE
     }
 
 

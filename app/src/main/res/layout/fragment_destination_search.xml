@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
@@ -208,8 +209,8 @@
         app:cardBackgroundColor="#2A1A1A"
         app:cardCornerRadius="14dp"
         app:cardElevation="6dp"
-
-        app:layout_constraintBottom_toTopOf="@+id/btnConfirmLocation"
+        android:layout_marginBottom="30dp"
+        app:layout_constraintBottom_toBottomOf="@+id/main"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:strokeColor="#FF5252"
@@ -226,8 +227,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="10dp"
                 android:layout_marginStart="5dp"
+                android:layout_marginEnd="10dp"
                 android:text="⚠️"
                 android:textSize="14sp" />
 

@@ -107,7 +107,13 @@
     <fragment
         android:id="@+id/driverHomeFragment"
         android:name="com.example.chalride.ui.driver.DriverHomeFragment"
-        android:label="DriverHomeFragment"/>
+        android:label="DriverHomeFragment">
+        <action
+            android:id="@+id/action_driverHome_to_driverActiveRide"
+            app:destination="@id/driverActiveRideFragment"
+            app:popUpTo="@id/driverHomeFragment"
+            app:popUpToInclusive="false"/>
+    </fragment>
 
     <fragment
         android:id="@+id/destinationSearchFragment"
@@ -156,5 +162,16 @@
         android:id="@+id/rideLiveFragment"
         android:name="com.example.chalride.ui.rider.RideLiveFragment"
         android:label="RideLiveFragment"/>
+
+    <fragment
+        android:id="@+id/driverActiveRideFragment"
+        android:name="com.example.chalride.ui.driver.DriverActiveRideFragment"
+        android:label="DriverActiveRideFragment">
+        <action
+            android:id="@+id/action_driverActiveRide_to_driverHome"
+            app:destination="@id/driverHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+    </fragment>
 
 </navigation>

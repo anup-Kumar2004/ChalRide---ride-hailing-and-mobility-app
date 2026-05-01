@@ -44,6 +44,7 @@ import org.osmdroid.views.overlay.Marker
 import com.bumptech.glide.Glide
 import androidx.lifecycle.ViewModelProvider
 import com.example.chalride.ui.auth.AuthViewModel
+import androidx.navigation.fragment.findNavController
 
 class DriverHomeFragment : Fragment() {
 
@@ -659,20 +660,44 @@ class DriverHomeFragment : Fragment() {
                 FirebaseFirestore.getInstance()
                     .collection("rideRequests")
                     .document(rideRequestId)
-                    .update(
-                        mapOf(
-                            "status"     to "accepted",
-                            "driverId"   to uid,
-                            "driverName" to driverName,
-                            "assignedAt" to System.currentTimeMillis()
-                        )
-                    )
-                    .addOnSuccessListener {
-                        // Mark driver as unavailable — on a trip now
+                    .get()
+                    .addOnSuccessListener { rideDoc ->
+
+                        // Update status
+                        FirebaseFirestore.getInstance()
+                            .collection("rideRequests")
+                            .document(rideRequestId)
+                            .update(mapOf(
+                                "status"     to "accepted",
+                                "driverId"   to uid,
+                                "driverName" to driverName,
+                                "assignedAt" to System.currentTimeMillis()
+                            ))
+
+                        // Mark driver unavailable
                         FirebaseFirestore.getInstance()
                             .collection("drivers")
                             .document(uid)
                             .update(mapOf("isAvailable" to false))
+
+                        // Navigate to active ride screen
+                        val bundle = Bundle().apply {
+                            putString("rideRequestId", rideRequestId)
+                            putString("riderName",     rideDoc.getString("riderName") ?: "Rider")
+                            putDouble("pickupLat",     rideDoc.getDouble("pickupLat") ?: 0.0)
+                            putDouble("pickupLng",     rideDoc.getDouble("pickupLng") ?: 0.0)
+                            putDouble("destLat",       rideDoc.getDouble("destLat")   ?: 0.0)
+                            putDouble("destLng",       rideDoc.getDouble("destLng")   ?: 0.0)
+                            putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
+                            putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
+                            putInt("estimatedFare",    (rideDoc.getLong("estimatedFare") ?: 0).toInt())
+                            putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
+                        }
+
+                        findNavController().navigate(
+                            R.id.action_driverHome_to_driverActiveRide,
+                            bundle
+                        )
                     }
             }
     }
