@@ -42,16 +42,24 @@ class MainActivity : AppCompatActivity() {
         val currentUser = authRepository.currentUser
             ?: return R.id.roleSelectionFragment
 
-        // Use runBlocking here intentionally — we MUST know the role
-        // before any fragment draws. This runs during splash screen.
-        val role = runBlocking {
-            authRepository.getUserRole(currentUser.uid)
-        }
+        return runBlocking {
+            val role = authRepository.getUserRole(currentUser.uid)
 
-        return when (role) {
-            "rider" -> R.id.riderHomeFragment
-            "driver" -> R.id.driverHomeFragment
-            else -> R.id.roleSelectionFragment
+            when (role) {
+                "rider" -> R.id.riderHomeFragment
+
+                "driver" -> {
+                    // Fetch profileStep to know how far setup got
+                    val profileStep = authRepository.getDriverProfileStep(currentUser.uid)
+                    when (profileStep) {
+                        0 -> R.id.driverProfileSetupFragment    // just registered, no profile yet
+                        1 -> R.id.driverVehicleSetupFragment    // profile done, no vehicle yet
+                        else -> R.id.driverHomeFragment          // fully set up
+                    }
+                }
+
+                else -> R.id.roleSelectionFragment
+            }
         }
     }
 }

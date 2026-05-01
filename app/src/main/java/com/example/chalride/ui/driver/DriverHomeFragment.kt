@@ -41,6 +41,9 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
+import com.bumptech.glide.Glide
+import androidx.lifecycle.ViewModelProvider
+import com.example.chalride.ui.auth.AuthViewModel
 
 class DriverHomeFragment : Fragment() {
 
@@ -60,6 +63,7 @@ class DriverHomeFragment : Fragment() {
     private var currentLocation: GeoPoint? = null
     private var userIsInteracting = false
     private var firstLocationFix = true
+    private var mapInitialized = false
 
     // ── Permission launchers ────────────────────────────────────────────────
 
@@ -99,32 +103,79 @@ class DriverHomeFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         settingsClient = LocationServices.getSettingsClient(requireActivity())
 
-        setupDriverInfo()
         initMap()
         buildLocationRequest()
         setupLocationCallback()
         checkAndRequestPermission()
         setupClickListeners()
+        loadDriverProfileIfNeeded()
+
+        // Reset after map init causes false interaction events
+        binding.mapView.post {
+            userIsInteracting = false
+        }
+
     }
 
     // ── Driver info from Firestore ──────────────────────────────────────────
+    private fun loadDriverProfileIfNeeded() {
 
-    private fun setupDriverInfo() {
+        val viewModel = ViewModelProvider(requireActivity())[AuthViewModel::class.java]
+
+        // ✅ 1. USE CACHE (no Firestore call)
+        viewModel.cachedDriverProfile?.let { profile ->
+            bindDriverUI(profile)
+            return
+        }
+
+        // ✅ 2. FIRST TIME → FETCH FROM FIRESTORE
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseFirestore.getInstance().collection("drivers").document(uid)
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
             .get()
             .addOnSuccessListener { doc ->
+
                 val name = doc.getString("name") ?: "Driver"
-                binding.tvDriverName.text = name.split(" ").first()
-                binding.tvProfileInitial.text = name.first().uppercase()
+                val imageUrl = doc.getString("photoUrl")
 
-                val rating = doc.getDouble("rating")
-                binding.tvRating.text = if (rating != null) String.format("%.1f", rating) else "—"
+                val profile = AuthViewModel.DriverProfile(name, imageUrl)
 
-                val trips = doc.getLong("totalTrips")?.toInt() ?: 0
-                binding.tvTripsCount.text = trips.toString()
+                // ✅ SAVE CACHE
+                viewModel.cachedDriverProfile = profile
+
+                bindDriverUI(profile)
             }
     }
+
+    private fun bindDriverUI(profile: AuthViewModel.DriverProfile) {
+
+        binding.tvDriverName.text = profile.name
+
+        val imageUrl = profile.imageUrl
+
+        if (!imageUrl.isNullOrEmpty()) {
+
+            // ✅ SHOW IMAGE
+            binding.ivProfile.visibility = View.VISIBLE
+            binding.tvProfileInitial.visibility = View.GONE
+
+            Glide.with(requireContext())
+                .load(imageUrl)
+                .into(binding.ivProfile)   // ← remove .placeholder(...)
+
+        } else {
+
+            // ✅ SHOW INITIAL
+            binding.ivProfile.visibility = View.GONE
+            binding.tvProfileInitial.visibility = View.VISIBLE
+
+            val initial = profile.name.firstOrNull()?.uppercase() ?: "D"
+            binding.tvProfileInitial.text = initial
+        }
+    }
+
 
     // ── Map ─────────────────────────────────────────────────────────────────
 
@@ -138,18 +189,33 @@ class DriverHomeFragment : Fragment() {
         binding.mapView.controller.setZoom(5.0)
         binding.mapView.controller.setCenter(GeoPoint(20.5937, 78.9629))
 
+        // Calculate exact offset after layout — works for any screen size
+        binding.root.post {
+            val topCardBottom = binding.cardTopBar.bottom
+            val bottomSheetTop = binding.bottomSheet.top
+            val screenCenter = binding.root.height / 2
+
+            val visibleMapCenter = topCardBottom + (bottomSheetTop - topCardBottom) / 2
+            val neededOffset = visibleMapCenter - screenCenter
+
+            binding.mapView.setMapCenterOffset(0, neededOffset)
+        }
+
         binding.mapView.addMapListener(object : org.osmdroid.events.MapListener {
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                userIsInteracting = true
+                if (mapInitialized) userIsInteracting = true
                 updatePulsePosition()
                 return false
             }
             override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                userIsInteracting = true
+                if (mapInitialized) userIsInteracting = true
                 updatePulsePosition()
                 return false
             }
         })
+
+        // Mark init complete so listener starts tracking real interactions
+        binding.mapView.post { mapInitialized = true }
     }
 
     private fun placeDriverMarker(geoPoint: GeoPoint) {
@@ -244,37 +310,70 @@ class DriverHomeFragment : Fragment() {
                 val geoPoint = GeoPoint(location.latitude, location.longitude)
                 currentLocation = geoPoint
 
+                android.util.Log.d("ChalRide", "📍 Location received: ${location.latitude}, ${location.longitude} | firstLocationFix=$firstLocationFix")
+
                 if (firstLocationFix && !userIsInteracting) {
                     firstLocationFix = false
-                    binding.mapView.controller.animateTo(geoPoint)
-                    binding.mapView.controller.setZoom(17.0)
+                    android.util.Log.d("ChalRide", "🎬 Starting cinematic zoom...")
+                    placeDriverMarker(geoPoint)
+                    startCinematicZoom(geoPoint)
+                } else {
+                    android.util.Log.d("ChalRide", "📍 Subsequent location update, skipping cinematic zoom")
+                    placeDriverMarker(geoPoint)
                 }
 
-                placeDriverMarker(geoPoint)
-
-                // Write location to Firestore if online (foreground service also does
-                // this, but this covers when app is in foreground)
                 if (isOnline) writeLocationToFirestore(location.latitude, location.longitude)
             }
         }
     }
 
+    private fun startCinematicZoom(geoPoint: GeoPoint) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Step 1: Hold India view
+            delay(500)
+            if (_binding == null) return@launch
+
+            // Step 2: Pan to location
+            binding.mapView.controller.animateTo(geoPoint)
+            delay(500)
+            if (_binding == null) return@launch
+
+            // Step 3: Zoom in — fewer steps, longer delay = smoother
+            val startZoom = 5.0
+            val endZoom = 14.0
+            val steps = 2
+            val stepDelay = 1000L
+
+            for (i in 1..steps) {
+                if (_binding == null) return@launch
+                val zoom = startZoom + (endZoom - startZoom) * (i.toDouble() / steps)
+                binding.mapView.controller.setZoom(zoom)
+                binding.mapView.controller.setCenter(geoPoint)
+                delay(stepDelay)
+            }
+        }
+    }
+
     private fun startLocationUpdates() {
+        userIsInteracting = false
+
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
+        // ✅ Use last known location instantly — no waiting for GPS fix
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null && !userIsInteracting) {
+            if (location != null && firstLocationFix && !userIsInteracting) {
+                firstLocationFix = false
                 val geoPoint = GeoPoint(location.latitude, location.longitude)
                 currentLocation = geoPoint
-                binding.mapView.controller.animateTo(geoPoint)
-                binding.mapView.controller.setZoom(17.0)
                 placeDriverMarker(geoPoint)
+                startCinematicZoom(geoPoint)
             }
         }
 
+        // Continue requesting fresh updates in background
         fusedLocationClient.requestLocationUpdates(
             locationRequest, locationCallback, Looper.getMainLooper()
         )
@@ -345,6 +444,9 @@ class DriverHomeFragment : Fragment() {
 
     private fun updateOnlineUI() {
         if (isOnline) {
+            //avatar ring changes to green color
+            binding.avatarRing.setBackgroundResource(R.drawable.bg_driver_avatar_online)
+
             // Button
             binding.btnToggleOnline.text = "GO OFFLINE"
             binding.btnToggleOnline.backgroundTintList = ColorStateList.valueOf(
@@ -376,6 +478,9 @@ class DriverHomeFragment : Fragment() {
             binding.pulseView.visibility = View.VISIBLE
 
         } else {
+            //avatar ring changes to red color
+            binding.avatarRing.setBackgroundResource(R.drawable.bg_driver_avatar)
+
             // Button
             binding.btnToggleOnline.text = "GO ONLINE"
             binding.btnToggleOnline.backgroundTintList = ColorStateList.valueOf(

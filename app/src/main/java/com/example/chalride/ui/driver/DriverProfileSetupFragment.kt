@@ -16,7 +16,6 @@ import com.example.chalride.R
 import com.example.chalride.databinding.FragmentDriverProfileSetupBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import org.json.JSONObject
@@ -53,9 +52,35 @@ class DriverProfileSetupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // ✅ If coming from midway login → skip to vehicle setup
+        val goToVehicleStep = arguments?.getBoolean("goToVehicleStep") ?: false
+
+        if (goToVehicleStep) {
+            findNavController().navigate(
+                R.id.action_driverProfileSetup_to_driverVehicleSetup
+            )
+            return
+        }
+
         val nameFromRegister = arguments?.getString("name")
         if (!nameFromRegister.isNullOrEmpty()) {
+            // Came fresh from RegisterFragment — use bundle name
             binding.etName.setText(nameFromRegister)
+        } else {
+            // App restarted — fetch name from Firestore
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                FirebaseFirestore.getInstance()
+                    .collection("drivers")
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener { doc ->
+                        val savedName = doc.getString("name") ?: ""
+                        if (savedName.isNotEmpty()) {
+                            binding.etName.setText(savedName)
+                        }
+                    }
+            }
         }
 
         // Pre-fill phone from Firebase Auth if available
@@ -164,34 +189,75 @@ class DriverProfileSetupFragment : Fragment() {
     }
 
     private fun saveToFirestore(uid: String, name: String, phone: String, photoUrl: String?) {
-        val data = mutableMapOf<String, Any>(
+
+        val docRef = FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+
+        // Basic fields (always update)
+        val baseData = mutableMapOf<String, Any>(
             "name" to name,
             "phone" to phone,
-            "isAvailable" to false,
-            "isOnline" to false,
-            "lat" to 0.0,
-            "lng" to 0.0,
-            "geohash" to "",
-            "totalTrips" to 0,
-            "earnings" to 0,
-            "role" to "driver"
+            "role" to "driver",
+            "profileStep" to 1
         )
 
-        if (photoUrl != null) data["photoUrl"] = photoUrl
+        if (photoUrl != null) {
+            baseData["photoUrl"] = photoUrl
+        }
 
-        FirebaseFirestore.getInstance().collection("drivers").document(uid)
-            .set(data)
-            .addOnSuccessListener {
-                // Navigate to vehicle setup step
-                findNavController().navigate(
-                    R.id.action_driverProfileSetup_to_driverVehicleSetup
-                )
+        docRef.get().addOnSuccessListener { snapshot ->
+
+            val updateData = mutableMapOf<String, Any>()
+            updateData.putAll(baseData)
+
+            // ✅ Set defaults ONLY if they don't exist
+            if (!snapshot.contains("isOnline")) {
+                updateData["isOnline"] = false
             }
-            .addOnFailureListener { e ->
-                binding.btnNext.isEnabled = true
-                binding.btnNext.text = "Continue →"
-                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+
+            if (!snapshot.contains("isAvailable")) {
+                updateData["isAvailable"] = false
             }
+
+            if (!snapshot.contains("lat")) {
+                updateData["lat"] = 0.0
+            }
+
+            if (!snapshot.contains("lng")) {
+                updateData["lng"] = 0.0
+            }
+
+            if (!snapshot.contains("geohash")) {
+                updateData["geohash"] = ""
+            }
+
+            if (!snapshot.contains("totalTrips")) {
+                updateData["totalTrips"] = 0
+            }
+
+            if (!snapshot.contains("earnings")) {
+                updateData["earnings"] = 0
+            }
+
+            // ✅ Safe update (NO overwrite)
+            docRef.set(updateData, com.google.firebase.firestore.SetOptions.merge())
+                .addOnSuccessListener {
+                    findNavController().navigate(
+                        R.id.action_driverProfileSetup_to_driverVehicleSetup
+                    )
+                }
+                .addOnFailureListener { e ->
+                    binding.btnNext.isEnabled = true
+                    binding.btnNext.text = "Continue →"
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+
+        }.addOnFailureListener { e ->
+            binding.btnNext.isEnabled = true
+            binding.btnNext.text = "Continue →"
+            Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onDestroyView() {

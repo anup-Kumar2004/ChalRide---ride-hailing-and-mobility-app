@@ -5,5 +5,5 @@ data class User(
     val name: String = "",
     val email: String = "",
     val role: String = "",   // rider or driver
-    val profileComplete: Boolean = false,   // 🔥 ADD THIS
+    val profileStep: Int = 0
 )

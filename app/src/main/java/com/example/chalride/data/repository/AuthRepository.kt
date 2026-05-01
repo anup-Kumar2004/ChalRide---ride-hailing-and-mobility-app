@@ -29,7 +29,7 @@ class AuthRepository {
                 name = name,
                 email = email,
                 role = role,
-                profileComplete = false  // 🔥 important
+                profileStep = 0
             )
 
             // Store in role-specific collection — riders or drivers separately
@@ -86,6 +86,15 @@ class AuthRepository {
             null
         } catch (e: Exception) {
             null
+        }
+    }
+
+    suspend fun getDriverProfileStep(uid: String): Int {
+        return try {
+            val doc = firestore.collection("drivers").document(uid).get().await()
+            (doc.getLong("profileStep") ?: 0).toInt()
+        } catch (e: Exception) {
+            0
         }
     }
 

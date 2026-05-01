@@ -1,6 +1,5 @@
 package com.example.chalride.ui.driver
 
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -102,11 +101,11 @@ class DriverVehicleSetupFragment : Fragment() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         val vehicleData = mapOf(
-            "vehicleType"   to selectedVehicleType,
-            "vehicleModel"  to model,
-            "vehiclePlate"  to plate,
-            "vehicleColor"  to color,
-            "profileComplete" to true    // flag so we don't show setup again
+            "vehicleType" to selectedVehicleType,
+            "vehicleModel" to model,
+            "vehiclePlate" to plate,
+            "vehicleColor" to color,
+            "profileStep" to 2
         )
 
         FirebaseFirestore.getInstance().collection("drivers").document(uid)

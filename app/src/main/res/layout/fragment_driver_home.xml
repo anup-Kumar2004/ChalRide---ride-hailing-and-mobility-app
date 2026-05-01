@@ -55,28 +55,48 @@
 
                 <!-- Avatar circle -->
                 <FrameLayout
-                    android:layout_width="46dp"
-                    android:layout_height="46dp">
+                    android:layout_width="50dp"
+                    android:layout_height="50dp">
 
+                    <!-- Red border ring (always visible behind image/initial) -->
+                    <View
+                        android:id="@+id/avatarRing"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_driver_avatar"/>
+
+                    <!-- Profile Image (circular, sits inside the border) -->
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivProfile"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/CircleImageView"
+                        android:visibility="gone" />
+
+                    <!-- Initial letter fallback (sits inside the border) -->
                     <TextView
                         android:id="@+id/tvProfileInitial"
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        android:background="@drawable/bg_driver_avatar"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_driver_avatar_inner"
                         android:gravity="center"
                         android:text="D"
                         android:textColor="@color/white"
                         android:textSize="17sp"
                         android:fontFamily="sans-serif-medium"/>
 
-                    <!-- Online status dot on avatar -->
+                    <!-- Online status dot -->
                     <View
                         android:id="@+id/viewStatusDot"
                         android:layout_width="12dp"
                         android:layout_height="12dp"
                         android:background="@drawable/bg_status_dot_offline"
                         android:layout_gravity="bottom|end"
-                        android:layout_margin="1dp"/>
+                        android:layout_marginEnd="2dp"
+                        android:layout_marginBottom="2dp"/>
 
                 </FrameLayout>
 

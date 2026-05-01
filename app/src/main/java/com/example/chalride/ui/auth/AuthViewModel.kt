@@ -17,12 +17,19 @@ sealed class AuthState {
 
 class AuthViewModel : ViewModel() {
 
+    // ✅ DRIVER PROFILE CACHE MODEL
+    data class DriverProfile(
+        val name: String = "",
+        val imageUrl: String? = null
+    )
+
+    // ✅ IN-MEMORY CACHE (persists while app is alive)
+    var cachedDriverProfile: DriverProfile? = null
+
     private val repository = AuthRepository()
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
-
-    val currentUser get() = repository.currentUser
 
     fun login(email: String, password: String, role: String) {
         viewModelScope.launch {
@@ -45,18 +52,6 @@ class AuthViewModel : ViewModel() {
             } else {
                 AuthState.Error(result.exceptionOrNull()?.message ?: "Registration failed")
             }
-        }
-    }
-
-    fun checkAutoLogin(onResult: (role: String?) -> Unit) {
-        val user = repository.currentUser
-        if (user == null) {
-            onResult(null)
-            return
-        }
-        viewModelScope.launch {
-            val role = repository.getUserRole(user.uid)
-            onResult(role)
         }
     }
 

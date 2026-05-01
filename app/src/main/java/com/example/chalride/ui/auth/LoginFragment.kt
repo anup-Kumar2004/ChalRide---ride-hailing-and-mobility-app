@@ -145,16 +145,41 @@ class LoginFragment : Fragment() {
             .get()
             .addOnSuccessListener { doc ->
 
-                val profileComplete = doc.getBoolean("profileComplete") ?: false
+                val profileStep = (doc.getLong("profileStep") ?: 0).toInt()
 
-                if (profileComplete) {
-                    findNavController().navigate(
-                        R.id.action_login_to_driver_home
-                    )
-                } else {
-                    findNavController().navigate(
-                        R.id.action_login_to_driver_profile_setup
-                    )
+                when (profileStep) {
+
+                    0 -> {
+                        // Step 0 → go to Profile Setup
+                        findNavController().navigate(
+                            R.id.action_login_to_driver_profile_setup
+                        )
+                    }
+
+                    1 -> {
+                        // Step 1 → go to Profile Setup but jump to Vehicle screen
+                        val bundle = Bundle().apply {
+                            putBoolean("goToVehicleStep", true)
+                        }
+
+                        findNavController().navigate(
+                            R.id.action_login_to_driver_profile_setup,
+                            bundle
+                        )
+                    }
+
+                    2 -> {
+                        // Step 2 → fully complete → Driver Home
+                        findNavController().navigate(
+                            R.id.action_login_to_driver_home
+                        )
+                    }
+
+                    else -> {
+                        findNavController().navigate(
+                            R.id.action_login_to_driver_profile_setup
+                        )
+                    }
                 }
             }
             .addOnFailureListener {
