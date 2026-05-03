@@ -97,7 +97,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="220dp"
+        android:layout_marginBottom="260dp"
         android:src="@drawable/bg_my_location_icon"
         app:backgroundTint="#EDE5E5"
         app:tint="@color/driver_color"

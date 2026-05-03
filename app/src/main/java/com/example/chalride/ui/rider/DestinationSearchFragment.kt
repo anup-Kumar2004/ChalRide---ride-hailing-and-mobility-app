@@ -178,10 +178,10 @@ class DestinationSearchFragment : Fragment() {
             try {
                 val apiKey = getString(R.string.ors_api_key)
                 val result = withContext(Dispatchers.IO) {
-                    val url = "https://api.openrouteservice.org/v2/directions/driving-car?" +
-                            "radiuses=1000;1000&" +
-                            "start=${pickup.longitude},${pickup.latitude}" +
-                            "&end=${destination.longitude},${destination.latitude}"
+                    val url = "https://api.openrouteservice.org/v2/directions/driving-car" +
+                            "?start=${pickup.longitude},${pickup.latitude}" +
+                            "&end=${destination.longitude},${destination.latitude}" +
+                            "&radiuses=500%7C500"
 
                     android.util.Log.d("RouteDebug", "Fetching route: $url")
 

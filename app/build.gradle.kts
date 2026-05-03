@@ -66,6 +66,8 @@ dependencies {
 
     implementation ("com.github.bumptech.glide:glide:4.16.0")
 
+    implementation("com.google.firebase:firebase-database-ktx")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

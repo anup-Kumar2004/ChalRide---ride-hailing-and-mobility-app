@@ -384,10 +384,10 @@ class RideConfirmFragment : Fragment() {
             try {
                 val routePoints = withContext(Dispatchers.IO) {
                     val apiKey = getString(R.string.ors_api_key)
-                    val url = "https://api.openrouteservice.org/v2/directions/driving-car?" +
-                            "radiuses=1000;1000&" +
-                            "start=${pickup.longitude},${pickup.latitude}" +
-                            "&end=${destination.longitude},${destination.latitude}"
+                    val url = "https://api.openrouteservice.org/v2/directions/driving-car" +
+                            "?start=${pickup.longitude},${pickup.latitude}" +
+                            "&end=${destination.longitude},${destination.latitude}" +
+                            "&radiuses=1000%7C1000"
 
                     val conn = URL(url).openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "GET"
@@ -561,41 +561,77 @@ class RideConfirmFragment : Fragment() {
 
     private fun fetchNearbyDriversAndFilterVehicles() {
         val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
-        val pickupGeohash = encodeGeohash(pickupLat, pickupLng, precision = 4)
-        val geohashEnd = pickupGeohash + "\uf8ff"
 
-        FirebaseFirestore.getInstance()
-            .collection("drivers")
-            .whereEqualTo("isOnline", true)
-            .whereEqualTo("isAvailable", true)
-            .whereGreaterThanOrEqualTo("geohash", pickupGeohash)
-            .whereLessThanOrEqualTo("geohash", geohashEnd)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val nearby = snapshot.documents.mapNotNull { doc ->
-                    val lat = doc.getDouble("lat") ?: return@mapNotNull null
-                    val lng = doc.getDouble("lng") ?: return@mapNotNull null
-                    val lastUpdated = doc.getLong("lastUpdated") ?: 0L
-                    if (lastUpdated < fiveMinutesAgo) return@mapNotNull null
-                    val distanceKm = haversineDistance(pickupLat, pickupLng, lat, lng)
-                    if (distanceKm <= 5.0) doc.data?.plus("driverId" to doc.id) else null
-                }
+        // Use precision 5 (≈ 4.9 km x 4.9 km cells) — matches what the service writes.
+        // Precision 4 cells are ~156km wide which is too coarse for city-level matching.
+        val centerHash = encodeGeohash(pickupLat, pickupLng, precision = 5)
 
-                nearbyDrivers = nearby
-                availableVehicleTypes.clear()
-                nearby.forEach { driver ->
-                    val type = driver["vehicleType"] as? String ?: return@forEach
-                    availableVehicleTypes.add(type)
-                }
+        // Get all 9 cells: center + 8 neighbors
+        val cellsToQuery = geohashNeighbors(centerHash) + centerHash
 
-                // Render cards with live availability — always show all 4
-                renderVehicleCards()
+        android.util.Log.d("NearbyDrivers", "Querying ${cellsToQuery.size} geohash cells around $centerHash")
+
+        val allDriverDocs = mutableListOf<Map<String, Any>>()
+        var completedQueries = 0
+        val totalQueries = cellsToQuery.size
+
+        fun onAllQueriesComplete() {
+            // Deduplicate by driverId (a driver near a cell boundary may appear in 2 cells)
+            val seen = mutableSetOf<String>()
+            val deduplicated = allDriverDocs.filter { driver ->
+                val id = driver["driverId"] as? String ?: return@filter false
+                seen.add(id)
             }
-            .addOnFailureListener {
-                // On failure show all as unavailable so user sees the state
-                renderVehicleCards()
+
+            // Filter: must have recent location update AND be within 10km of pickup
+            val nearby = deduplicated.filter { driver ->
+                val lat = driver["lat"] as? Double ?: return@filter false
+                val lng = driver["lng"] as? Double ?: return@filter false
+                val lastUpdated = driver["lastUpdated"] as? Long ?: 0L
+                if (lastUpdated < fiveMinutesAgo) return@filter false
+                val distanceKm = haversineDistance(pickupLat, pickupLng, lat, lng)
+                android.util.Log.d("NearbyDrivers", "Driver ${driver["driverId"]}: ${String.format("%.2f", distanceKm)}km away")
+                distanceKm <= 20.0
             }
+
+            android.util.Log.d("NearbyDrivers", "Found ${nearby.size} drivers within 10km")
+
+            nearbyDrivers = nearby
+            availableVehicleTypes.clear()
+            nearby.forEach { driver ->
+                val type = driver["vehicleType"] as? String ?: return@forEach
+                availableVehicleTypes.add(type)
+            }
+
+            renderVehicleCards()
+        }
+
+        // Run one Firestore query per geohash cell
+        cellsToQuery.forEach { cell ->
+            val cellEnd = cell + "\uf8ff"
+
+            FirebaseFirestore.getInstance()
+                .collection("drivers")
+                .whereEqualTo("isOnline", true)
+                .whereEqualTo("isAvailable", true)
+                .whereGreaterThanOrEqualTo("geohash", cell)
+                .whereLessThanOrEqualTo("geohash", cellEnd)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    snapshot.documents.forEach { doc ->
+                        val data = doc.data ?: return@forEach
+                        allDriverDocs.add(data + ("driverId" to doc.id))
+                    }
+                    completedQueries++
+                    if (completedQueries == totalQueries) onAllQueriesComplete()
+                }
+                .addOnFailureListener {
+                    completedQueries++
+                    if (completedQueries == totalQueries) onAllQueriesComplete()
+                }
+        }
     }
+
 
     // ── Click listeners ───────────────────────────────────────────────────
 
@@ -686,6 +722,66 @@ class RideConfirmFragment : Fragment() {
                 Math.sin(dLng / 2).pow(2)
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     }
+
+    /**
+     * Returns the 8 neighboring geohash cells around the given cell.
+     * Together with the center cell, this gives full coverage for drivers
+     * near cell boundaries — the same approach used by Uber/Lyft.
+     */
+    private fun geohashNeighbors(hash: String): List<String> {
+        return listOf(
+            geohashNeighbor(hash, 1, 0),   // N
+            geohashNeighbor(hash, 1, 1),   // NE
+            geohashNeighbor(hash, 0, 1),   // E
+            geohashNeighbor(hash, -1, 1),  // SE
+            geohashNeighbor(hash, -1, 0),  // S
+            geohashNeighbor(hash, -1, -1), // SW
+            geohashNeighbor(hash, 0, -1),  // W
+            geohashNeighbor(hash, 1, -1)   // NW
+        )
+    }
+
+    /**
+     * Decodes a geohash to lat/lng bounds, shifts by (latDir, lngDir) cells,
+     * then re-encodes at the same precision. Simple and dependency-free.
+     */
+    private fun geohashNeighbor(hash: String, latDir: Int, lngDir: Int): String {
+        val base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+        var minLat = -90.0; var maxLat = 90.0
+        var minLng = -180.0; var maxLng = 180.0
+
+        // Decode bounding box of the hash
+        for (i in hash.indices) {
+            val idx = base32.indexOf(hash[i])
+            for (b in 4 downTo 0) {
+                val bitN = (idx shr b) and 1
+                if ((i * 5 + (4 - b)) % 2 == 0) {
+                    val mid = (minLng + maxLng) / 2
+                    if (bitN == 1) minLng = mid else maxLng = mid
+                } else {
+                    val mid = (minLat + maxLat) / 2
+                    if (bitN == 1) minLat = mid else maxLat = mid
+                }
+            }
+        }
+
+        val latCenter = (minLat + maxLat) / 2
+        val lngCenter = (minLng + maxLng) / 2
+        val latHeight = maxLat - minLat
+        val lngWidth  = maxLng - minLng
+
+        val neighborLat = (latCenter + latDir * latHeight).coerceIn(-90.0, 90.0)
+        val neighborLng = (lngCenter + lngDir * lngWidth).let {
+            when {
+                it > 180  -> it - 360
+                it < -180 -> it + 360
+                else      -> it
+            }
+        }
+
+        return encodeGeohash(neighborLat, neighborLng, hash.length)
+    }
+
 
     private fun encodeGeohash(lat: Double, lng: Double, precision: Int = 6): String {
         val base32 = "0123456789bcdefghjkmnpqrstuvwxyz"

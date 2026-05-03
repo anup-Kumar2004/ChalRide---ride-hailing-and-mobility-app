@@ -45,6 +45,10 @@ import com.bumptech.glide.Glide
 import androidx.lifecycle.ViewModelProvider
 import com.example.chalride.ui.auth.AuthViewModel
 import androidx.navigation.fragment.findNavController
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class DriverHomeFragment : Fragment() {
 
@@ -112,12 +116,32 @@ class DriverHomeFragment : Fragment() {
         checkAndRequestPermission()
         setupClickListeners()
         loadDriverProfileIfNeeded()
+        loadLiveStatsFromFirestore()
+        restoreOnlineStateIfNeeded()
+        checkForActiveRideOnLaunch()
 
         // Reset after map init causes false interaction events
         binding.mapView.post {
             userIsInteracting = false
         }
 
+    }
+
+    private fun restoreOnlineStateIfNeeded() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val wasOnline = doc.getBoolean("isOnline") ?: false
+                if (wasOnline && !isOnline) {
+                    isOnline = true
+                    updateOnlineUI()
+                    startOnlineTimer()
+                    listenForRideRequests()
+                }
+            }
     }
 
     // ── Driver info from Firestore ──────────────────────────────────────────
@@ -151,6 +175,21 @@ class DriverHomeFragment : Fragment() {
                 bindDriverUI(profile)
             }
     }
+
+    private fun loadLiveStatsFromFirestore() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val earnings = doc.getLong("earnings") ?: 0L
+                val trips = doc.getLong("totalTrips") ?: 0L
+                binding.tvEarnings.text = "₹$earnings"
+                binding.tvTripsCount.text = trips.toString()
+            }
+    }
+
 
     private fun bindDriverUI(profile: AuthViewModel.DriverProfile) {
 
@@ -222,6 +261,7 @@ class DriverHomeFragment : Fragment() {
     }
 
     private fun placeDriverMarker(geoPoint: GeoPoint) {
+        if (_binding == null) return
         currentMarker?.let { binding.mapView.overlays.remove(it) }
 
         currentMarker = Marker(binding.mapView).apply {
@@ -325,7 +365,7 @@ class DriverHomeFragment : Fragment() {
                     placeDriverMarker(geoPoint)
                 }
 
-                if (isOnline) writeLocationToFirestore(location.latitude, location.longitude)
+
             }
         }
     }
@@ -382,29 +422,6 @@ class DriverHomeFragment : Fragment() {
         )
     }
 
-    // ── Firestore writes ─────────────────────────────────────────────────────
-
-    /**
-     * Writes the driver's current location + geohash to Firestore.
-     * Called every location update when driver is online.
-     *
-     * Firestore document structure (drivers/{uid}):
-     *   lat, lng, geohash, isAvailable, isOnline, lastUpdated
-     */
-    private fun writeLocationToFirestore(lat: Double, lng: Double) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val geohash = encodeGeohash(lat, lng, precision = 6)
-
-        FirebaseFirestore.getInstance().collection("drivers").document(uid)
-            .update(
-                mapOf(
-                    "lat"         to lat,
-                    "lng"         to lng,
-                    "geohash"     to geohash,
-                    "lastUpdated" to System.currentTimeMillis()
-                )
-            )
-    }
 
     private fun setDriverAvailability(available: Boolean) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -444,6 +461,64 @@ class DriverHomeFragment : Fragment() {
             }
         }
     }
+
+    private fun checkForActiveRideOnLaunch() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val activeRideId = doc.getString("activeRideId")
+
+                if (!activeRideId.isNullOrEmpty()) {
+                    // Driver crashed mid-ride — fetch the ride and resume
+                    android.util.Log.d("ChalRide", "🔄 Active ride found: $activeRideId — resuming")
+
+                    FirebaseFirestore.getInstance()
+                        .collection("rideRequests")
+                        .document(activeRideId)
+                        .get()
+                        .addOnSuccessListener { rideDoc ->
+
+                            // Only resume if the ride is still in progress (not completed/cancelled)
+                            val status = rideDoc.getString("status") ?: ""
+                            if (status !in listOf("completed", "cancelled")) {
+
+                                val bundle = Bundle().apply {
+                                    putString("rideRequestId", activeRideId)
+                                    putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
+                                    putDouble("pickupLat",     rideDoc.getDouble("pickupLat")     ?: 0.0)
+                                    putDouble("pickupLng",     rideDoc.getDouble("pickupLng")     ?: 0.0)
+                                    putDouble("destLat",       rideDoc.getDouble("destLat")       ?: 0.0)
+                                    putDouble("destLng",       rideDoc.getDouble("destLng")       ?: 0.0)
+                                    putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
+                                    putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
+                                    putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
+                                    putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
+                                }
+
+                                // Also restart the location service since app crashed
+                                startDriverLocationService()
+
+                                findNavController().navigate(
+                                    R.id.action_driverHome_to_driverActiveRide,
+                                    bundle
+                                )
+                            } else {
+                                // Ride ended while app was crashed — clean up stale activeRideId
+                                FirebaseFirestore.getInstance()
+                                    .collection("drivers").document(uid)
+                                    .update("activeRideId", null)
+                            }
+                        }
+                }
+            }
+    }
+
+
+
 
     private fun updateOnlineUI() {
         if (isOnline) {
@@ -552,7 +627,7 @@ class DriverHomeFragment : Fragment() {
 
     private fun listenForRideRequests() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val vehicleType = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val vehicleType = FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
 
         // First fetch this driver's vehicleType
@@ -605,10 +680,10 @@ class DriverHomeFragment : Fragment() {
         val R = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLng = Math.toRadians(lng2 - lng1)
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2)
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLng / 2) * sin(dLng / 2)
+        return R * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
     private fun showRideRequestSheet(
@@ -651,22 +726,19 @@ class DriverHomeFragment : Fragment() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         FirebaseFirestore.getInstance()
-            .collection("drivers")
-            .document(uid)
+            .collection("drivers").document(uid)
             .get()
             .addOnSuccessListener { doc ->
                 val driverName = doc.getString("name") ?: "Driver"
 
                 FirebaseFirestore.getInstance()
-                    .collection("rideRequests")
-                    .document(rideRequestId)
+                    .collection("rideRequests").document(rideRequestId)
                     .get()
                     .addOnSuccessListener { rideDoc ->
 
-                        // Update status
+                        // Update ride status
                         FirebaseFirestore.getInstance()
-                            .collection("rideRequests")
-                            .document(rideRequestId)
+                            .collection("rideRequests").document(rideRequestId)
                             .update(mapOf(
                                 "status"     to "accepted",
                                 "driverId"   to uid,
@@ -674,23 +746,24 @@ class DriverHomeFragment : Fragment() {
                                 "assignedAt" to System.currentTimeMillis()
                             ))
 
-                        // Mark driver unavailable
+                        // Mark driver unavailable AND save activeRideId for crash recovery
                         FirebaseFirestore.getInstance()
-                            .collection("drivers")
-                            .document(uid)
-                            .update(mapOf("isAvailable" to false))
+                            .collection("drivers").document(uid)
+                            .update(mapOf(
+                                "isAvailable"  to false,
+                                "activeRideId" to rideRequestId   // ← KEY: crash recovery anchor
+                            ))
 
-                        // Navigate to active ride screen
                         val bundle = Bundle().apply {
                             putString("rideRequestId", rideRequestId)
-                            putString("riderName",     rideDoc.getString("riderName") ?: "Rider")
-                            putDouble("pickupLat",     rideDoc.getDouble("pickupLat") ?: 0.0)
-                            putDouble("pickupLng",     rideDoc.getDouble("pickupLng") ?: 0.0)
-                            putDouble("destLat",       rideDoc.getDouble("destLat")   ?: 0.0)
-                            putDouble("destLng",       rideDoc.getDouble("destLng")   ?: 0.0)
+                            putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
+                            putDouble("pickupLat",     rideDoc.getDouble("pickupLat")     ?: 0.0)
+                            putDouble("pickupLng",     rideDoc.getDouble("pickupLng")     ?: 0.0)
+                            putDouble("destLat",       rideDoc.getDouble("destLat")       ?: 0.0)
+                            putDouble("destLng",       rideDoc.getDouble("destLng")       ?: 0.0)
                             putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
                             putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
-                            putInt("estimatedFare",    (rideDoc.getLong("estimatedFare") ?: 0).toInt())
+                            putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
                             putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
                         }
 
