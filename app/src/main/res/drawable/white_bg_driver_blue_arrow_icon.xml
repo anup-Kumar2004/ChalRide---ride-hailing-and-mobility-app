@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- White circular background -->
+    <item>
+        <shape android:shape="oval">
+            <size
+                android:width="36dp"
+                android:height="36dp"/>
+            <solid android:color="@android:color/white"/>
+        </shape>
+    </item>
+
+    <!-- Arrow icon centered -->
+    <item
+        android:drawable="@drawable/ic_driver_marker_grey"
+        android:gravity="center"
+        android:width="30dp"
+        android:height="30dp"/>
+
+</layer-list>

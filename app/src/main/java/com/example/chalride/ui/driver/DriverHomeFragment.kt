@@ -751,7 +751,8 @@ class DriverHomeFragment : Fragment() {
                             .collection("drivers").document(uid)
                             .update(mapOf(
                                 "isAvailable"  to false,
-                                "activeRideId" to rideRequestId   // ← KEY: crash recovery anchor
+                                "activeRideId" to rideRequestId,
+                                "tripPhase" to "HEADING_TO_PICKUP"// ← KEY: crash recovery anchor
                             ))
 
                         val bundle = Bundle().apply {
@@ -765,6 +766,7 @@ class DriverHomeFragment : Fragment() {
                             putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
                             putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
                             putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
+                            putString("riderPhone", rideDoc.getString("riderPhone") ?: "")
                         }
 
                         findNavController().navigate(

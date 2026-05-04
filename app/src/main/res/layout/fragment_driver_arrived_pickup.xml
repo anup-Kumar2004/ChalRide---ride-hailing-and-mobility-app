@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="52dp"
+        android:paddingBottom="40dp">
+
+        <!-- ── Arrived badge ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ARRIVED AT PICKUP"
+            android:textColor="@color/success_color"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.14"
+            android:background="@drawable/bg_role_badge"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- ── Rider name ── -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Waiting for"
+            android:textColor="@color/text_hint"
+            android:textSize="13sp"
+            android:layout_gravity="center_horizontal"/>
+
+        <TextView
+            android:id="@+id/tvRiderName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rider"
+            android:textColor="@color/text_primary"
+            android:textSize="26sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="28dp"/>
+
+        <!-- ── Countdown timer ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_stat_card"
+            android:padding="20dp"
+            android:layout_marginBottom="28dp">
+
+            <TextView
+                android:id="@+id/tvTimerLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Wait time remaining"
+                android:textColor="@color/text_hint"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.06"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2:30"
+                android:textColor="@color/brand_primary"
+                android:textSize="48sp"
+                android:fontFamily="sans-serif-medium"/>
+
+        </LinearLayout>
+
+        <!-- ── Contact buttons ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="36dp">
+
+            <!-- Call -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCall"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="📞  Call Rider"
+                android:textColor="@color/success_color"
+                android:textSize="14sp"
+                android:layout_marginEnd="8dp"
+                app:strokeColor="@color/success_color"
+                app:cornerRadius="14dp"/>
+
+            <!-- Message -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMessage"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="💬  Message"
+                android:textColor="@color/brand_primary"
+                android:textSize="14sp"
+                android:layout_marginStart="8dp"
+                app:strokeColor="@color/brand_primary"
+                app:cornerRadius="14dp"/>
+
+        </LinearLayout>
+
+        <!-- ── OTP section ── -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_color"
+            android:alpha="0.5"
+            android:layout_marginBottom="28dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enter Rider OTP"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="6dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ask the rider for the 4-digit code shown in their app"
+            android:textColor="@color/text_hint"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="28dp"/>
+
+        <!-- ── Four OTP boxes ── -->
+        <LinearLayout
+            android:id="@+id/otpContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp">
+
+            <!-- OTP box 1 -->
+            <EditText
+                android:id="@+id/etOtp1"
+                android:layout_width="56dp"
+                android:layout_height="64dp"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:inputType="number"
+                android:maxLength="1"
+                android:background="@drawable/bg_otp_box"
+                android:layout_marginEnd="8dp"
+                android:cursorVisible="false"
+                android:textAlignment="center"/>
+
+            <!-- OTP box 2 -->
+            <EditText
+                android:id="@+id/etOtp2"
+                android:layout_width="56dp"
+                android:layout_height="64dp"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:inputType="number"
+                android:maxLength="1"
+                android:background="@drawable/bg_otp_box"
+                android:layout_marginEnd="8dp"
+                android:cursorVisible="false"
+                android:textAlignment="center"/>
+
+            <!-- OTP box 3 -->
+            <EditText
+                android:id="@+id/etOtp3"
+                android:layout_width="56dp"
+                android:layout_height="64dp"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:inputType="number"
+                android:maxLength="1"
+                android:background="@drawable/bg_otp_box"
+                android:layout_marginEnd="8dp"
+                android:cursorVisible="false"
+                android:textAlignment="center"/>
+
+            <!-- OTP box 4 -->
+            <EditText
+                android:id="@+id/etOtp4"
+                android:layout_width="56dp"
+                android:layout_height="64dp"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:fontFamily="sans-serif-medium"
+                android:inputType="number"
+                android:maxLength="1"
+                android:background="@drawable/bg_otp_box"
+                android:cursorVisible="false"
+                android:textAlignment="center"/>
+
+        </LinearLayout>
+
+        <!-- OTP error message -->
+        <TextView
+            android:id="@+id/tvOtpError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/error_color"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone"/>
+
+        <!-- ── Start Trip button ── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartTrip"
+            style="@style/ChalRide.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:text="Start Trip →"
+            android:textSize="15sp"
+            android:letterSpacing="0.04"
+            android:layout_marginTop="20dp"
+            app:backgroundTint="@color/success_color"
+            app:cornerRadius="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

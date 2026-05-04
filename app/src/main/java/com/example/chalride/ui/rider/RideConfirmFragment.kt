@@ -691,11 +691,17 @@ class RideConfirmFragment : Fragment() {
 
                 FirebaseFirestore.getInstance().collection("rideRequests").add(rideData)
                     .addOnSuccessListener { docRef ->
+                        // AFTER — all 9 fields that RideLiveFragment needs
                         val bundle = Bundle().apply {
                             putString("rideRequestId", docRef.id)
-                            putString("vehicleType", selectedVehicleType)
-                            putDouble("pickupLat", pickupLat)
-                            putDouble("pickupLng", pickupLng)
+                            putString("vehicleType",   selectedVehicleType)
+                            putDouble("pickupLat",     pickupLat)
+                            putDouble("pickupLng",     pickupLng)
+                            putString("pickupAddress", pickupAddress)   // ← added
+                            putDouble("destLat",       destLat)         // ← added
+                            putDouble("destLng",       destLng)         // ← added
+                            putString("destAddress",   destAddress)     // ← added
+                            putInt("estimatedFare",    selectedFare)    // ← added
                         }
                         findNavController().navigate(R.id.action_rideConfirm_to_rideSearching, bundle)
                     }

@@ -1,9 +1,6 @@
 package com.example.chalride.ui.driver
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,15 +13,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentDriverActiveRideBinding
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
@@ -34,67 +26,55 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import androidx.core.graphics.toColorInt
 import java.net.URL
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 
+/**
+ * DriverActiveRideFragment — Overview screen.
+ *
+ * Shows:
+ *  • A locked, non-interactive mini-map with the route drawn between
+ *    pickup and destination (same pattern as RideConfirmFragment).
+ *  • Ride details card (fare, rider name, pickup/destination addresses).
+ *  • A "▲ Navigate" button that opens the turn-by-turn DriverNavigationFragment.
+ *
+ * Trip phases managed here:
+ *   HEADING_TO_PICKUP  → navigate button opens nav to pickup
+ *   ARRIVED_AT_PICKUP  → arrived screen is shown (handled by DriverArrivedPickupFragment)
+ *   IN_PROGRESS        → navigate button opens nav to destination
+ *
+ * This fragment does NOT do GPS tracking itself — it just stores ride context
+ * and lets DriverNavigationFragment do all the driving work.
+ */
 class DriverActiveRideFragment : Fragment() {
 
     private var _binding: FragmentDriverActiveRideBinding? = null
     private val binding get() = _binding!!
 
     // ── Arguments ─────────────────────────────────────────────────────────────
-    private val rideRequestId by lazy { arguments?.getString("rideRequestId") ?: "" }
-    private val riderName     by lazy { arguments?.getString("riderName")     ?: "Rider" }
-    private val pickupLat     by lazy { arguments?.getDouble("pickupLat")     ?: 0.0 }
-    private val pickupLng     by lazy { arguments?.getDouble("pickupLng")     ?: 0.0 }
-    private val destLat       by lazy { arguments?.getDouble("destLat")       ?: 0.0 }
-    private val destLng       by lazy { arguments?.getDouble("destLng")       ?: 0.0 }
-    private val pickupAddress by lazy { arguments?.getString("pickupAddress") ?: "" }
-    private val destAddress   by lazy { arguments?.getString("destAddress")   ?: "" }
-    private val estimatedFare by lazy { arguments?.getInt("estimatedFare")    ?: 0 }
-    private val vehicleType   by lazy { arguments?.getString("vehicleType")   ?: "" }
-    private var isProgrammaticMapMove = false
+    val rideRequestId by lazy { arguments?.getString("rideRequestId") ?: "" }
+    val riderName     by lazy { arguments?.getString("riderName")     ?: "Rider" }
+    val riderPhone    by lazy { arguments?.getString("riderPhone")    ?: "" }
+    val pickupLat     by lazy { arguments?.getDouble("pickupLat")     ?: 0.0 }
+    val pickupLng     by lazy { arguments?.getDouble("pickupLng")     ?: 0.0 }
+    val destLat       by lazy { arguments?.getDouble("destLat")       ?: 0.0 }
+    val destLng       by lazy { arguments?.getDouble("destLng")       ?: 0.0 }
+    val pickupAddress by lazy { arguments?.getString("pickupAddress") ?: "" }
+    val destAddress   by lazy { arguments?.getString("destAddress")   ?: "" }
+    val estimatedFare by lazy { arguments?.getInt("estimatedFare")    ?: 0 }
+    val vehicleType   by lazy { arguments?.getString("vehicleType")   ?: "" }
 
-    // ── Trip phase ────────────────────────────────────────────────────────────
-    private enum class TripPhase { HEADING_TO_PICKUP, ARRIVED_AT_PICKUP, IN_PROGRESS }
-    private var tripPhase = TripPhase.HEADING_TO_PICKUP
+    // Trip phase — kept as companion so navigation fragments can read it
+    var tripPhase = TripPhase.HEADING_TO_PICKUP
 
-    // ── Location ──────────────────────────────────────────────────────────────
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
-    private var currentLocation: GeoPoint? = null
-
-    // ── Map state ─────────────────────────────────────────────────────────────
-    private var driverMarker:  Marker?   = null
-    private var pickupMarker:  Marker?   = null
-    private var destMarker:    Marker?   = null
+    // Map overlays
     private var routePolyline: Polyline? = null
-
-    // Route fetch throttle — same pattern used in DestinationSearchFragment
-    private var routeFetchInProgress = false
-    private var lastRouteUpdateLat   = 0.0
-    private var lastRouteUpdateLng   = 0.0
-    private val ROUTE_UPDATE_THRESHOLD_METERS = 100
-
-    // Map interaction guard — don't auto-zoom after user manually pans
-    private var userIsInteracting  = false
-    private var mapInitialized     = false
-    private var hasZoomedToRoute   = false   // zoom to fit only once per phase
-    private var fragmentReady      = false   // block location callbacks until map is ready
-
-    // Firestore listener for rider cancellation
     private var rideStatusListener: com.google.firebase.firestore.ListenerRegistration? = null
 
-    // Add these new properties at the top of the class, with the other vars:
-    private var markerAnimator: android.animation.ValueAnimator? = null
-    private var lastKnownBearing: Float = 0f
+    private var cachedRoutePoints: ArrayList<GeoPoint>? = null
+    private var cachedRoutePhase: TripPhase? = null
+    private var savedStartLat: Double = 0.0
+    private var savedStartLng: Double = 0.0
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Lifecycle
-    // ─────────────────────────────────────────────────────────────────────────
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -106,49 +86,41 @@ class DriverActiveRideFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Block hardware back during a ride
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { }
+                override fun handleOnBackPressed() { /* block during ride */ }
             }
         )
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-
         initMap()
-        bindStaticData()
-        updatePhaseUI()
-        startLocationUpdates()
+        bindRideDetails()
+        setupClickListeners()
         listenForRiderCancellation()
 
-        binding.fabMyLocation.setOnClickListener {
-            userIsInteracting = false
-            currentLocation?.let {
-                binding.mapView.controller.animateTo(it)
-                binding.mapView.controller.setZoom(16.0)
-            }
+        val restoredPhase = arguments?.getString("tripPhase")
+        when (restoredPhase) {
+            "IN_PROGRESS"       -> tripPhase = TripPhase.IN_PROGRESS
+            "ARRIVED_AT_PICKUP" -> tripPhase = TripPhase.ARRIVED_AT_PICKUP
+            null -> restorePhaseFromFirestore() // App crash recovery — fetch from Firestore
         }
-
-        binding.btnTripAction.setOnClickListener { handleTripAction() }
-
-        // Only start processing location updates after the full layout pass
-        binding.root.post { fragmentReady = true }
-
-        // Zoom into car after 3 seconds regardless of route state
-        binding.root.postDelayed({
-            if (_binding == null || userIsInteracting) return@postDelayed
-            isProgrammaticMapMove = true
-            currentLocation?.let { loc ->
-                binding.mapView.controller.animateTo(loc)
-                binding.mapView.controller.setZoom(17.0)
-            }
-            binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 800L)
-        }, 3000L)
+        updatePhaseUI()
+        if (restoredPhase != null) {
+            binding.mapView.post { fetchLastLocationAndDraw() }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        val restoredPhase = arguments?.getString("tripPhase")
+        if (restoredPhase == "IN_PROGRESS" && tripPhase != TripPhase.IN_PROGRESS) {
+            tripPhase = TripPhase.IN_PROGRESS
+            updatePhaseUI()
+        }
+        // Always redraw on resume — handles returning from DriverNavigationFragment
+        // cachedRoutePoints will prevent an ORS re-fetch if phase hasn't changed
+        binding.mapView.overlays.clear()
+        binding.mapView.post { fetchLastLocationAndDraw() }
     }
 
     override fun onPause() {
@@ -158,63 +130,296 @@ class DriverActiveRideFragment : Fragment() {
 
     override fun onDestroyView() {
         rideStatusListener?.remove()
-        if (::locationCallback.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        }
         super.onDestroyView()
-        markerAnimator?.cancel()
         _binding = null
     }
 
+    private fun fetchLastLocationAndDraw() {
+        android.util.Log.d("CHALRIDE_NAV", "fetchLastLocationAndDraw() called, tripPhase=$tripPhase")
+        android.util.Log.d("CHALRIDE_NAV", "pickupLat=$pickupLat, pickupLng=$pickupLng")
+        android.util.Log.d("CHALRIDE_NAV", "destLat=$destLat, destLng=$destLng")
+
+        val fusedClient = com.google.android.gms.location.LocationServices
+            .getFusedLocationProviderClient(requireContext())
+        try {
+            fusedClient.lastLocation.addOnSuccessListener { location ->
+                if (_binding == null) return@addOnSuccessListener
+                if (location != null) {
+                    android.util.Log.d("CHALRIDE_NAV",
+                        "Driver location fetched: lat=${location.latitude}, lng=${location.longitude}")
+
+                    // Save starting location ONLY once for phase 1 — never overwrite after first save
+                    if (savedStartLat == 0.0 && savedStartLng == 0.0
+                        && tripPhase == TripPhase.HEADING_TO_PICKUP) {
+                        savedStartLat = location.latitude
+                        savedStartLng = location.longitude
+                        android.util.Log.d("CHALRIDE_NAV",
+                            "Saved driver start location: $savedStartLat, $savedStartLng")
+                    }
+
+                    drawOverviewRoute(location.latitude, location.longitude)
+                } else {
+                    android.util.Log.w("CHALRIDE_NAV",
+                        "lastLocation returned NULL — using pickup as fallback from-point")
+                    drawOverviewRoute()
+                }
+            }.addOnFailureListener { e ->
+                android.util.Log.e("CHALRIDE_NAV", "Failed to get location: ${e.message}")
+                drawOverviewRoute()
+            }
+        } catch (e: SecurityException) {
+            android.util.Log.e("CHALRIDE_NAV", "Location permission denied: ${e.message}")
+            drawOverviewRoute()
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Map initialisation
+    // Map — fully locked, no touch, no zoom controls (same as RideConfirmFragment)
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun initMap() {
         Configuration.getInstance().userAgentValue = requireContext().packageName
         binding.mapView.setTileSource(TileSourceFactory.MAPNIK)
-        binding.mapView.setMultiTouchControls(true)
+        binding.mapView.setMultiTouchControls(false)
+        binding.mapView.isClickable = false
+        binding.mapView.isFocusable = false
         binding.mapView.zoomController.setVisibility(
             org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER
         )
-        binding.mapView.controller.setZoom(14.0)
-        binding.mapView.controller.setCenter(GeoPoint(pickupLat, pickupLng))
+        binding.mapView.setOnTouchListener { _, _ -> true }
 
-        // Place static pickup + destination markers immediately so the user
-        // always sees where they are going even before the route loads
-        placeStaticMarker(GeoPoint(pickupLat, pickupLng), isPickup = true)
-        placeStaticMarker(GeoPoint(destLat, destLng),    isPickup = false)
-
-        // Detect user manual pan/zoom → stop auto-centering
-        binding.mapView.addMapListener(object : org.osmdroid.events.MapListener {
-            override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                if (mapInitialized && !isProgrammaticMapMove) userIsInteracting = true
-                return false
-            }
-            override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                if (mapInitialized && !isProgrammaticMapMove) userIsInteracting = true
-                return false
-            }
-        })
-
-        binding.mapView.post { mapInitialized = true }
+        val midLat = (pickupLat + destLat) / 2.0
+        val midLng = (pickupLng + destLng) / 2.0
+        binding.mapView.controller.setCenter(GeoPoint(midLat, midLng))
+        binding.mapView.controller.setZoom(12.0)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Static pickup / destination markers
-    // ─────────────────────────────────────────────────────────────────────────
+    private fun drawOverviewRoute(driverLat: Double = 0.0, driverLng: Double = 0.0) {
+        binding.btnNavigate.visibility = View.GONE
+        routePolyline?.let { binding.mapView.overlays.remove(it) }
+        routePolyline = null
 
-    private fun placeStaticMarker(geoPoint: GeoPoint, isPickup: Boolean) {
+        // Cache check
+        if (cachedRoutePoints != null && cachedRoutePhase == tripPhase) {
+            android.util.Log.d("CHALRIDE_NAV", "Using cached route for phase=$tripPhase")
+            redrawCachedRoute()
+            return
+        }
+
+        val from: GeoPoint
+        val to: GeoPoint
+        if (tripPhase == TripPhase.IN_PROGRESS) {
+            from = GeoPoint(pickupLat, pickupLng)
+            to   = GeoPoint(destLat,   destLng)
+            android.util.Log.d("CHALRIDE_NAV",
+                "Phase IN_PROGRESS: from=($pickupLat,$pickupLng) to=($destLat,$destLng)")
+        } else {
+            // Always use the SAVED starting location for phase 1 preview
+            // This never changes even as driver moves toward pickup
+            val useLat = if (savedStartLat != 0.0) savedStartLat else driverLat
+            val useLng = if (savedStartLng != 0.0) savedStartLng else driverLng
+            val hasLoc = useLat != 0.0 && useLng != 0.0
+            from = if (hasLoc) GeoPoint(useLat, useLng)
+            else GeoPoint(pickupLat, pickupLng)
+            to   = GeoPoint(pickupLat, pickupLng)
+            android.util.Log.d("CHALRIDE_NAV",
+                "Phase HEADING_TO_PICKUP: using saved start loc=$hasLoc " +
+                        "from=(${from.latitude},${from.longitude}) to=(${to.latitude},${to.longitude})")
+        }
+
+        // Guard: if from == to (both are 0,0 fallback to same point), skip ORS
+        if (from.latitude == to.latitude && from.longitude == to.longitude) {
+            android.util.Log.e("CHALRIDE_NAV",
+                "from and to are identical — cannot draw route. Check arguments.")
+            return
+        }
+
+        placeMarker(from, isPickup = true)
+        placeMarker(to,   isPickup = false)
+
+        val apiKey = try {
+            getString(R.string.ors_api_key).trim()
+        } catch (e: Exception) {
+            android.util.Log.e("CHALRIDE_NAV", "ORS API key missing: ${e.message}")
+            ""
+        }
+
+        android.util.Log.d("CHALRIDE_NAV",
+            "ORS API key present: ${apiKey.isNotEmpty()}, length=${apiKey.length}")
+
+        lifecycleScope.launch {
+            try {
+                val points = withContext(Dispatchers.IO) {
+                    val url = "https://api.openrouteservice.org/v2/directions/driving-car" +
+                            "?start=${from.longitude},${from.latitude}" +
+                            "&end=${to.longitude},${to.latitude}" +
+                            "&radiuses=2000%7C2000"
+                    val conn = URL(url).openConnection() as java.net.HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.setRequestProperty("Accept", "application/geo+json")
+                    conn.setRequestProperty("Authorization", apiKey)
+                    conn.connectTimeout = 10_000
+                    conn.readTimeout    = 10_000
+                    conn.connect()
+                    if (conn.responseCode != 200) { conn.disconnect(); return@withContext null }
+                    val json     = org.json.JSONObject(conn.inputStream.bufferedReader().readText())
+                    conn.disconnect()
+                    val features = json.getJSONArray("features")
+                    if (features.length() == 0) return@withContext null
+                    val coords = features.getJSONObject(0)
+                        .getJSONObject("geometry").getJSONArray("coordinates")
+                    ArrayList<GeoPoint>(coords.length()).also { list ->
+                        for (i in 0 until coords.length()) {
+                            val c = coords.getJSONArray(i)
+                            list.add(GeoPoint(c.getDouble(1), c.getDouble(0)))
+                        }
+                    }
+                }
+
+                if (_binding == null) return@launch
+                val routePoints = points ?: arrayListOf(from, to)
+
+                cachedRoutePoints = routePoints
+                cachedRoutePhase = tripPhase
+
+                // Shadow layer
+                val shadow = Polyline().apply {
+                    setPoints(routePoints)
+                    outlinePaint.color       = "#441A1560".toColorInt()
+                    outlinePaint.strokeWidth = 13f
+                    outlinePaint.strokeCap   = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.isAntiAlias = true
+                }
+                // Main line
+                routePolyline = Polyline().apply {
+                    setPoints(routePoints)
+                    outlinePaint.color       = "#6C63FF".toColorInt()
+                    outlinePaint.strokeWidth = 7f
+                    outlinePaint.strokeCap   = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.strokeJoin  = android.graphics.Paint.Join.ROUND
+                    outlinePaint.isAntiAlias = true
+                }
+
+                binding.mapView.overlays.add(0, shadow)
+                binding.mapView.overlays.add(1, routePolyline)
+                binding.mapView.invalidate()
+
+                // Zoom to fit with asymmetric padding (bottom sheet covers lower area)
+                val bbox = org.osmdroid.util.BoundingBox.fromGeoPoints(routePoints)
+                binding.mapView.post {
+                    val latSpan = bbox.latNorth - bbox.latSouth
+                    val lonSpan = bbox.lonEast  - bbox.lonWest
+                    val paddedBox = org.osmdroid.util.BoundingBox(
+                        bbox.latNorth + latSpan * 0.12,
+                        bbox.lonEast  + lonSpan * 0.12,
+                        bbox.latSouth - latSpan * 0.50,   // more bottom padding for sheet
+                        bbox.lonWest  - lonSpan * 0.12
+                    )
+                    binding.mapView.zoomToBoundingBox(paddedBox, true)
+                    binding.mapView.invalidate()
+                }
+
+                // Show Navigate button with a pop-in animation after route is drawn
+                delay(600)
+                if (_binding == null) return@launch
+                showNavigateButton()
+
+            } catch (e: Exception) {
+                android.util.Log.e("CHALRIDE_NAV", "drawOverviewRoute outer exception: ${e.message}", e)
+                // Do NOT show dotted line — just log. User stays on screen, can retry.
+            }
+        }
+    }
+
+    private fun restorePhaseFromFirestore() {
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests").document(rideRequestId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener
+                val savedPhase = doc.getString("tripPhase") ?: "HEADING_TO_PICKUP"
+                tripPhase = when (savedPhase) {
+                    "IN_PROGRESS"       -> TripPhase.IN_PROGRESS
+                    "ARRIVED_AT_PICKUP" -> TripPhase.ARRIVED_AT_PICKUP
+                    else                -> TripPhase.HEADING_TO_PICKUP
+                }
+                updatePhaseUI()
+                binding.mapView.post { fetchLastLocationAndDraw() }
+            }
+    }
+
+    private fun redrawCachedRoute() {
+        val points = cachedRoutePoints ?: return
+
+        // Re-place markers first — they were cleared in onResume
+        val from: GeoPoint
+        val to: GeoPoint
+        if (tripPhase == TripPhase.IN_PROGRESS) {
+            from = GeoPoint(pickupLat, pickupLng)
+            to   = GeoPoint(destLat, destLng)
+        } else {
+            val useLat = if (savedStartLat != 0.0) savedStartLat else pickupLat
+            val useLng = if (savedStartLng != 0.0) savedStartLng else pickupLng
+            from = GeoPoint(useLat, useLng)
+            to   = GeoPoint(pickupLat, pickupLng)
+        }
+        placeMarker(from, isPickup = true)
+        placeMarker(to, isPickup = false)
+
+        // Re-draw route lines
+        val shadow = Polyline().apply {
+            setPoints(points)
+            outlinePaint.color = "#441A1560".toColorInt()
+            outlinePaint.strokeWidth = 13f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+            outlinePaint.isAntiAlias = true
+        }
+        routePolyline = Polyline().apply {
+            setPoints(points)
+            outlinePaint.color = "#6C63FF".toColorInt()
+            outlinePaint.strokeWidth = 7f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+            outlinePaint.isAntiAlias = true
+        }
+        binding.mapView.overlays.add(0, shadow)
+        binding.mapView.overlays.add(1, routePolyline)
+
+        // Re-zoom to fit bounding box
+        val bbox = org.osmdroid.util.BoundingBox.fromGeoPoints(points)
+        binding.mapView.post {
+            val latSpan = bbox.latNorth - bbox.latSouth
+            val lonSpan = bbox.lonEast  - bbox.lonWest
+            val paddedBox = org.osmdroid.util.BoundingBox(
+                bbox.latNorth + latSpan * 0.12,
+                bbox.lonEast  + lonSpan * 0.12,
+                bbox.latSouth - latSpan * 0.50,
+                bbox.lonWest  - lonSpan * 0.12
+            )
+            binding.mapView.zoomToBoundingBox(paddedBox, true)
+            binding.mapView.invalidate()
+        }
+
+        lifecycleScope.launch {
+            delay(400)
+            if (_binding != null) showNavigateButton()
+        }
+    }
+
+    private fun placeMarker(geoPoint: GeoPoint, isPickup: Boolean) {
         val marker = Marker(binding.mapView).apply {
             position = geoPoint
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             infoWindow = null
             title = null
             try {
-                val res = if (isPickup) R.drawable.ic_pickup_marker
-                else R.drawable.ic_destination_marker
-                val sizePx = ((if (isPickup) 28 else 24) *
-                        resources.displayMetrics.density).toInt()
+                // isPickup=true means this is the FROM point (driver's start location)
+                // isPickup=false means this is the TO point (pickup in phase1, dest in phase2)
+                val res = when {
+                    isPickup -> R.drawable.white_bg_driver_blue_arrow_icon      // always driver icon for FROM
+                    tripPhase == TripPhase.IN_PROGRESS -> R.drawable.ic_destination_marker  // red dest
+                    else -> R.drawable.ic_pickup_marker                // green pickup for phase1 TO
+                }
+                val sizePx = (38 * resources.displayMetrics.density).toInt() // increased from 20
                 icon = ContextCompat.getDrawable(requireContext(), res)?.let { d ->
                     val bmp = createBitmap(sizePx, sizePx)
                     val cvs = android.graphics.Canvas(bmp)
@@ -226,463 +431,120 @@ class DriverActiveRideFragment : Fragment() {
             setOnMarkerClickListener { _, _ -> true }
         }
         binding.mapView.overlays.add(marker)
-        if (isPickup) pickupMarker = marker else destMarker = marker
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Driver car marker
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun placeOrMoveDriverMarker(newGeoPoint: GeoPoint) {
-        if (_binding == null) return
-
-        if (driverMarker == null) {
-            // First time — just place it
-            driverMarker = Marker(binding.mapView).apply {
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                infoWindow = null
-                title = null
-                try {
-                    val sizePx = (40 * resources.displayMetrics.density).toInt()
-                    icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_driver_car)
-                        ?.let { d ->
-                            val bmp = createBitmap(sizePx, sizePx)
-                            val cvs = android.graphics.Canvas(bmp)
-                            d.setBounds(0, 0, sizePx, sizePx)
-                            d.draw(cvs)
-                            bmp.toDrawable(resources)
-                        }
-                } catch (_: Exception) { }
-                position = newGeoPoint
-                binding.mapView.overlays.add(this)
-            }
-            binding.mapView.invalidate()
-            return
-        }
-
-        // Smooth interpolation from old position to new position
-        val startLat = driverMarker!!.position.latitude
-        val startLng = driverMarker!!.position.longitude
-        val endLat   = newGeoPoint.latitude
-        val endLng   = newGeoPoint.longitude
-
-        // Calculate bearing for rotation
-        val dLng = Math.toRadians(endLng - startLng)
-        val lat1  = Math.toRadians(startLat)
-        val lat2  = Math.toRadians(endLat)
-        val y = sin(dLng) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLng)
-        val bearing = ((Math.toDegrees(atan2(y, x)) + 360) % 360).toFloat()
-        if (endLat != startLat || endLng != startLng) lastKnownBearing = bearing
-
-        markerAnimator?.cancel()
-        markerAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 1000L  // smooth over 1 second — matches your location update interval
-            interpolator = android.view.animation.LinearInterpolator()
-            addUpdateListener { animator ->
-                if (_binding == null) return@addUpdateListener
-                val t = animator.animatedValue as Float
-                val lat = startLat + (endLat - startLat) * t
-                val lng = startLng + (endLng - startLng) * t
-                driverMarker?.position = GeoPoint(lat, lng)
-                driverMarker?.rotation = (360f - lastKnownBearing)
-                binding.mapView.invalidate()
-            }
-            start()
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Route drawing — same proven pattern as DestinationSearchFragment
-    // Key rule: read API key on main thread, then do ALL network in IO
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun drawRoute(from: GeoPoint, to: GeoPoint) {
-        if (routeFetchInProgress) return
-
-        // Read API key on main thread — safe, avoids thread issues on MIUI
-        val apiKey = try {
-            getString(R.string.ors_api_key).trim()
-        } catch (e: Exception) {
-            android.util.Log.e("ROUTE", "Cannot read API key: ${e.message}")
-            return
-        }
-        if (apiKey.isBlank()) {
-            android.util.Log.e("ROUTE", "ors_api_key is blank")
-            return
-        }
-
-        routeFetchInProgress = true
-        android.util.Log.d("ROUTE", "Fetching route from driver to target")
-
-        lifecycleScope.launch {
-            try {
-                // ALL network work stays inside Dispatchers.IO — same as DestinationSearchFragment
-                val routePoints = withContext(Dispatchers.IO) {
-                    val url = "https://api.openrouteservice.org/v2/directions/driving-car" +
-                            "?start=${from.longitude},${from.latitude}" +
-                            "&end=${to.longitude},${to.latitude}" +
-                            "&radiuses=2000%7C2000"
-
-                    val conn = URL(url).openConnection() as java.net.HttpURLConnection
-                    conn.requestMethod = "GET"
-                    conn.setRequestProperty("Accept", "application/geo+json")
-                    conn.setRequestProperty("Authorization", apiKey)
-                    conn.connectTimeout = 10_000
-                    conn.readTimeout    = 10_000
-                    conn.connect()
-
-                    val code = conn.responseCode
-                    if (code != 200) {
-                        val err = conn.errorStream?.bufferedReader()?.readText()
-                        android.util.Log.e("ROUTE", "HTTP $code → $err")
-                        conn.disconnect()
-                        return@withContext null
-                    }
-
-                    val json   = org.json.JSONObject(conn.inputStream.bufferedReader().readText())
-                    conn.disconnect()
-
-                    val features = json.getJSONArray("features")
-                    if (features.length() == 0) return@withContext null
-
-                    val coords = features.getJSONObject(0)
-                        .getJSONObject("geometry")
-                        .getJSONArray("coordinates")
-
-                    ArrayList<GeoPoint>(coords.length()).also { list ->
-                        for (i in 0 until coords.length()) {
-                            val c = coords.getJSONArray(i)
-                            list.add(GeoPoint(c.getDouble(1), c.getDouble(0)))
-                        }
-                    }
-                }
-
-                if (_binding == null) return@launch
-                if (routePoints == null || routePoints.isEmpty()) return@launch
-
-                // Remove old polyline
-                routePolyline?.let { binding.mapView.overlays.remove(it) }
-
-                // Draw new polyline
-                routePolyline = Polyline().apply {
-                    setPoints(routePoints)
-                    outlinePaint.color       = "#4A80F0".toColorInt()
-                    outlinePaint.strokeWidth = 10f
-                    outlinePaint.strokeCap   = android.graphics.Paint.Cap.ROUND
-                    outlinePaint.strokeJoin  = android.graphics.Paint.Join.ROUND
-                    outlinePaint.isAntiAlias = true
-                }
-                // Insert at index 0 so route is behind markers
-                binding.mapView.overlays.add(0, routePolyline)
-                binding.mapView.invalidate()
-
-                // Zoom to fit — only on first draw per phase, same logic as DestinationSearchFragment
-                if (!hasZoomedToRoute && !userIsInteracting) {
-                    hasZoomedToRoute = true
-                    // Show full route overview first for 2.5 seconds, then zoom into car
-                    val allPoints = ArrayList<GeoPoint>().apply {
-                        add(from)
-                        addAll(routePoints)
-                        add(to)
-                    }
-                    zoomToFitRouteInSafeArea(allPoints)
-
-                    // After overview, zoom into driver for navigation mode
-                    binding.mapView.postDelayed({
-                        if (_binding == null || userIsInteracting) return@postDelayed
-                        isProgrammaticMapMove = true
-                        currentLocation?.let { loc ->
-                            binding.mapView.controller.animateTo(loc)
-                            binding.mapView.controller.setZoom(17.0)
-                        }
-                        binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 800L)
-                    }, 2500L)
-                }
-
-            } catch (e: Exception) {
-                android.util.Log.e("ROUTE", "drawRoute exception: ${e.message}")
-            } finally {
-                routeFetchInProgress = false
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Zoom to fit route inside the visible area (between top card & bottom sheet)
-    // Adapted from DestinationSearchFragment.zoomToFitRouteInSafeArea()
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun zoomToFitRouteInSafeArea(routePoints: ArrayList<GeoPoint>) {
-        binding.mapView.post {
-            val mapView = binding.mapView
-            val mapH = mapView.height
-            val mapW = mapView.width
-            if (mapH == 0 || mapW == 0 || routePoints.isEmpty()) return@post
-
-            val box = org.osmdroid.util.BoundingBox.fromGeoPoints(routePoints)
-            val mapPos  = IntArray(2).also { mapView.getLocationOnScreen(it) }
-            val cardPos = IntArray(2).also { binding.cardStatus.getLocationOnScreen(it) }
-            val sheetPos = IntArray(2).also { binding.bottomSheet.getLocationOnScreen(it) }
-
-            val extraBuffer = maxOf(80, (mapH * 0.08).toInt())
-            val topOccluded = ((cardPos[1] + binding.cardStatus.height) - mapPos[1] + extraBuffer)
-                .coerceIn(0, mapH / 2)
-            val botOccluded = ((mapPos[1] + mapH) - sheetPos[1] + extraBuffer)
-                .coerceIn(0, mapH / 2)
-            val sidePadPx = 60
-
-            val origLatSpan = (box.latNorth - box.latSouth).coerceAtLeast(0.001)
-            val origLonSpan = (box.lonEast  - box.lonWest).coerceAtLeast(0.001)
-            val routeLatCenter = (box.latNorth + box.latSouth) / 2.0
-            val routeLonCenter = (box.lonEast  + box.lonWest)  / 2.0
-
-            val safeH = (mapH - topOccluded - botOccluded).coerceAtLeast(100)
-            val safeW = (mapW - 2 * sidePadPx).coerceAtLeast(100)
-
-            val newLatSpan = origLatSpan * (mapH.toDouble() / safeH.toDouble())
-            val newLonSpan = origLonSpan * (mapW.toDouble() / safeW.toDouble())
-
-            val safeCenterOffsetPx = (topOccluded - botOccluded) / 2.0
-            val latCenterShift = safeCenterOffsetPx / mapH.toDouble() * newLatSpan
-            val adjustedLatCenter = routeLatCenter + latCenterShift
-
-            val expandedBox = org.osmdroid.util.BoundingBox(
-                adjustedLatCenter + newLatSpan / 2.0,
-                routeLonCenter    + newLonSpan / 2.0,
-                adjustedLatCenter - newLatSpan / 2.0,
-                routeLonCenter    - newLonSpan / 2.0
-            )
-
-            // Mark as programmatic so map listener doesn't set userIsInteracting = true
-            isProgrammaticMapMove = true
-            mapView.zoomToBoundingBox(expandedBox, true, 0)
-            mapView.postDelayed({ isProgrammaticMapMove = false }, 500L)
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Static data binding
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun bindStaticData() {
-        binding.tvRiderName.text     = riderName
-        binding.tvFare.text          = "₹$estimatedFare"
-        binding.tvVehicleType.text   = vehicleType.replaceFirstChar { it.uppercase() }
-        binding.tvPickupAddress.text = pickupAddress
-        binding.tvDestAddress.text   = destAddress
-        binding.tvCurrentTarget.text = pickupAddress
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Trip phase UI
+    // UI helpers
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun updatePhaseUI() {
         when (tripPhase) {
             TripPhase.HEADING_TO_PICKUP -> {
-                binding.tvTripStatus.text    = "HEADING TO PICKUP"
+                binding.tvPhaseLabel.text    = "HEADING TO PICKUP"
+                binding.tvPhaseLabel.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.brand_primary)
+                )
                 binding.tvCurrentTarget.text = pickupAddress
-                binding.btnTripAction.text   = "Arrived at Pickup"
-                binding.btnTripAction.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(
-                        ContextCompat.getColor(requireContext(), R.color.brand_primary)
-                    )
+                binding.btnNavigate.text     = "▲  Navigate to Pickup"
             }
             TripPhase.ARRIVED_AT_PICKUP -> {
-                binding.tvTripStatus.text    = "WAITING FOR RIDER"
-                binding.tvCurrentTarget.text = "Rider is on their way to you"
-                binding.btnTripAction.text   = "Start Trip"
-                binding.btnTripAction.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(
-                        ContextCompat.getColor(requireContext(), R.color.success_color)
-                    )
+                // Navigate immediately to arrived screen
+                val bundle = Bundle().apply {
+                    putString("rideRequestId", rideRequestId)
+                    putString("riderName",     riderName)
+                    putString("riderPhone",    riderPhone)
+                    putDouble("pickupLat",     pickupLat)
+                    putDouble("pickupLng",     pickupLng)
+                    putDouble("destLat",       destLat)
+                    putDouble("destLng",       destLng)
+                    putString("pickupAddress", pickupAddress)
+                    putString("destAddress",   destAddress)
+                    putInt("estimatedFare",    estimatedFare)
+                    putString("vehicleType",   vehicleType)
+                }
+                findNavController().navigate(
+                    R.id.action_driverActiveRide_to_driverArrivedPickup, bundle
+                )
             }
             TripPhase.IN_PROGRESS -> {
-                binding.tvTripStatus.text    = "TRIP IN PROGRESS"
+                binding.tvPhaseLabel.text    = "TRIP IN PROGRESS"
+                binding.tvPhaseLabel.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.success_color)
+                )
                 binding.tvCurrentTarget.text = destAddress
-                binding.btnTripAction.text   = "Complete Trip"
-                binding.btnTripAction.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(
-                        ContextCompat.getColor(requireContext(), R.color.driver_color)
-                    )
+                binding.btnNavigate.text     = "▲  Navigate to Destination"
             }
         }
     }
 
+    private fun showNavigateButton() {
+        binding.btnNavigate.visibility = View.VISIBLE
+        binding.btnNavigate.scaleX = 0.8f
+        binding.btnNavigate.scaleY = 0.8f
+        binding.btnNavigate.alpha  = 0f
+        binding.btnNavigate.animate()
+            .scaleX(1f).scaleY(1f).alpha(1f)
+            .setDuration(300)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+            .start()
+    }
+
+    private fun bindRideDetails() {
+        binding.tvRiderName.text     = riderName
+        binding.tvFare.text          = "₹$estimatedFare"
+        binding.tvVehicleType.text   = vehicleType.replaceFirstChar { it.uppercase() }
+        binding.tvPickupAddress.text = pickupAddress
+        binding.tvDestAddress.text   = destAddress
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
-    // Trip phase button handler
+    // Click listeners
     // ─────────────────────────────────────────────────────────────────────────
 
-    private fun handleTripAction() {
-        userIsInteracting = false   // ← ADD THIS LINE at the very top
-        when (tripPhase) {
-            TripPhase.HEADING_TO_PICKUP -> {
-                tripPhase = TripPhase.ARRIVED_AT_PICKUP
-                userIsInteracting = false
-                updatePhaseUI()
-                updateFirestoreStatus("arrived_at_pickup")
+    private fun setupClickListeners() {
+        binding.btnNavigate.setOnClickListener {
+            // Open the turn-by-turn navigation fragment
+            val targetLat: Double
+            val targetLng: Double
+            val targetAddress: String
+            val phase: String
+
+            if (tripPhase == TripPhase.IN_PROGRESS) {
+                targetLat     = destLat
+                targetLng     = destLng
+                targetAddress = destAddress
+                phase         = "IN_PROGRESS"
+            } else {
+                targetLat     = pickupLat
+                targetLng     = pickupLng
+                targetAddress = pickupAddress
+                phase         = "HEADING_TO_PICKUP"
             }
-            TripPhase.ARRIVED_AT_PICKUP -> {
-                tripPhase = TripPhase.IN_PROGRESS
-                // Reset zoom so map re-fits the new route (driver → destination)
-                hasZoomedToRoute  = false
-                userIsInteracting = false
-                // Clear the old route line immediately
-                routePolyline?.let { binding.mapView.overlays.remove(it) }
-                routePolyline = null
-                updatePhaseUI()
-                updateFirestoreStatus("in_progress")
-                // Draw route from current driver location to destination
-                currentLocation?.let { loc ->
-                    isProgrammaticMapMove = false  // ensure clean state for new phase
-                    drawRoute(loc, GeoPoint(destLat, destLng))
-                }
+
+            val bundle = Bundle().apply {
+                putString("rideRequestId", rideRequestId)
+                putString("riderName",     riderName)
+                putString("riderPhone",    riderPhone)
+                putDouble("targetLat",     targetLat)
+                putDouble("targetLng",     targetLng)
+                putString("targetAddress", targetAddress)
+                putDouble("pickupLat",     pickupLat)
+                putDouble("pickupLng",     pickupLng)
+                putDouble("destLat",       destLat)
+                putDouble("destLng",       destLng)
+                putString("pickupAddress", pickupAddress)
+                putString("destAddress",   destAddress)
+                putInt("estimatedFare",    estimatedFare)
+                putString("vehicleType",   vehicleType)
+                putString("tripPhase",     phase)
             }
-            TripPhase.IN_PROGRESS -> {
-                completeTrip()
-            }
+            findNavController().navigate(R.id.action_driverActiveRide_to_driverNavigation, bundle)
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Location updates
+    // Rider cancellation listener
     // ─────────────────────────────────────────────────────────────────────────
-
-    private fun startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) return
-
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY, 4000L
-        ).setMinUpdateIntervalMillis(2000L).build()
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                // Don't process any updates until the map is fully ready
-                if (!fragmentReady || _binding == null) return
-
-                val location = result.lastLocation ?: return
-                val geoPoint = GeoPoint(location.latitude, location.longitude)
-                currentLocation = geoPoint
-
-                // Mark zoom as done after first location fix so camera-follow activates
-                if (!hasZoomedToRoute) {
-                    binding.root.postDelayed({
-                        if (_binding != null) hasZoomedToRoute = true
-                    }, 3500L)  // slightly after the zoom-in postDelayed above
-                }
-
-                // Move driver car icon
-                placeOrMoveDriverMarker(geoPoint)
-
-                // Update distance/ETA label
-                updateDistanceLabel(geoPoint)
-
-                // Auto-arrive detection
-                checkArrival(geoPoint)
-
-                // Decide which target we're routing to
-                val target = when (tripPhase) {
-                    TripPhase.HEADING_TO_PICKUP -> GeoPoint(pickupLat, pickupLng)
-                    TripPhase.IN_PROGRESS       -> GeoPoint(destLat, destLng)
-                    else                        -> null
-                } ?: return
-
-                // Re-fetch route only after driver moves ROUTE_UPDATE_THRESHOLD_METERS
-                val movedEnough = haversineDistance(
-                    geoPoint.latitude, geoPoint.longitude,
-                    lastRouteUpdateLat, lastRouteUpdateLng
-                ) * 1000 > ROUTE_UPDATE_THRESHOLD_METERS
-
-                if (movedEnough || (lastRouteUpdateLat == 0.0 && lastRouteUpdateLng == 0.0)) {
-                    lastRouteUpdateLat = geoPoint.latitude
-                    lastRouteUpdateLng = geoPoint.longitude
-                    drawRoute(geoPoint, target)
-                }
-
-                // Gently follow driver on map (only if user hasn't manually panned)
-                if (!userIsInteracting && hasZoomedToRoute) {
-                    isProgrammaticMapMove = true
-                    binding.mapView.controller.animateTo(geoPoint)
-                    binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 600L)
-                }
-            }
-        }
-
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest, locationCallback, Looper.getMainLooper()
-        )
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Distance / ETA label
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun updateDistanceLabel(driverLocation: GeoPoint) {
-        val targetLat = if (tripPhase == TripPhase.IN_PROGRESS) destLat else pickupLat
-        val targetLng = if (tripPhase == TripPhase.IN_PROGRESS) destLng else pickupLng
-        val distKm = haversineDistance(
-            driverLocation.latitude, driverLocation.longitude,
-            targetLat, targetLng
-        )
-        val minutes = (distKm / 30.0) * 60
-        binding.tvDistanceToPickup.text =
-            "${String.format("%.1f", distKm)} km • ${minutes.toInt()} min"
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Auto-arrival detection
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun checkArrival(driverLoc: GeoPoint) {
-        if (tripPhase != TripPhase.HEADING_TO_PICKUP) return
-        val distanceMeters = driverLoc.distanceToAsDouble(GeoPoint(pickupLat, pickupLng))
-        if (distanceMeters < 50) {
-            tripPhase = TripPhase.ARRIVED_AT_PICKUP
-            updatePhaseUI()
-            updateFirestoreStatus("arrived_at_pickup")
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Firestore helpers
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun updateFirestoreStatus(status: String) {
-        FirebaseFirestore.getInstance()
-            .collection("rideRequests")
-            .document(rideRequestId)
-            .update("status", status)
-    }
-
-    private fun completeTrip() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        FirebaseFirestore.getInstance()
-            .collection("rideRequests")
-            .document(rideRequestId)
-            .update(mapOf(
-                "status"      to "completed",
-                "completedAt" to System.currentTimeMillis()
-            ))
-
-        FirebaseFirestore.getInstance()
-            .collection("drivers")
-            .document(uid)
-            .update(// Replace with:
-                mapOf(
-                    "isAvailable"  to true,
-                    "isOnline"     to true,
-                    "activeRideId" to null,
-                    "earnings"     to com.google.firebase.firestore.FieldValue.increment(estimatedFare.toLong()),
-                    "totalTrips"   to com.google.firebase.firestore.FieldValue.increment(1)
-                ))
-
-        findNavController().navigate(R.id.action_driverActiveRide_to_driverHome)
-    }
 
     private fun listenForRiderCancellation() {
         rideStatusListener = FirebaseFirestore.getInstance()
@@ -701,19 +563,5 @@ class DriverActiveRideFragment : Fragment() {
                     findNavController().navigate(R.id.action_driverActiveRide_to_driverHome)
                 }
             }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Haversine
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private fun haversineDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
-        val r = 6371.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLng = Math.toRadians(lng2 - lng1)
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLng / 2) * sin(dLng / 2)
-        return r * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 }

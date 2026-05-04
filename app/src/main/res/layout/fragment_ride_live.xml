@@ -1,7 +1,270 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
-</androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Full screen map — takes ~60% of screen -->
+    <org.osmdroid.views.MapView
+        android:id="@+id/mapView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- Top scrim gradient over map -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:background="@drawable/bg_map_top_scrim"
+        android:layout_gravity="top"/>
+
+    <!-- Status pill — floats over map at top -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="20dp"
+        android:elevation="16dp"
+        app:cardBackgroundColor="#E60F0F1A"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="12dp">
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Driver is heading to you"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="10dp"/>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- OTP Card — centered over map, revealed on arrival -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardOtp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="28dp"
+        android:layout_marginBottom="260dp"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="24dp"
+        app:cardBackgroundColor="@color/bg_card"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingHorizontal="28dp"
+            android:paddingVertical="28dp">
+
+            <!-- Lock icon row -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔐"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="6dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RIDE OTP"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="10sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.16"/>
+
+            </LinearLayout>
+
+            <!-- 4-digit OTP in large spaced text -->
+            <TextView
+                android:id="@+id/tvOtpCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0000"
+                android:textColor="@color/text_primary"
+                android:textSize="52sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.25"
+                android:layout_marginBottom="10dp"/>
+
+            <View
+                android:layout_width="60dp"
+                android:layout_height="2dp"
+                android:background="@color/brand_primary"
+                android:alpha="0.4"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Share this code with your driver"
+                android:textColor="@color/text_hint"
+                android:textSize="12sp"
+                android:gravity="center"/>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Bottom details sheet -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_ride_confirm_sheet"
+        android:elevation="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="36dp">
+
+            <!-- Drag handle -->
+            <View
+                android:layout_width="36dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/bg_drag_handle"/>
+
+            <!-- Driver info row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="24dp"
+                android:layout_marginBottom="20dp">
+
+                <!-- Avatar circle -->
+                <TextView
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_driver_avatar_inner"
+                    android:gravity="center"
+                    android:text="🚗"
+                    android:textSize="22sp"
+                    android:layout_marginEnd="14dp"/>
+
+                <!-- Name + vehicle -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvDriverName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Driver"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <TextView
+                        android:id="@+id/tvVehicleType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_hint"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"/>
+
+                </LinearLayout>
+
+                <!-- Safety badge -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="#1A6C63FF"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🛡️"
+                            android:textSize="12sp"
+                            android:layout_marginEnd="4dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Safe"
+                            android:textColor="@color/brand_primary"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"
+                android:alpha="0.3"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- OTP waiting hint — shown before OTP arrives -->
+            <LinearLayout
+                android:id="@+id/layoutOtpHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⏳"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OTP will appear when driver arrives"
+                    android:textColor="@color/text_hint"
+                    android:textSize="12sp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

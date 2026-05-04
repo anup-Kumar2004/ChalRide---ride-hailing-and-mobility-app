@@ -147,11 +147,16 @@ class RideSearchingFragment : Fragment() {
 
                         val bundle = Bundle().apply {
                             putString("rideRequestId", rideRequestId)
-                            putString("driverId", driverId)
-                            putString("driverName", driverName)
-                            putString("vehicleType", vehicleType)
-                            putDouble("pickupLat", arguments?.getDouble("pickupLat") ?: 0.0)
-                            putDouble("pickupLng", arguments?.getDouble("pickupLng") ?: 0.0)
+                            putString("driverId",      driverId)
+                            putString("driverName",    driverName)
+                            putString("vehicleType",   vehicleType)
+                            putDouble("pickupLat",     arguments?.getDouble("pickupLat")     ?: 0.0)
+                            putDouble("pickupLng",     arguments?.getDouble("pickupLng")     ?: 0.0)
+                            putDouble("destLat",       arguments?.getDouble("destLat")       ?: 0.0)
+                            putDouble("destLng",       arguments?.getDouble("destLng")       ?: 0.0)
+                            putString("pickupAddress", arguments?.getString("pickupAddress") ?: "")
+                            putString("destAddress",   arguments?.getString("destAddress")   ?: "")
+                            putInt("estimatedFare",    arguments?.getInt("estimatedFare")    ?: 0)
                         }
                         findNavController().navigate(
                             R.id.action_rideSearching_to_rideLive,

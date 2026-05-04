@@ -6,27 +6,28 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Full screen map -->
+    <!-- ── Locked mini-map (top ~55% of screen) ── -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <!-- Top scrim -->
+    <!-- Top scrim gradient -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="80dp"
         android:background="@drawable/bg_map_top_scrim"
         android:layout_gravity="top"/>
 
-    <!-- Top status card -->
+    <!-- Top label card -->
     <androidx.cardview.widget.CardView
-        android:id="@+id/cardStatus"
+        android:id="@+id/cardTopLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="top"
         android:layout_margin="12dp"
         app:cardBackgroundColor="#EE0F0F1A"
-        app:cardCornerRadius="18dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="10dp">
 
         <LinearLayout
@@ -34,77 +35,51 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingVertical="14dp">
+            android:paddingVertical="12dp">
 
-            <!-- Status label -->
             <TextView
-                android:id="@+id/tvTripStatus"
+                android:id="@+id/tvPhaseLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="HEADING TO PICKUP"
                 android:textColor="@color/brand_primary"
                 android:textSize="10sp"
                 android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.12"/>
+                android:letterSpacing="0.14"/>
 
-            <!-- Rider name + distance row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="6dp">
-
-                <TextView
-                    android:id="@+id/tvRiderName"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Rider"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:fontFamily="sans-serif-medium"/>
-
-                <TextView
-                    android:id="@+id/tvDistanceToPickup"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-- km"
-                    android:textColor="@color/text_hint"
-                    android:textSize="13sp"/>
-
-            </LinearLayout>
-
-            <!-- Address -->
             <TextView
                 android:id="@+id/tvCurrentTarget"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Fetching address..."
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"
-                android:layout_marginTop="2dp"
                 android:maxLines="1"
-                android:ellipsize="end"/>
+                android:ellipsize="end"
+                android:layout_marginTop="2dp"/>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- FAB my location -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabMyLocation"
+    <!-- Navigate FAB-style button — appears after route is drawn -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnNavigate"
+        style="@style/ChalRide.Button.Primary"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="52dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="260dp"
-        android:src="@drawable/bg_my_location_icon"
-        app:backgroundTint="#EDE5E5"
-        app:tint="@color/driver_color"
-        app:fabSize="mini"
-        app:elevation="8dp"/>
+        android:layout_marginBottom="310dp"
+        android:text="▲  Navigate to Pickup"
+        android:paddingHorizontal="20dp"
+        android:textSize="14sp"
+        android:visibility="gone"
+        android:elevation="10dp"
+        app:cornerRadius="26dp"
+        app:backgroundTint="@color/bg_card"/>
 
-    <!-- Bottom action sheet -->
+    <!-- ══════════════════════════
+         BOTTOM DETAILS SHEET
+    ══════════════════════════ -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
@@ -128,14 +103,14 @@
                 android:layout_marginBottom="16dp"
                 android:background="@drawable/bg_drag_handle"/>
 
-            <!-- Fare + vehicle row -->
+            <!-- Fare + vehicle -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="24dp"
-                android:layout_marginBottom="14dp">
+                android:layout_marginBottom="12dp">
 
                 <TextView
                     android:id="@+id/tvFare"
@@ -144,7 +119,7 @@
                     android:layout_weight="1"
                     android:text="₹0"
                     android:textColor="@color/success_color"
-                    android:textSize="28sp"
+                    android:textSize="30sp"
                     android:fontFamily="sans-serif-medium"/>
 
                 <TextView
@@ -161,12 +136,62 @@
 
             </LinearLayout>
 
+            <!-- Rider name row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="24dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_driver_avatar_inner"
+                    android:gravity="center"
+                    android:text="👤"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/tvRiderName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Rider"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CASH"
+                    android:textColor="@color/text_hint"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:background="@drawable/bg_role_badge"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"/>
+
+            </LinearLayout>
+
+            <!-- Thin divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"
+                android:alpha="0.4"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginBottom="16dp"/>
+
             <!-- Route summary -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="24dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="8dp">
 
                 <View
                     android:id="@+id/dotPickup"
@@ -226,26 +251,6 @@
                     app:layout_constraintTop_toBottomOf="@id/tvPickupAddress"/>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <!-- Divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"
-                android:alpha="0.3"
-                android:layout_marginHorizontal="24dp"
-                android:layout_marginBottom="16dp"/>
-
-            <!-- Action button — changes based on trip phase -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTripAction"
-                style="@style/ChalRide.Button.Primary"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginHorizontal="24dp"
-                android:text="Arrived at Pickup"
-                app:backgroundTint="@color/brand_primary"
-                app:cornerRadius="16dp"/>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
