@@ -413,7 +413,13 @@ class DriverNavigationFragment : Fragment() {
                 "earnings"     to com.google.firebase.firestore.FieldValue.increment(estimatedFare.toLong()),
                 "totalTrips"   to com.google.firebase.firestore.FieldValue.increment(1L)
             ))
-        findNavController().navigate(R.id.action_driverNavigation_to_driverHome)
+        findNavController().navigate(
+            R.id.action_driverNavigation_to_driverHome,
+            null,
+            androidx.navigation.NavOptions.Builder()
+                .setPopUpTo(R.id.nav_graph, true)
+                .build()
+        )
     }
 
     // ─────────────────────────────────────────────────────────────────────────

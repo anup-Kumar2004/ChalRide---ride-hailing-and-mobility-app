@@ -128,6 +128,7 @@ class DriverHomeFragment : Fragment() {
     }
 
     private fun restoreOnlineStateIfNeeded() {
+        if (rideRequestListener != null) return
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         FirebaseFirestore.getInstance()
             .collection("drivers")
@@ -140,6 +141,7 @@ class DriverHomeFragment : Fragment() {
                     updateOnlineUI()
                     startOnlineTimer()
                     listenForRideRequests()
+
                 }
             }
     }
@@ -450,14 +452,17 @@ class DriverHomeFragment : Fragment() {
             updateOnlineUI()
 
             if (isOnline) {
-                // Start foreground service for background location
                 startDriverLocationService()
                 setDriverAvailability(true)
                 startOnlineTimer()
+                listenForRideRequests()   // ← ADD THIS
             } else {
                 stopDriverLocationService()
                 setDriverAvailability(false)
                 timerJob?.cancel()
+                rideRequestListener?.remove()   // ← ADD THIS
+                rideRequestListener = null
+                currentRideRequestId = null
             }
         }
     }
@@ -522,8 +527,6 @@ class DriverHomeFragment : Fragment() {
 
     private fun updateOnlineUI() {
         if (isOnline) {
-            listenForRideRequests()
-            //avatar ring changes to green color
             binding.avatarRing.setBackgroundResource(R.drawable.bg_driver_avatar_online)
 
             // Button
