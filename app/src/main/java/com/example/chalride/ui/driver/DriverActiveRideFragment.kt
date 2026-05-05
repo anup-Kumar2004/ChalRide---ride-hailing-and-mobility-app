@@ -556,7 +556,7 @@ class DriverActiveRideFragment : Fragment() {
                     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@addSnapshotListener
                     FirebaseFirestore.getInstance()
                         .collection("drivers").document(uid)
-                        .update(mapOf("isAvailable" to true, "activeRideId" to null))
+                        .update(DriverState.ONLINE_AVAILABLE.toFirestoreMap())
                     android.widget.Toast.makeText(
                         requireContext(), "Rider cancelled the ride", android.widget.Toast.LENGTH_LONG
                     ).show()

@@ -249,19 +249,18 @@ class DriverArrivedPickupFragment : Fragment() {
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
+        // Update ride document — remove tripPhase from here (it lives on the driver doc only)
         FirebaseFirestore.getInstance()
             .collection("rideRequests").document(rideRequestId)
             .update(mapOf(
                 "status"    to "in_progress",
-                "startedAt" to System.currentTimeMillis(),
-                "tripPhase" to "IN_PROGRESS"
+                "startedAt" to System.currentTimeMillis()
             ))
 
-        // Also update driver document
+        // Transition driver to IN_TRIP — sets driverState, tripPhase, isAvailable atomically
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
-            .update("tripPhase", "IN_PROGRESS")
-
+            .update(DriverState.IN_TRIP.toFirestoreMap())
         // Navigate back to DriverActiveRideFragment with IN_PROGRESS phase
         val bundle = Bundle().apply {
             putString("rideRequestId", rideRequestId)

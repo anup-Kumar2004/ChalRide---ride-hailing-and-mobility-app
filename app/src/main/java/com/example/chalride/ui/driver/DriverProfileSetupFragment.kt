@@ -211,26 +211,6 @@ class DriverProfileSetupFragment : Fragment() {
             val updateData = mutableMapOf<String, Any>()
             updateData.putAll(baseData)
 
-            // ✅ Set defaults ONLY if they don't exist
-            if (!snapshot.contains("isOnline")) {
-                updateData["isOnline"] = false
-            }
-
-            if (!snapshot.contains("isAvailable")) {
-                updateData["isAvailable"] = false
-            }
-
-            if (!snapshot.contains("lat")) {
-                updateData["lat"] = 0.0
-            }
-
-            if (!snapshot.contains("lng")) {
-                updateData["lng"] = 0.0
-            }
-
-            if (!snapshot.contains("geohash")) {
-                updateData["geohash"] = ""
-            }
 
             if (!snapshot.contains("totalTrips")) {
                 updateData["totalTrips"] = 0

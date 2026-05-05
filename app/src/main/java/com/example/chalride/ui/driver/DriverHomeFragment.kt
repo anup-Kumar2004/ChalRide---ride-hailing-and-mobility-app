@@ -135,13 +135,12 @@ class DriverHomeFragment : Fragment() {
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
-                val wasOnline = doc.getBoolean("isOnline") ?: false
-                if (wasOnline && !isOnline) {
+                val state = DriverState.fromString(doc.getString("driverState"))
+                if (state != DriverState.OFFLINE && !isOnline) {
                     isOnline = true
                     updateOnlineUI()
                     startOnlineTimer()
                     listenForRideRequests()
-
                 }
             }
     }
@@ -424,16 +423,11 @@ class DriverHomeFragment : Fragment() {
         )
     }
 
-
-    private fun setDriverAvailability(available: Boolean) {
+    private fun transitionDriverState(state: DriverState, activeRideId: String? = null) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseFirestore.getInstance().collection("drivers").document(uid)
-            .update(
-                mapOf(
-                    "isAvailable" to available,
-                    "isOnline"    to available
-                )
-            )
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .update(state.toFirestoreMap(activeRideId))
     }
 
     // ── Online/Offline toggle ────────────────────────────────────────────────
@@ -453,14 +447,14 @@ class DriverHomeFragment : Fragment() {
 
             if (isOnline) {
                 startDriverLocationService()
-                setDriverAvailability(true)
+                transitionDriverState(DriverState.ONLINE_AVAILABLE)
                 startOnlineTimer()
-                listenForRideRequests()   // ← ADD THIS
+                listenForRideRequests()
             } else {
                 stopDriverLocationService()
-                setDriverAvailability(false)
+                transitionDriverState(DriverState.OFFLINE)
                 timerJob?.cancel()
-                rideRequestListener?.remove()   // ← ADD THIS
+                rideRequestListener?.remove()
                 rideRequestListener = null
                 currentRideRequestId = null
             }
@@ -749,14 +743,11 @@ class DriverHomeFragment : Fragment() {
                                 "assignedAt" to System.currentTimeMillis()
                             ))
 
-                        // Mark driver unavailable AND save activeRideId for crash recovery
+                        // Transition driver to ON_TRIP_TO_PICKUP — sets isAvailable=false,
+                        // activeRideId, tripPhase, driverState atomically
                         FirebaseFirestore.getInstance()
                             .collection("drivers").document(uid)
-                            .update(mapOf(
-                                "isAvailable"  to false,
-                                "activeRideId" to rideRequestId,
-                                "tripPhase" to "HEADING_TO_PICKUP"// ← KEY: crash recovery anchor
-                            ))
+                            .update(DriverState.ON_TRIP_TO_PICKUP.toFirestoreMap(rideRequestId))
 
                         val bundle = Bundle().apply {
                             putString("rideRequestId", rideRequestId)

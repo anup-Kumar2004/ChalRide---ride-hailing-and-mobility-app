@@ -23,6 +23,10 @@ class DriverLocationService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
 
+    // True only after THIS service instance has successfully written isOnline=true to Firestore.
+    // Guards against the presenceRef listener firing with a stale RTDB value on startup.
+    private var serviceHasWrittenOnline = false
+
     companion object {
         const val CHANNEL_ID      = "driver_location_channel"
         const val NOTIFICATION_ID = 1001
@@ -59,27 +63,36 @@ class DriverLocationService : Service() {
         val connectedRef = rtdb.getReference(".info/connected")
         val presenceRef  = rtdb.getReference("driverPresence/$uid")
 
+        // ── Listener 1: React to RTDB connection state ────────────────────────
         connectedRef.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 val connected = snapshot.getValue(Boolean::class.java) ?: false
+                android.util.Log.d("DriverPresence", "RTDB connected=$connected")
                 if (!connected) return
 
-                // Register what RTDB should write automatically on crash/kill/disconnect
+                // Register what RTDB should write on crash/kill
                 presenceRef.onDisconnect().setValue(mapOf(
                     "isOnline" to false,
                     "lastSeen" to com.google.firebase.database.ServerValue.TIMESTAMP
                 ))
 
-                // Write online state to RTDB now
+                // Write online to RTDB now
                 presenceRef.setValue(mapOf(
                     "isOnline" to true,
                     "lastSeen" to com.google.firebase.database.ServerValue.TIMESTAMP
                 ))
 
-                // Mirror only isOnline to Firestore (NOT isAvailable)
+                // Mirror isOnline=true to Firestore and set the guard flag
                 FirebaseFirestore.getInstance()
                     .collection("drivers").document(uid)
                     .update("isOnline", true)
+                    .addOnSuccessListener {
+                        serviceHasWrittenOnline = true
+                        android.util.Log.d("DriverPresence", "✅ connectedRef → isOnline=true written to Firestore. Guard flag SET.")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("DriverPresence", "❌ connectedRef → failed to write isOnline=true: ${e.message}")
+                    }
             }
 
             override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
@@ -87,22 +100,44 @@ class DriverLocationService : Service() {
             }
         })
 
-        // Watch RTDB — when onDisconnect() fires (crash/kill), mirror to Firestore
+        // ── Listener 2: Watch for crash/disconnect ────────────────────────────
+        // IMPORTANT: This listener fires immediately on attach with the current RTDB value.
+        // If RTDB still holds isOnline=false from the previous Go Offline,
+        // we must NOT write isOnline=false to Firestore — that would clobber
+        // the isOnline=true we just wrote via transitionDriverState().
+        // The guard flag `serviceHasWrittenOnline` prevents this.
         presenceRef.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                val isOnline = snapshot.child("isOnline").getValue(Boolean::class.java) ?: return
-                if (!isOnline) {
-                    // Crash detected — only update isOnline in Firestore
-                    // isAvailable is deliberately left as-is for crash recovery logic
+                val isOnlineInRtdb = snapshot.child("isOnline").getValue(Boolean::class.java)
+                android.util.Log.d("DriverPresence", "presenceRef fired → isOnline=$isOnlineInRtdb | guardFlag=$serviceHasWrittenOnline")
+
+                if (isOnlineInRtdb == null) {
+                    android.util.Log.d("DriverPresence", "presenceRef: isOnline is null — node doesn't exist yet, ignoring")
+                    return
+                }
+
+                if (!isOnlineInRtdb && serviceHasWrittenOnline) {
+                    // This is a REAL disconnect/crash during this service's lifetime
+                    android.util.Log.w("DriverPresence", "⚠️ Real crash/disconnect detected — mirroring isOnline=false to Firestore")
                     FirebaseFirestore.getInstance()
                         .collection("drivers").document(uid)
                         .update("isOnline", false)
                         .addOnSuccessListener {
-                            android.util.Log.d("DriverPresence", "✅ Crash detected — isOnline=false synced to Firestore")
+                            android.util.Log.d("DriverPresence", "✅ Crash mirror: isOnline=false written to Firestore")
                         }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("DriverPresence", "❌ Crash mirror failed: ${e.message}")
+                        }
+                } else if (!isOnlineInRtdb && !serviceHasWrittenOnline) {
+                    // Stale RTDB value from previous session — IGNORE
+                    android.util.Log.d("DriverPresence", "🛡️ Stale RTDB value (isOnline=false) suppressed — guard flag not set yet. This was the bug.")
                 }
+                // isOnlineInRtdb == true → nothing to do, connectedRef already handled it
             }
-            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                android.util.Log.e("DriverPresence", "presenceRef cancelled: ${error.message}")
+            }
         })
     }
 
@@ -164,16 +199,21 @@ class DriverLocationService : Service() {
                 "lastSeen" to com.google.firebase.database.ServerValue.TIMESTAMP
             ))
 
-        // Intentional stop — set both offline fields + clear any stale ride reference
+        // Reset guard flag so next service instance starts clean
+        serviceHasWrittenOnline = false
+
+        android.util.Log.d("DriverService", "🛑 onDestroy: writing OFFLINE to Firestore, guard flag cleared")
+
+        // Intentional stop — transition to OFFLINE clears all state fields atomically
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
-            .update(mapOf(
-                "isOnline"     to false,
-                "isAvailable"  to false,
-                "activeRideId" to null
-            ))
-
-        android.util.Log.d("DriverService", "✅ Service stopped — driver set offline")
+            .update(DriverState.OFFLINE.toFirestoreMap())
+            .addOnSuccessListener {
+                android.util.Log.d("DriverService", "✅ OFFLINE map written to Firestore successfully")
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("DriverService", "❌ OFFLINE write failed: ${e.message}")
+            }
     }
 
     // ── Notification ──────────────────────────────────────────────────────────

@@ -377,10 +377,10 @@ class DriverNavigationFragment : Fragment() {
             .collection("rideRequests").document(rideRequestId)
             .update("status", "arrived_at_pickup")
 
-        // Update driver document phase
+        // Transition driver to WAITING_AT_PICKUP — sets tripPhase and driverState atomically
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
-            .update("tripPhase", "ARRIVED_AT_PICKUP")
+            .update(DriverState.WAITING_AT_PICKUP.toFirestoreMap())
 
         val bundle = Bundle().apply {
             putString("rideRequestId", rideRequestId)
@@ -403,16 +403,14 @@ class DriverNavigationFragment : Fragment() {
         FirebaseFirestore.getInstance()
             .collection("rideRequests").document(rideRequestId)
             .update(mapOf("status" to "completed", "completedAt" to System.currentTimeMillis()))
+        // Build the state map first, then add earnings fields on top
+        val completionUpdate = DriverState.ONLINE_AVAILABLE.toFirestoreMap().toMutableMap()
+        completionUpdate["earnings"]   = com.google.firebase.firestore.FieldValue.increment(estimatedFare.toLong())
+        completionUpdate["totalTrips"] = com.google.firebase.firestore.FieldValue.increment(1L)
+
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
-            .update(mapOf(
-                "isAvailable"  to true,
-                "isOnline"     to true,
-                "activeRideId" to null,
-                "tripPhase"    to "HEADING_TO_PICKUP", // reset for next ride
-                "earnings"     to com.google.firebase.firestore.FieldValue.increment(estimatedFare.toLong()),
-                "totalTrips"   to com.google.firebase.firestore.FieldValue.increment(1L)
-            ))
+            .update(completionUpdate)
         findNavController().navigate(
             R.id.action_driverNavigation_to_driverHome,
             null,
