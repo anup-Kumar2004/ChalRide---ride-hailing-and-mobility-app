@@ -16,6 +16,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.widget.Toast
 
 class RideSearchingFragment : Fragment() {
 
@@ -116,8 +121,34 @@ class RideSearchingFragment : Fragment() {
         timeoutJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(60_000)
             if (_binding == null) return@launch
-            // No driver accepted in 60s — cancel and go back
-            cancelRideRequest(navigateHome = true, showMessage = true)
+            // No driver accepted in 60s — write to Firestore, vibrate, then show cancellation screen
+            cancelRideRequest(navigateHome = false, cancellationReason = CancelReason.NO_DRIVER_FOUND.name)
+            vibrateAndNavigateCancelled()
+        }
+    }
+
+    private fun vibrateAndNavigateCancelled() {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = requireContext().getSystemService(Context.VIBRATOR_MANAGER_SERVICE)
+                    as android.os.VibratorManager
+            vm.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            requireContext().getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        // Two short pulses: buzz 300ms, pause 150ms, buzz 300ms
+        vibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), -1)
+        )
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(800) // let the vibration finish before navigating
+            if (_binding == null) return@launch
+            val bundle = Bundle().apply {
+                putString("cancelReason", CancelReason.NO_DRIVER_FOUND.name)
+            }
+            findNavController().navigate(R.id.action_rideSearching_to_rideCancelled, bundle)
         }
     }
 
@@ -177,7 +208,7 @@ class RideSearchingFragment : Fragment() {
 
     private fun cancelRideRequest(
         navigateHome: Boolean = true,
-        showMessage: Boolean = false
+        cancellationReason: String = CancelReason.RIDER_CANCELLED.name
     ) {
         timerJob?.cancel()
         timeoutJob?.cancel()
@@ -187,17 +218,20 @@ class RideSearchingFragment : Fragment() {
             FirebaseFirestore.getInstance()
                 .collection("rideRequests")
                 .document(rideRequestId)
-                .update("status", "cancelled")
+                .update(
+                    mapOf(
+                        "status"             to "cancelled",
+                        "cancellationReason" to cancellationReason
+                    )
+                )
         }
 
         if (navigateHome && _binding != null) {
-            if (showMessage) {
-                android.widget.Toast.makeText(
-                    requireContext(),
-                    "No drivers found nearby. Please try again.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
+            Toast.makeText(
+                requireContext(),
+                "Ride Search Cancelled",
+                Toast.LENGTH_SHORT
+            ).show()
             findNavController().navigate(R.id.action_rideSearching_to_riderHome)
         }
     }

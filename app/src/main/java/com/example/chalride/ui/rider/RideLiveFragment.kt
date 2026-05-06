@@ -295,14 +295,18 @@ class RideLiveFragment : Fragment() {
 
         android.util.Log.d("CHALRIDE_LIVE", "Rider cancelled the ride")
 
-        // Write cancelled status to rideRequests
         FirebaseFirestore.getInstance()
             .collection("rideRequests").document(rideRequestId)
-            .update("status", "cancelled")
+            .update(
+                mapOf(
+                    "status"             to "cancelled",
+                    "cancellationReason" to CancelReason.RIDER_CANCELLED.name
+                )
+            )
 
         // Navigate to RideCancelledFragment with RIDER_CANCELLED reason
         val bundle = Bundle().apply {
-            putString("cancelReason", com.example.chalride.ui.rider.CancelReason.RIDER_CANCELLED.name)
+            putString("cancelReason", CancelReason.RIDER_CANCELLED.name)
         }
         findNavController().navigate(R.id.action_rideLive_to_rideCancelled, bundle)
     }
@@ -468,7 +472,12 @@ class RideLiveFragment : Fragment() {
 
         // ── Step 1: Cancel the ride document ─────────────────────────────────
         db.collection("rideRequests").document(rideRequestId)
-            .update("status", "cancelled")
+            .update(
+                mapOf(
+                    "status"             to "cancelled",
+                    "cancellationReason" to CancelReason.DRIVER_OFFLINE.name
+                )
+            )
 
         // ── Step 2: Clean driver document + increment warning counter ─────────
         // We do this from the rider's phone because the driver's phone is dead.

@@ -40,27 +40,32 @@ class RideCancelledFragment : Fragment() {
 
         when (cancelReason) {
             CancelReason.RIDER_CANCELLED -> {
-                binding.tvTitle.text    = "Ride Cancelled"
-                binding.tvMessage.text  = "You cancelled this ride. No charges have been applied."
-                binding.tvEmoji.text    = "🚫"
+                binding.tvEmoji.text       = "🚫"
+                binding.tvTitle.text       = "Ride Cancelled"
+                binding.tvMessage.text     = "Your trip has been cancelled and no charges have been applied to your account."
+                binding.tvInfoLabel.text   = "Looking to go somewhere?"
+                binding.tvInfoSub.text     = "Head back home to book your next ride anytime."
             }
             CancelReason.DRIVER_OFFLINE -> {
-                binding.tvTitle.text    = "Driver Went Offline"
-                binding.tvMessage.text  =
-                    "We're sorry — your driver went offline and couldn't be reached. " +
-                            "Your ride has been cancelled. No charges applied."
-                binding.tvEmoji.text    = "📵"
+                binding.tvEmoji.text       = "📵"
+                binding.tvTitle.text       = "Driver Unavailable"
+                binding.tvMessage.text     = "Your driver lost connection and could not be reached. Your ride was cancelled automatically."
+                binding.tvInfoLabel.text   = "You have not been charged"
+                binding.tvInfoSub.text     = "If this keeps happening, reach out to support."
             }
             CancelReason.NO_DRIVER_FOUND -> {
-                binding.tvTitle.text    = "No Driver Found"
-                binding.tvMessage.text  =
-                    "No drivers were available nearby. Please try again in a few minutes."
-                binding.tvEmoji.text    = "🔍"
+                binding.tvEmoji.text       = "🔍"
+                binding.tvTitle.text       = "No Driver Found"
+                binding.tvMessage.text     = "We could not find an available driver in your area right now. Please try again in a few minutes."
+                binding.tvInfoLabel.text   = "No charges applied"
+                binding.tvInfoSub.text     = "Your payment method was not charged."
             }
             CancelReason.TIMEOUT -> {
-                binding.tvTitle.text    = "Request Timed Out"
-                binding.tvMessage.text  = "Your ride request expired. Please try booking again."
-                binding.tvEmoji.text    = "⏱️"
+                binding.tvEmoji.text       = "⏱️"
+                binding.tvTitle.text       = "Request Expired"
+                binding.tvMessage.text     = "Your ride request timed out before a driver could accept. Demand may be high in your area."
+                binding.tvInfoLabel.text   = "No charges applied"
+                binding.tvInfoSub.text     = "Your payment method was not charged."
             }
         }
 

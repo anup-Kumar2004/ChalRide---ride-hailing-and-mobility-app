@@ -74,7 +74,7 @@
         android:background="@drawable/bg_status_badge"
         android:paddingHorizontal="14dp"
         android:paddingVertical="5dp"
-        android:text="RIDE CANCELLED"
+        android:text="TRIP UPDATE"
         android:textColor="@color/error_red"
         android:textSize="11sp"
         android:textStyle="bold"
