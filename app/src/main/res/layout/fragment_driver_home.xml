@@ -33,7 +33,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="12dp"
-        app:cardBackgroundColor="#EE0F0F1A"
+        app:cardBackgroundColor="@color/bg_card"
         app:cardCornerRadius="18dp"
         app:cardElevation="10dp">
 
@@ -166,30 +166,23 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- ── GPS FAB ── -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabMyLocation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="310dp"
-        android:src="@drawable/bg_my_location_icon"
-        app:backgroundTint="#EDE5E5"
-        app:tint="@color/driver_color"
-        app:fabSize="mini"
-        app:elevation="8dp"/>
 
     <!-- ══════════════════════════════════════════════
          BOTTOM SHEET
     ══════════════════════════════════════════════ -->
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_gravity="bottom"
         android:background="@drawable/bg_ride_confirm_sheet"
-        android:elevation="16dp">
+        android:elevation="16dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+        app:behavior_hideable="false"
+        app:behavior_fitToContents="false"
+        app:behavior_skipCollapsed="false"
+        app:behavior_peekHeight="260dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -199,6 +192,7 @@
 
             <!-- Drag handle -->
             <View
+                android:id="@+id/dragHandle"
                 android:layout_width="36dp"
                 android:layout_height="4dp"
                 android:layout_gravity="center_horizontal"
@@ -276,113 +270,189 @@
                 app:backgroundTint="@color/success_color"
                 app:cornerRadius="16dp"/>
 
-            <!-- Thin divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider_color"
-                android:alpha="0.5"
-                android:layout_marginHorizontal="24dp"
-                android:layout_marginBottom="18dp"/>
-
-            <!-- ── Stats row ── -->
+            <!-- Expanded-only content -->
             <LinearLayout
+                android:id="@+id/expandedContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingHorizontal="24dp">
+                android:orientation="vertical"
+                android:visibility="gone">
 
-                <!-- Trips today -->
+
+                <!-- Thin divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider_color"
+                    android:alpha="0.5"
+                    android:layout_marginHorizontal="24dp"
+                    android:layout_marginBottom="18dp"/>
+
+                <!-- ── Stats row ── -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:background="@drawable/bg_stat_card"
-                    android:padding="14dp"
-                    android:layout_marginEnd="6dp">
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="24dp">
 
-                    <TextView
-                        android:id="@+id/tvTripsCount"
-                        android:layout_width="wrap_content"
+                    <!-- Trips today -->
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/text_primary"
-                        android:textSize="24sp"
-                        android:fontFamily="sans-serif-medium"/>
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_stat_card"
+                        android:padding="14dp"
+                        android:layout_marginEnd="6dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                        <TextView
+                            android:id="@+id/tvTripsCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/text_primary"
+                            android:textSize="24sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Trips"
+                            android:textColor="@color/text_hint"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+
+                    <!-- Hours online -->
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Trips"
-                        android:textColor="@color/text_hint"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp"/>
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_stat_card"
+                        android:padding="14dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp">
+
+                        <TextView
+                            android:id="@+id/tvHoursOnline"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0h"
+                            android:textColor="@color/text_primary"
+                            android:textSize="24sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Online"
+                            android:textColor="@color/text_hint"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+
+                    <!-- Rating -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_stat_card"
+                        android:padding="14dp"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:id="@+id/tvRating"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="—"
+                            android:textColor="@color/brand_primary"
+                            android:textSize="24sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Rating"
+                            android:textColor="@color/text_hint"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+
                 </LinearLayout>
 
-                <!-- Hours online -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:background="@drawable/bg_stat_card"
-                    android:padding="14dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp">
-
-                    <TextView
-                        android:id="@+id/tvHoursOnline"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0h"
-                        android:textColor="@color/text_primary"
-                        android:textSize="24sp"
-                        android:fontFamily="sans-serif-medium"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Online"
-                        android:textColor="@color/text_hint"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <!-- Rating -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:background="@drawable/bg_stat_card"
-                    android:padding="14dp"
-                    android:layout_marginStart="6dp">
-
-                    <TextView
-                        android:id="@+id/tvRating"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="24sp"
-                        android:fontFamily="sans-serif-medium"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Rating"
-                        android:textColor="@color/text_hint"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp"/>
-                </LinearLayout>
 
             </LinearLayout>
 
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- ── Speed Dial Scrim (tap to close) ── -->
+    <View
+        android:id="@+id/fabScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"/>
+
+    <!-- ── Speed Dial: Profile mini FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/ic_person"
+        android:contentDescription="Profile"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="mini"
+        app:elevation="8dp"
+        android:visibility="invisible"
+        android:scaleX="0"
+        android:scaleY="0"
+        android:alpha="0"/>
+
+    <!-- ── Speed Dial: Earnings mini FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabEarnings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/ic_earnings"
+        android:contentDescription="Earnings"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="mini"
+        app:elevation="8dp"
+        android:visibility="invisible"
+        android:scaleX="0"
+        android:scaleY="0"
+        android:alpha="0"/>
+
+    <!-- ── Speed Dial: Main FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabSpeedDial"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/ic_apps"
+        android:contentDescription="More options"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="normal"
+        app:elevation="10dp"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

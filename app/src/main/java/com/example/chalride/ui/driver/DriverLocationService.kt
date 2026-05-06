@@ -117,22 +117,47 @@ class DriverLocationService : Service() {
                 }
 
                 if (!isOnlineInRtdb && serviceHasWrittenOnline) {
-                    // This is a REAL disconnect/crash during this service's lifetime
-                    android.util.Log.w("DriverPresence", "⚠️ Real crash/disconnect detected — mirroring isOnline=false to Firestore")
+                    // REAL crash/disconnect during this service's lifetime
+                    android.util.Log.w("DriverPresence",
+                        "⚠️ Real crash/disconnect detected — checking for active ride before Firestore update")
+
+                    // CRITICAL: Check if driver has an active ride before deciding what to write.
+                    // - No active ride → full OFFLINE (clear everything)
+                    // - Active ride    → only isOnline=false (preserve ride data for resumption)
                     FirebaseFirestore.getInstance()
                         .collection("drivers").document(uid)
-                        .update("isOnline", false)
-                        .addOnSuccessListener {
-                            android.util.Log.d("DriverPresence", "✅ Crash mirror: isOnline=false written to Firestore")
+                        .get()
+                        .addOnSuccessListener { doc ->
+                            val activeRideId = doc.getString("activeRideId")
+                            if (activeRideId.isNullOrEmpty()) {
+                                // Idle crash — safe to go fully OFFLINE
+                                android.util.Log.d("DriverPresence",
+                                    "Crash: no active ride → writing full OFFLINE map")
+                                FirebaseFirestore.getInstance()
+                                    .collection("drivers").document(uid)
+                                    .update(DriverState.OFFLINE.toFirestoreMap())
+                                    .addOnSuccessListener {
+                                        android.util.Log.d("DriverPresence",
+                                            "✅ Idle crash: OFFLINE map written to Firestore")
+                                    }
+                            } else {
+                                // Mid-ride crash — only mark offline, preserve ride data
+                                android.util.Log.d("DriverPresence",
+                                    "Crash: active ride=$activeRideId → writing isOnline=false only")
+                                FirebaseFirestore.getInstance()
+                                    .collection("drivers").document(uid)
+                                    .update("isOnline", false)
+                                    .addOnSuccessListener {
+                                        android.util.Log.d("DriverPresence",
+                                            "✅ Mid-ride crash: isOnline=false written. Ride data preserved.")
+                                    }
+                            }
                         }
                         .addOnFailureListener { e ->
-                            android.util.Log.e("DriverPresence", "❌ Crash mirror failed: ${e.message}")
+                            android.util.Log.e("DriverPresence",
+                                "❌ Crash: Firestore read failed: ${e.message}")
                         }
-                } else if (!isOnlineInRtdb && !serviceHasWrittenOnline) {
-                    // Stale RTDB value from previous session — IGNORE
-                    android.util.Log.d("DriverPresence", "🛡️ Stale RTDB value (isOnline=false) suppressed — guard flag not set yet. This was the bug.")
                 }
-                // isOnlineInRtdb == true → nothing to do, connectedRef already handled it
             }
 
             override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
@@ -140,6 +165,21 @@ class DriverLocationService : Service() {
             }
         })
     }
+
+    private fun updateNotificationMidRide() {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("ChalRide — Ride In Progress")
+            .setContentText("You have an active ride. Tap to return to the app.")
+            .setSmallIcon(R.drawable.ic_driver_marker)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
+        android.util.Log.d("DriverService", "Mid-ride notification shown — service kept alive")
+    }
+
+
+
 
     // ── Location updates ──────────────────────────────────────────────────────
 
@@ -213,6 +253,50 @@ class DriverLocationService : Service() {
             }
             .addOnFailureListener { e ->
                 android.util.Log.e("DriverService", "❌ OFFLINE write failed: ${e.message}")
+            }
+    }
+
+    /**
+     * Called when the user swipes the app away from Recents.
+     * Android guarantees this is called before onDestroy() for foreground services
+     * (though timing can vary slightly).
+     *
+     * Decision logic:
+     *  - No active ride → stop the service → onDestroy() writes OFFLINE to Firestore
+     *  - Active ride    → keep service alive, update notification to "Ride in progress"
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        android.util.Log.d("DriverService", "onTaskRemoved called")
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            android.util.Log.d("DriverService", "onTaskRemoved: no uid, stopping service")
+            stopSelf()
+            return
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val activeRideId = doc.getString("activeRideId")
+                if (activeRideId.isNullOrEmpty()) {
+                    // Idle driver swiped away → go offline cleanly
+                    android.util.Log.d("DriverService",
+                        "onTaskRemoved: no active ride → stopping service (will write OFFLINE)")
+                    stopSelf()
+                } else {
+                    // Mid-ride swipe → keep service running for resumption
+                    android.util.Log.d("DriverService",
+                        "onTaskRemoved: active ride=$activeRideId → keeping service alive")
+                    updateNotificationMidRide()
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("DriverService",
+                    "onTaskRemoved: Firestore check failed, stopping service: ${e.message}")
+                stopSelf()
             }
     }
 

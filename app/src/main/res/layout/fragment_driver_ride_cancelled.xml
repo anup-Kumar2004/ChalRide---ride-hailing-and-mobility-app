@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_surface">
+
+    <!-- Subtle top decorative bar accent -->
+    <View
+        android:id="@+id/topAccentBar"
+        android:layout_width="0dp"
+        android:layout_height="3dp"
+        android:background="@drawable/gradient_red_accent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Outer glow ring (large, faint) -->
+    <View
+        android:id="@+id/glowRingOuter"
+        android:layout_width="260dp"
+        android:layout_height="260dp"
+        android:background="@drawable/bg_glow_ring_outer"
+        android:alpha="0.35"
+        app:layout_constraintBottom_toTopOf="@id/tvTitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintVertical_bias="0.42" />
+
+    <!-- Middle ring -->
+    <View
+        android:id="@+id/glowRingMiddle"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_glow_ring_middle"
+        android:alpha="0.55"
+        app:layout_constraintBottom_toBottomOf="@id/glowRingOuter"
+        app:layout_constraintEnd_toEndOf="@id/glowRingOuter"
+        app:layout_constraintStart_toStartOf="@id/glowRingOuter"
+        app:layout_constraintTop_toTopOf="@id/glowRingOuter" />
+
+    <!-- Icon circle background -->
+    <View
+        android:id="@+id/iconCircleBg"
+        android:layout_width="130dp"
+        android:layout_height="130dp"
+        android:background="@drawable/bg_icon_circle"
+        app:layout_constraintBottom_toBottomOf="@id/glowRingOuter"
+        app:layout_constraintEnd_toEndOf="@id/glowRingOuter"
+        app:layout_constraintStart_toStartOf="@id/glowRingOuter"
+        app:layout_constraintTop_toTopOf="@id/glowRingOuter" />
+
+    <!-- Cancel Icon -->
+    <ImageView
+        android:id="@+id/ivCancelIcon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@drawable/ic_cancel_x"
+        android:contentDescription="Ride cancelled"
+        app:layout_constraintBottom_toBottomOf="@id/iconCircleBg"
+        app:layout_constraintEnd_toEndOf="@id/iconCircleBg"
+        app:layout_constraintStart_toStartOf="@id/iconCircleBg"
+        app:layout_constraintTop_toTopOf="@id/iconCircleBg" />
+
+    <!-- Status chip / badge -->
+    <TextView
+        android:id="@+id/tvStatusBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/bg_status_badge"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="5dp"
+        android:text="RIDE CANCELLED"
+        android:textColor="@color/error_red"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.12"
+        android:fontFamily="@font/geist_mono_regular"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/glowRingOuter" />
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="Rider Cancelled"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:fontFamily="@font/geist_bold"
+        android:letterSpacing="-0.02"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvStatusBadge" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/tvMessage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginHorizontal="40dp"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.55"
+        android:text="The rider has cancelled this trip.\nYou are now available for new ride requests."
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"
+        android:fontFamily="@font/geist_mono_regular"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle" />
+
+    <!-- Divider line -->
+    <View
+        android:id="@+id/divider"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginHorizontal="32dp"
+        android:background="@drawable/divider_gradient"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvMessage" />
+
+    <!-- Info card: time + earnings impact -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/infoCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:layout_marginHorizontal="32dp"
+        android:background="@drawable/bg_info_card"
+        android:paddingVertical="20dp"
+        android:paddingHorizontal="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/divider">
+
+        <ImageView
+            android:id="@+id/icInfoDot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/dot_status_available"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <TextView
+            android:id="@+id/tvInfoLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="Your status is now active"
+            android:textSize="13sp"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/geist_medium"
+            app:layout_constraintStart_toEndOf="@id/icInfoDot"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/tvInfoSub" />
+
+        <TextView
+            android:id="@+id/tvInfoSub"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="2dp"
+            android:text="Listening for new nearby requests"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:fontFamily="@font/geist_regular"
+            app:layout_constraintStart_toEndOf="@id/icInfoDot"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvInfoLabel"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Primary CTA Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBackToHome"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="16dp"
+        android:text="Back to Home"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:fontFamily="@font/geist_semibold"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/error_red"
+        app:cornerRadius="14dp"
+        app:rippleColor="#33FFFFFF"
+        app:icon="@drawable/ic_home_outline"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        app:iconSize="18dp"
+        app:iconTint="@color/white"
+        app:elevation="0dp"
+        app:layout_constraintBottom_toTopOf="@id/btnViewEarnings"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Secondary ghost button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnViewEarnings"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginHorizontal="32dp"
+        android:layout_marginBottom="36dp"
+        android:text="View Today's Earnings"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"
+        android:fontFamily="@font/geist_medium"
+        app:strokeColor="@color/stroke_subtle"
+        app:strokeWidth="1dp"
+        app:cornerRadius="14dp"
+        app:rippleColor="#1AFFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

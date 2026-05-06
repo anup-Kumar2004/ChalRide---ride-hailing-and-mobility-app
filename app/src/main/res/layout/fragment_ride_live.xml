@@ -238,30 +238,30 @@
                 android:layout_marginHorizontal="24dp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- OTP waiting hint — shown before OTP arrives -->
+
             <LinearLayout
-                android:id="@+id/layoutOtpHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="24dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="⏳"
-                    android:textSize="14sp"
-                    android:layout_marginEnd="8dp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="OTP will appear when driver arrives"
-                    android:textColor="@color/text_hint"
-                    android:textSize="12sp"/>
+                <!--cancel ride button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancelRide"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="54dp"
+                    android:layout_weight="1"
+                    android:text="Cancel Ride"
+                    android:textColor="@color/error_color"
+                    android:layout_marginEnd="8dp"
+                    app:strokeColor="@color/error_color"
+                    android:visibility="gone"
+                    app:cornerRadius="14dp"/>
 
             </LinearLayout>
+
 
         </LinearLayout>
 

@@ -54,6 +54,9 @@ class DriverHomeFragment : Fragment() {
 
     private var rideRequestListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var currentRideRequestId: String? = null
+    private var isSpeedDialOpen = false
+    private lateinit var bottomSheetBehavior: com.google.android.material.bottomsheet.BottomSheetBehavior<androidx.core.widget.NestedScrollView>
+    private var peekHeight = 0
     private var _binding: FragmentDriverHomeBinding? = null
     private val binding get() = _binding!!
 
@@ -119,11 +122,15 @@ class DriverHomeFragment : Fragment() {
         loadLiveStatsFromFirestore()
         restoreOnlineStateIfNeeded()
         checkForActiveRideOnLaunch()
+        checkDriverAccountStatus()
+
 
         // Reset after map init causes false interaction events
         binding.mapView.post {
             userIsInteracting = false
         }
+
+        setupBottomSheet()
 
     }
 
@@ -143,6 +150,56 @@ class DriverHomeFragment : Fragment() {
                     listenForRideRequests()
                 }
             }
+    }
+
+    /**
+     * Checks offlineCancelCount and isAccountFlagged on every app open.
+     * Shows appropriate warning dialog based on how many times this driver
+     * has caused a ride cancellation by going offline.
+     *
+     * Count thresholds:
+     *   1–3  → informational warning (stage 1)
+     *   4–5  → firm warning (stage 2)
+     *   6+   → account flagged, Go Online disabled
+     */
+    private fun checkDriverAccountStatus() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                val isFlagged   = doc.getBoolean("isAccountFlagged") ?: false
+                val cancelCount = doc.getLong("offlineCancelCount")  ?: 0L
+
+                when {
+                    isFlagged || cancelCount >= 6 -> showFlaggedDialog()
+                    cancelCount in 4..5           -> showStage2WarningDialog(cancelCount)
+                    cancelCount in 1..3           -> showStage1WarningDialog(cancelCount)
+                    // cancelCount == 0 → no dialog, clean driver
+                }
+            }
+    }
+
+
+    private fun showStage1WarningDialog(count: Long) {
+        DriverWarningDialog.newInstance(DriverWarningDialog.Stage.STAGE_1, count)
+            .show(parentFragmentManager, "warning_stage1")
+    }
+
+    private fun showStage2WarningDialog(count: Long) {
+        DriverWarningDialog.newInstance(DriverWarningDialog.Stage.STAGE_2, count)
+            .show(parentFragmentManager, "warning_stage2")
+    }
+
+    private fun showFlaggedDialog() {
+        if (_binding != null) {
+            binding.btnToggleOnline.isEnabled = false
+            binding.btnToggleOnline.alpha     = 0.4f
+            binding.btnToggleOnline.text      = "ACCOUNT SUSPENDED"
+        }
+        DriverWarningDialog.newInstance(DriverWarningDialog.Stage.SUSPENDED)
+            .show(parentFragmentManager, "warning_suspended")
     }
 
     // ── Driver info from Firestore ──────────────────────────────────────────
@@ -300,6 +357,7 @@ class DriverHomeFragment : Fragment() {
         binding.pulseView.y = pt.y.toFloat() - binding.pulseView.height / 2f
     }
 
+
     private fun startPulse(view: View) {
         view.animate().cancel()
         view.scaleX = 1f; view.scaleY = 1f; view.alpha = 0.7f
@@ -309,6 +367,143 @@ class DriverHomeFragment : Fragment() {
             .withEndAction { if (view.isVisible) startPulse(view) }
             .start()
     }
+
+    private fun setupBottomSheet() {
+        bottomSheetBehavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(binding.bottomSheet)
+        bottomSheetBehavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED
+        bottomSheetBehavior.isHideable = false
+        bottomSheetBehavior.skipCollapsed = false
+        bottomSheetBehavior.isDraggable = true
+        bottomSheetBehavior.isFitToContents = false  // CRITICAL — false prevents full screen expansion
+
+        binding.expandedContent.visibility = View.GONE
+        binding.expandedContent.alpha = 0f
+
+        binding.btnToggleOnline.post {
+            val density = resources.displayMetrics.density
+            val screenHeight = resources.displayMetrics.heightPixels
+
+            // Peek height: measured from sheet top to bottom of GO ONLINE button + padding
+            val sheetLoc = IntArray(2)
+            binding.bottomSheet.getLocationOnScreen(sheetLoc)
+            val btnLoc = IntArray(2)
+            binding.btnToggleOnline.getLocationOnScreen(btnLoc)
+            peekHeight = (btnLoc[1] - sheetLoc[1]) + binding.btnToggleOnline.height + (24 * density).toInt()
+            bottomSheetBehavior.peekHeight = peekHeight
+
+            // expandedOffset: distance from top of screen where sheet stops — same pattern as RideConfirmFragment
+            // Set to leave enough room for the map and top card to remain visible
+            bottomSheetBehavior.expandedOffset = (screenHeight * 0.5).toInt()
+
+            positionFabsAboveSheet(peekHeight)
+            binding.bottomSheet.postDelayed({ animateSheetHint() }, 5000)
+        }
+
+        bottomSheetBehavior.addBottomSheetCallback(object :
+            com.google.android.material.bottomsheet.BottomSheetBehavior.BottomSheetCallback() {
+
+            override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                if (_binding == null) return
+                val sheetTop = bottomSheet.top
+                val screenHeight = binding.root.height
+                positionFabsAboveSheet(screenHeight - sheetTop)
+                binding.expandedContent.visibility = View.VISIBLE
+                binding.expandedContent.alpha = slideOffset.coerceIn(0f, 1f)
+            }
+
+            override fun onStateChanged(bottomSheet: View, newState: Int) {
+                if (_binding == null) return
+                when (newState) {
+                    com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED -> {
+                        binding.expandedContent.visibility = View.GONE
+                        binding.expandedContent.alpha = 0f
+                        positionFabsAboveSheet(peekHeight)
+                    }
+                    com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED -> {
+                        binding.expandedContent.visibility = View.VISIBLE
+                        binding.expandedContent.alpha = 1f
+                    }
+                    else -> {}
+                }
+            }
+        })
+    }
+
+    private fun positionFabsAboveSheet(sheetVisibleHeight: Int) {
+        if (_binding == null) return
+        val density = resources.displayMetrics.density
+        val mainMargin  = sheetVisibleHeight + (15 * density).toInt()
+        val earnMargin  = sheetVisibleHeight + (85 * density).toInt()
+        val profMargin  = sheetVisibleHeight + (155 * density).toInt()
+
+        fun setBottomMargin(view: View, margin: Int) {
+            val params = view.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+            params.bottomMargin = margin
+            view.layoutParams = params
+        }
+
+        setBottomMargin(binding.fabSpeedDial, mainMargin)
+        setBottomMargin(binding.fabEarnings,  earnMargin)
+        setBottomMargin(binding.fabProfile,   profMargin)
+    }
+
+    private fun animateSheetHint() {
+        if (_binding == null) return
+        val handle = binding.dragHandle
+        // Pulse the drag handle: scale up and glow white briefly, repeat twice
+        val animator = android.animation.AnimatorSet()
+        fun pulse() = android.animation.AnimatorSet().apply {
+            playTogether(
+                android.animation.ObjectAnimator.ofFloat(handle, "scaleX", 1f, 2.2f, 1f),
+                android.animation.ObjectAnimator.ofFloat(handle, "scaleY", 1f, 2.2f, 1f),
+                android.animation.ObjectAnimator.ofFloat(handle, "alpha", 0.5f, 1f, 0.5f)
+            )
+            duration = 600
+        }
+        animator.playSequentially(pulse(), pulse())
+        animator.start()
+
+        // Also translate the sheet up slightly and back to hint it's draggable
+        binding.bottomSheet.animate()
+            .translationY(-28f).setDuration(350).withEndAction {
+                binding.bottomSheet.animate()
+                    .translationY(0f).setDuration(350).start()
+            }.start()
+    }
+
+
+    private fun openSpeedDial() {
+        isSpeedDialOpen = true
+        binding.fabScrim.visibility = View.VISIBLE
+        binding.fabScrim.animate().alpha(1f).setDuration(200).start()
+
+        listOf(binding.fabEarnings, binding.fabProfile).forEachIndexed { index, fab ->
+            fab.visibility = View.VISIBLE
+            fab.animate()
+                .scaleX(1f).scaleY(1f).alpha(1f)
+                .setStartDelay((index * 50).toLong())
+                .setDuration(200)
+                .start()
+        }
+        binding.fabSpeedDial.animate().rotation(45f).setDuration(200).start()
+    }
+
+    private fun closeSpeedDial() {
+        isSpeedDialOpen = false
+        binding.fabScrim.animate().alpha(0f).setDuration(200)
+            .withEndAction { binding.fabScrim.visibility = View.GONE }.start()
+
+        listOf(binding.fabProfile, binding.fabEarnings).forEachIndexed { index, fab ->
+            fab.animate()
+                .scaleX(0f).scaleY(0f).alpha(0f)
+                .setStartDelay((index * 50).toLong())
+                .setDuration(150)
+                .withEndAction { fab.visibility = View.INVISIBLE }
+                .start()
+        }
+        binding.fabSpeedDial.animate().rotation(0f).setDuration(200).start()
+    }
+
 
     // ── Location ────────────────────────────────────────────────────────────
 
@@ -433,32 +628,67 @@ class DriverHomeFragment : Fragment() {
     // ── Online/Offline toggle ────────────────────────────────────────────────
 
     private fun setupClickListeners() {
-        binding.fabMyLocation.setOnClickListener {
-            userIsInteracting = false
-            currentLocation?.let { loc ->
-                binding.mapView.controller.animateTo(loc)
-                binding.mapView.controller.setZoom(17.0)
-            } ?: checkLocationSettings()
-        }
 
         binding.btnToggleOnline.setOnClickListener {
+            // Guard — flagged drivers cannot go online even if they somehow tap the button
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                FirebaseFirestore.getInstance()
+                    .collection("drivers").document(uid)
+                    .get()
+                    .addOnSuccessListener { doc ->
+                        val isFlagged = doc.getBoolean("isAccountFlagged") ?: false
+                        val count     = doc.getLong("offlineCancelCount")  ?: 0L
+                        if (isFlagged || count >= 6) {
+                            showFlaggedDialog()
+                            return@addOnSuccessListener
+                        }
+                        // Not flagged — proceed normally
+                        isOnline = !isOnline
+                        updateOnlineUI()
+                        if (isOnline) {
+                            startDriverLocationService()
+                            transitionDriverState(DriverState.ONLINE_AVAILABLE)
+                            startOnlineTimer()
+                            listenForRideRequests()
+                        } else {
+                            stopDriverLocationService()
+                            transitionDriverState(DriverState.OFFLINE)
+                            timerJob?.cancel()
+                            rideRequestListener?.remove()
+                            rideRequestListener = null
+                            currentRideRequestId = null
+                        }
+                    }
+                return@setOnClickListener
+            }
+            // Fallback if uid is null — should never happen
             isOnline = !isOnline
             updateOnlineUI()
-
-            if (isOnline) {
-                startDriverLocationService()
-                transitionDriverState(DriverState.ONLINE_AVAILABLE)
-                startOnlineTimer()
-                listenForRideRequests()
-            } else {
-                stopDriverLocationService()
-                transitionDriverState(DriverState.OFFLINE)
-                timerJob?.cancel()
-                rideRequestListener?.remove()
-                rideRequestListener = null
-                currentRideRequestId = null
-            }
         }
+
+
+
+        // ── Speed Dial ──────────────────────────────────────────────────────
+        binding.fabSpeedDial.setOnClickListener {
+            if (isSpeedDialOpen) closeSpeedDial() else openSpeedDial()
+        }
+
+        binding.fabScrim.setOnClickListener {
+            closeSpeedDial()
+        }
+
+        binding.fabEarnings.setOnClickListener {
+            closeSpeedDial()
+            findNavController().navigate(R.id.action_driverHome_to_driverEarnings)
+        }
+
+        binding.fabProfile.setOnClickListener {
+            closeSpeedDial()
+            findNavController().navigate(R.id.action_driverHome_to_driverProfile)
+        }
+
+
     }
 
     private fun checkForActiveRideOnLaunch() {

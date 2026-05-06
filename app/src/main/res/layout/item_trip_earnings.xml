@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/tripCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_trip_card"
+    android:padding="16dp">
+
+    <!-- Left status bar accent -->
+    <View
+        android:id="@+id/statusBar"
+        android:layout_width="3dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_status_bar_green"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Content group (offset from status bar) -->
+    <LinearLayout
+        android:id="@+id/contentGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintEnd_toStartOf="@id/fareGroup"
+        app:layout_constraintStart_toEndOf="@id/statusBar"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintWidth_default="spread">
+
+        <!-- Row 1: status badge + date -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:id="@+id/tvStatusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_completed"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:text="COMPLETED"
+                android:textSize="9sp"
+                android:letterSpacing="0.10"
+                android:textStyle="bold"
+                android:fontFamily="@font/geist_mono_regular" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tvDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Today, 3:42 PM"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/geist_regular" />
+
+        </LinearLayout>
+
+        <!-- Row 2: Pickup route -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Route dots -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <View
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/bg_pickup_dot" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="20dp"
+                    android:background="#33FFFFFF"
+                    android:layout_marginVertical="3dp" />
+
+                <View
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/bg_destination_dot" />
+
+            </LinearLayout>
+
+            <!-- Addresses -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp">
+
+                <TextView
+                    android:id="@+id/tvPickup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Kapriwas"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="@font/geist_medium"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/tvDestination"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Dharuhera, Rewari, Haryana"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
+                    android:fontFamily="@font/geist_regular"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Row 3: rider name + vehicle type chip -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/ic_person_outline"
+                android:contentDescription="Rider" />
+
+            <TextView
+                android:id="@+id/tvRiderName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="5dp"
+                android:text="Saroj Singh"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/geist_regular" />
+
+            <TextView
+                android:id="@+id/tvVehicleType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_vehicle_chip"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:text="BIKE"
+                android:textSize="9sp"
+                android:letterSpacing="0.08"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/geist_mono_regular" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Fare group (right side) -->
+    <LinearLayout
+        android:id="@+id/fareGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="end"
+        android:minWidth="64dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="1">
+
+        <TextView
+            android:id="@+id/tvFare"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="₹45"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/green_deep"
+            android:fontFamily="@font/geist_bold"
+            android:gravity="end" />
+
+        <!-- Cancelled strikethrough overlay (gone by default) -->
+        <TextView
+            android:id="@+id/tvFareCancelled"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="₹45"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FF6B6B"
+            android:fontFamily="@font/geist_bold"
+            android:gravity="end"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvFareLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="earned"
+            android:textSize="10sp"
+            android:textColor="@color/text_secondary"
+            android:fontFamily="@font/geist_regular"
+            android:gravity="end" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

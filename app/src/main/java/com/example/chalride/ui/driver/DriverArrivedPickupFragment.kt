@@ -57,6 +57,8 @@ class DriverArrivedPickupFragment : Fragment() {
     private val estimatedFare by lazy { arguments?.getInt("estimatedFare")    ?: 0 }
     private val vehicleType   by lazy { arguments?.getString("vehicleType")   ?: "" }
 
+
+    private var riderCancelListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var timerJob: Job? = null
     private var generatedOtp  = ""
 
@@ -88,10 +90,12 @@ class DriverArrivedPickupFragment : Fragment() {
         setupOtpInput()
         setupContactButtons()
         setupStartTripButton()
+        listenForRiderCancellation()
     }
 
     override fun onDestroyView() {
         timerJob?.cancel()
+        riderCancelListener?.remove()    // ADD THIS LINE
         super.onDestroyView()
         _binding = null
     }
@@ -167,6 +171,26 @@ class DriverArrivedPickupFragment : Fragment() {
             binding.etOtp1, binding.etOtp2, binding.etOtp3, binding.etOtp4
         ).joinToString("") { it.text.toString() }
     }
+
+    private fun listenForRiderCancellation() {
+        if (rideRequestId.isEmpty()) return
+        riderCancelListener = FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || _binding == null) return@addSnapshotListener
+                if (snapshot.getString("status") == "cancelled") {
+                    android.util.Log.d("DriverArrivedPickup",
+                        "Rider cancelled — navigating to DriverRideCancelled")
+                    timerJob?.cancel()
+                    riderCancelListener?.remove()
+                    findNavController().navigate(
+                        R.id.action_driverArrivedPickup_to_driverRideCancelled)
+                }
+            }
+    }
+
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Contact buttons

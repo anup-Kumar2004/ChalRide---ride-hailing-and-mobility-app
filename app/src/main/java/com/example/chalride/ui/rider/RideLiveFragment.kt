@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import java.net.URL
 import kotlin.math.*
 import androidx.core.graphics.scale
+import kotlinx.coroutines.tasks.await
 
 class RideLiveFragment : Fragment() {
 
@@ -92,6 +93,22 @@ class RideLiveFragment : Fragment() {
     private var initialFitViewDone = false
 
     private var currentRideStatus = ""
+    // ── Driver offline watchdog ───────────────────────────────────────────────
+    // Tracks the last time we received a driver location update.
+    // If the driver's isOnline goes false and doesn't recover within
+    // DRIVER_OFFLINE_TIMEOUT_MS, we cancel the ride automatically.
+    private var driverOfflineWatchdogJob: kotlinx.coroutines.Job? = null
+    private var isDriverOnline = true  // assume online until proven otherwise
+    private var stalenessPollingJob: kotlinx.coroutines.Job? = null
+    private val LOCATION_STALE_THRESHOLD_MS = 5 * 60 * 1000L  // 5 minutes
+    private val POLLING_INTERVAL_MS = 60_000L                  // check every 1 minute
+
+    // ── Phase 1 cancel button visibility ─────────────────────────────────────
+    // Only shown in Phase 1, hidden as soon as OTP is generated (arrived_at_pickup)
+    private var otpGenerated = false
+
+
+
     private var otpDisplayed      = false
 
     // ── Last known driver position (for snap-back restore) ────────────────────
@@ -143,6 +160,8 @@ class RideLiveFragment : Fragment() {
 
         listenForRideUpdates()
         listenForDriverLocation()
+        setupCancelButton()
+        startStalenessPolling()
     }
 
     override fun onResume()  { super.onResume();  binding.mapView.onResume() }
@@ -152,6 +171,8 @@ class RideLiveFragment : Fragment() {
         rideListener?.remove()
         driverListener?.remove()
         markerAnimator?.cancel()
+        stalenessPollingJob?.cancel()
+        driverOfflineWatchdogJob?.cancel()   // ADD THIS LINE
         snapBackHandler.removeCallbacks(snapBackRunnable)
         super.onDestroyView()
         _binding = null
@@ -246,7 +267,49 @@ class RideLiveFragment : Fragment() {
         binding.tvOtpCode.text     = "----"
         binding.tvStatus.text      = "Driver is heading to you"
         binding.cardOtp.visibility = View.GONE
+        // Cancel button visible by default in Phase 1 — hidden when OTP generated
+        binding.btnCancelRide.visibility = View.VISIBLE   // ADD THIS LINE
     }
+
+    private fun setupCancelButton() {
+        binding.btnCancelRide.setOnClickListener {
+            showRiderCancelConfirmDialog()
+        }
+    }
+
+    private fun showRiderCancelConfirmDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Cancel Ride?")
+            .setMessage("Are you sure you want to cancel this ride?")
+            .setPositiveButton("Yes, Cancel") { _, _ ->
+                performRiderCancellation()
+            }
+            .setNegativeButton("No, Keep") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    private fun performRiderCancellation() {
+        rideListener?.remove()
+        driverListener?.remove()
+        driverOfflineWatchdogJob?.cancel()
+
+        android.util.Log.d("CHALRIDE_LIVE", "Rider cancelled the ride")
+
+        // Write cancelled status to rideRequests
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests").document(rideRequestId)
+            .update("status", "cancelled")
+
+        // Navigate to RideCancelledFragment with RIDER_CANCELLED reason
+        val bundle = Bundle().apply {
+            putString("cancelReason", com.example.chalride.ui.rider.CancelReason.RIDER_CANCELLED.name)
+        }
+        findNavController().navigate(R.id.action_rideLive_to_rideCancelled, bundle)
+    }
+
+
+
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Phase 2 switch
@@ -341,11 +404,115 @@ class RideLiveFragment : Fragment() {
             .document(driverId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null || _binding == null) return@addSnapshotListener
+
+                // ── Driver offline watchdog ───────────────────────────────────
+                val driverOnlineNow = snapshot.getBoolean("isOnline") ?: true
+                if (!driverOnlineNow && isDriverOnline) {
+                    // Driver just went offline — start 5-minute countdown
+                    isDriverOnline = false
+                    android.util.Log.w("CHALRIDE_LIVE",
+                        "Driver went offline — starting 5-minute cancellation watchdog")
+                    startDriverOfflineWatchdog()
+                } else if (driverOnlineNow && !isDriverOnline) {
+                    // Driver came back online — cancel watchdog
+                    isDriverOnline = true
+                    android.util.Log.d("CHALRIDE_LIVE",
+                        "Driver came back online — cancelling watchdog")
+                    driverOfflineWatchdogJob?.cancel()
+                    driverOfflineWatchdogJob = null
+                    updateStatus(if (isPhase2) "Trip in progress 🚗" else "Driver is heading to you")
+                }
+                // ─────────────────────────────────────────────────────────────
+
                 val lat = snapshot.getDouble("lat") ?: return@addSnapshotListener
                 val lng = snapshot.getDouble("lng") ?: return@addSnapshotListener
                 if (lat == 0.0 && lng == 0.0) return@addSnapshotListener
                 updateDriverMarker(lat, lng)
             }
+    }
+
+    private fun startDriverOfflineWatchdog() {
+        driverOfflineWatchdogJob?.cancel()
+        updateStatus("⚠️ Driver connection lost. Waiting...")
+
+        driverOfflineWatchdogJob = viewLifecycleOwner.lifecycleScope.launch {
+            // Count down 5 minutes, updating UI every minute
+            val totalMinutes = 5
+            for (minutesLeft in totalMinutes downTo 1) {
+                kotlinx.coroutines.delay(60_000L)
+                if (_binding == null) return@launch
+                android.util.Log.w("CHALRIDE_LIVE",
+                    "Driver still offline. ${minutesLeft - 1} minute(s) left before auto-cancel.")
+                if (minutesLeft > 1) {
+                    updateStatus("⚠️ Driver offline. Auto-cancelling in ${minutesLeft - 1} min...")
+                }
+            }
+
+            // 5 minutes elapsed — driver never came back
+            if (_binding == null) return@launch
+            android.util.Log.e("CHALRIDE_LIVE",
+                "Driver offline for 5 minutes — auto-cancelling ride")
+            autoCancelDueToDriverOffline()
+        }
+    }
+
+    private fun autoCancelDueToDriverOffline() {
+        rideListener?.remove()
+        driverListener?.remove()
+        stalenessPollingJob?.cancel()
+
+        android.util.Log.d("CHALRIDE_LIVE",
+            "Auto-cancelling ride $rideRequestId due to driver offline timeout")
+
+        val db = FirebaseFirestore.getInstance()
+
+        // ── Step 1: Cancel the ride document ─────────────────────────────────
+        db.collection("rideRequests").document(rideRequestId)
+            .update("status", "cancelled")
+
+        // ── Step 2: Clean driver document + increment warning counter ─────────
+        // We do this from the rider's phone because the driver's phone is dead.
+        // This prevents the driver appearing as available to new riders.
+        if (driverId.isNotEmpty()) {
+            val driverRef = db.collection("drivers").document(driverId)
+
+            db.runTransaction { transaction ->
+                val driverDoc = transaction.get(driverRef)
+
+                // Read current offline cancel count — default 0 if field doesn't exist
+                val currentCount = driverDoc.getLong("offlineCancelCount") ?: 0L
+                val newCount = currentCount + 1
+                val shouldFlag = newCount >= 6
+
+                val updates = mutableMapOf<String, Any?>(
+                    // Full OFFLINE state reset
+                    "driverState"        to "OFFLINE",
+                    "isOnline"           to false,
+                    "isAvailable"        to false,
+                    "activeRideId"       to null,
+                    "tripPhase"          to null,
+                    // Warning system
+                    "offlineCancelCount" to newCount,
+                    "isAccountFlagged"   to shouldFlag
+                )
+
+                transaction.update(driverRef, updates)
+            }.addOnSuccessListener {
+                android.util.Log.d("CHALRIDE_LIVE",
+                    "Driver $driverId cleaned up and warning count incremented")
+            }.addOnFailureListener { e ->
+                android.util.Log.e("CHALRIDE_LIVE",
+                    "Driver cleanup failed: ${e.message}")
+            }
+        }
+
+        // ── Step 3: Navigate rider to cancellation screen ─────────────────────
+        val bundle = Bundle().apply {
+            putString("cancelReason", CancelReason.DRIVER_OFFLINE.name)
+        }
+        if (_binding != null) {
+            findNavController().navigate(R.id.action_rideLive_to_rideCancelled, bundle)
+        }
     }
 
     private fun updateDriverMarker(lat: Double, lng: Double) {
@@ -523,21 +690,45 @@ class RideLiveFragment : Fragment() {
         binding.mapView.invalidate()
     }
 
-    /**
-     * Zoom to fit all given points with pixel-level padding that accounts for:
-     *  - The status pill / OTP card floating at the top of the screen
-     *  - The bottom sheet info card
-     *  - Side breathing room
-     *
-     * How it works:
-     *  1. Build the tight bounding box around the points.
-     *  2. Ensure a minimum lat/lon span so we never over-zoom on a single point.
-     *  3. Convert the desired dp padding into lat/lng degree offsets using the
-     *     ratio of the bounding box span to the visible map dimension.
-     *  4. Expand the bounding box by those degree offsets and call zoomToBoundingBox.
-     *
-     * This guarantees no marker or route segment is ever hidden behind UI chrome.
-     */
+    private fun startStalenessPolling() {
+        stalenessPollingJob?.cancel()
+        stalenessPollingJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(POLLING_INTERVAL_MS)
+                if (_binding == null) return@launch
+
+                // Skip if watchdog already running or ride is over
+                if (driverOfflineWatchdogJob?.isActive == true) continue
+                if (!isDriverOnline) continue
+
+                // Read driver doc directly — not a listener
+                try {
+                    val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("drivers").document(driverId)
+                        .get().await()
+
+                    val lastUpdated = doc.getLong("lastUpdated") ?: continue
+                    val staleness = System.currentTimeMillis() - lastUpdated
+
+                    android.util.Log.d("CHALRIDE_LIVE",
+                        "Staleness check: ${staleness / 1000}s since last location update")
+
+                    if (staleness > LOCATION_STALE_THRESHOLD_MS) {
+                        android.util.Log.w("CHALRIDE_LIVE",
+                            "lastUpdated is ${staleness/60000} min old — auto-cancelling immediately")
+                        isDriverOnline = false
+                        // Driver has ALREADY been gone 5 minutes — cancel immediately,
+                        // don't start another 5-minute watchdog on top of this
+                        autoCancelDueToDriverOffline()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CHALRIDE_LIVE", "Staleness poll failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+
     private fun zoomToFitWithPadding(points: List<GeoPoint>) {
         if (points.isEmpty()) return
 
@@ -670,16 +861,25 @@ class RideLiveFragment : Fragment() {
                 currentRideStatus = status
 
                 when (status) {
-                    "accepted"          -> updateStatus("Driver is heading to you")
-                    "arrived_at_pickup" -> updateStatus(
-                        "Driver has arrived! Share the OTP to start your ride"
-                    )
+                    "accepted" -> {
+                        updateStatus("Driver is heading to you")
+                        binding.btnCancelRide.visibility = View.VISIBLE  // allow cancel in phase 1
+                    }
+                    "arrived_at_pickup" -> {
+                        // OTP is about to be shown — hide cancel button
+                        otpGenerated = true
+                        binding.btnCancelRide.visibility = View.GONE
+                        updateStatus("Driver has arrived! Share the OTP to start your ride")
+                    }
                     "in_progress" -> {
+                        otpGenerated = true
+                        binding.btnCancelRide.visibility = View.GONE
                         updateStatus("Trip in progress 🚗")
                         binding.cardOtp.visibility = View.GONE
                         switchToPhase2()
                     }
                     "completed" -> {
+                        driverOfflineWatchdogJob?.cancel()
                         updateStatus("You have reached your destination! 🎉")
                         android.widget.Toast.makeText(
                             requireContext(), "Trip completed!", android.widget.Toast.LENGTH_LONG
@@ -687,10 +887,18 @@ class RideLiveFragment : Fragment() {
                         findNavController().navigate(R.id.action_rideLive_to_riderHome)
                     }
                     "cancelled" -> {
-                        android.widget.Toast.makeText(
-                            requireContext(), "Ride was cancelled", android.widget.Toast.LENGTH_LONG
-                        ).show()
-                        findNavController().navigate(R.id.action_rideLive_to_riderHome)
+                        // Reached only for external cancellations (rider already removed
+                        // the listener before navigating for self-cancellation and driver
+                        // offline watchdog — so this branch = always externally triggered)
+                        driverOfflineWatchdogJob?.cancel()
+                        rideListener?.remove()
+                        driverListener?.remove()
+                        val bundle = Bundle().apply {
+                            putString("cancelReason", CancelReason.DRIVER_OFFLINE.name)
+                        }
+                        if (_binding != null) {
+                            findNavController().navigate(R.id.action_rideLive_to_rideCancelled, bundle)
+                        }
                     }
                 }
             }
@@ -709,7 +917,6 @@ class RideLiveFragment : Fragment() {
         otpDisplayed = true
         binding.tvOtpCode.text           = otp
         binding.cardOtp.visibility       = View.VISIBLE
-        binding.layoutOtpHint.visibility = View.GONE
         binding.cardOtp.scaleX = 0.85f; binding.cardOtp.scaleY = 0.85f; binding.cardOtp.alpha = 0f
         binding.cardOtp.animate()
             .scaleX(1f).scaleY(1f).alpha(1f).setDuration(400)

@@ -93,7 +93,7 @@ class DriverNavigationFragment : Fragment() {
     private var mapInitialized        = false
     private var hasFirstFix           = false
     private var arrivedDetected       = false
-
+    private var riderCancelListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var markerAnimator: android.animation.ValueAnimator? = null
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -137,6 +137,7 @@ class DriverNavigationFragment : Fragment() {
         }
 
         startLocationUpdates()
+        listenForRiderCancellation()
 
         // Map scroll listener — nothing (we want full auto-follow in nav mode)
         binding.mapView.post { mapInitialized = true }
@@ -147,6 +148,7 @@ class DriverNavigationFragment : Fragment() {
 
     override fun onDestroyView() {
         markerAnimator?.cancel()
+        riderCancelListener?.remove()    // ADD THIS LINE
         if (::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
@@ -504,6 +506,25 @@ class DriverNavigationFragment : Fragment() {
                 "lastUpdated" to System.currentTimeMillis()
             ))
     }
+
+    private fun listenForRiderCancellation() {
+        if (rideRequestId.isEmpty()) return
+        riderCancelListener = FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || _binding == null) return@addSnapshotListener
+                if (snapshot.getString("status") == "cancelled") {
+                    android.util.Log.d("DriverNavigation",
+                        "Rider cancelled — navigating to DriverRideCancelled")
+                    riderCancelListener?.remove()
+                    findNavController().navigate(
+                        R.id.action_driverNavigation_to_driverRideCancelled)
+                }
+            }
+    }
+
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Math helpers

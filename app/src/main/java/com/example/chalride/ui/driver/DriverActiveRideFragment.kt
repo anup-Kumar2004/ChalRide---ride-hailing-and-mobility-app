@@ -553,14 +553,11 @@ class DriverActiveRideFragment : Fragment() {
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null || _binding == null) return@addSnapshotListener
                 if (snapshot.getString("status") == "cancelled") {
-                    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@addSnapshotListener
-                    FirebaseFirestore.getInstance()
-                        .collection("drivers").document(uid)
-                        .update(DriverState.ONLINE_AVAILABLE.toFirestoreMap())
-                    android.widget.Toast.makeText(
-                        requireContext(), "Rider cancelled the ride", android.widget.Toast.LENGTH_LONG
-                    ).show()
-                    findNavController().navigate(R.id.action_driverActiveRide_to_driverHome)
+                    android.util.Log.d("DriverActiveRide", "Rider cancelled — navigating to DriverRideCancelled")
+                    // State transition happens inside DriverRideCancelledFragment.onViewCreated()
+                    // so we don't need to write Firestore here
+                    rideStatusListener?.remove()
+                    findNavController().navigate(R.id.action_driverActiveRide_to_driverRideCancelled)
                 }
             }
     }

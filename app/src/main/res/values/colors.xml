@@ -70,4 +70,9 @@
     <color name="divider_color">#2A2A45</color>
     <color name="transparent">#00000000</color>
 
+
+    <!-- driver ride cancelled colors -->
+    <color name="error_red">#FF3B3B</color>
+    <color name="stroke_subtle">#22FFFFFF</color>
+
 </resources>

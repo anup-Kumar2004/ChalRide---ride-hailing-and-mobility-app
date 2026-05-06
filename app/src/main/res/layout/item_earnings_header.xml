@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This is the "TRIP HISTORY  ·  7 trips" row rendered as the first item
+     in the RecyclerView, so it scrolls with the list naturally and never
+     clips under the AppBar. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="20dp"
+    android:paddingBottom="12dp">
+
+    <TextView
+        android:id="@+id/tvSectionLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="TRIP HISTORY"
+        android:textSize="11sp"
+        android:letterSpacing="0.12"
+        android:textColor="@color/text_secondary"
+        android:fontFamily="@font/geist_mono_regular" />
+
+    <TextView
+        android:id="@+id/tvTripCountHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 trips"
+        android:textSize="11sp"
+        android:textColor="@color/text_secondary"
+        android:fontFamily="@font/geist_regular" />
+
+</LinearLayout>

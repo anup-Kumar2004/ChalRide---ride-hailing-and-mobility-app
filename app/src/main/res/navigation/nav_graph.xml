@@ -113,6 +113,37 @@
             app:destination="@id/driverActiveRideFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
+
+        <action
+            android:id="@+id/action_driverHome_to_driverEarnings"
+            app:destination="@id/driverEarningsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+        <action
+            android:id="@+id/action_driverHome_to_driverProfile"
+            app:destination="@id/driverProfileFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
+
+    </fragment>
+
+    <!-- ══ DRIVER PROFILE SCREEN ════════════════════════════════════════ -->
+    <fragment
+        android:id="@+id/driverProfileFragment"
+        android:name="com.example.chalride.ui.driver.DriverProfileFragment"
+        android:label="DriverProfileFragment">
+        <action
+            android:id="@+id/action_driverProfile_to_driverHome"
+            app:destination="@id/driverHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_left"
+            app:exitAnim="@anim/slide_out_right"/>
     </fragment>
 
 
@@ -168,6 +199,15 @@
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+
+        <action
+            android:id="@+id/action_rideLive_to_rideCancelled"
+            app:destination="@id/rideCancelledFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
+
     </fragment>
 
     <fragment
@@ -193,6 +233,13 @@
             app:destination="@id/driverArrivedPickupFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
+        <action
+            android:id="@+id/action_driverActiveRide_to_driverRideCancelled"
+            app:destination="@id/driverRideCancelledFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
 
     </fragment>
 
@@ -211,6 +258,14 @@
             app:destination="@id/driverHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_driverNavigation_to_driverRideCancelled"
+            app:destination="@id/driverRideCancelledFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
+
     </fragment>
 
     <fragment
@@ -224,7 +279,67 @@
             app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
+        <action
+            android:id="@+id/action_driverArrivedPickup_to_driverRideCancelled"
+            app:destination="@id/driverRideCancelledFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
     </fragment>
+
+
+
+    <!-- ══ RIDER CANCELLATION SCREEN ════════════════════════════════════ -->
+    <fragment
+        android:id="@+id/rideCancelledFragment"
+        android:name="com.example.chalride.ui.rider.RideCancelledFragment"
+        android:label="RideCancelledFragment">
+        <action
+            android:id="@+id/action_rideCancelled_to_riderHome"
+            app:destination="@id/riderHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+    </fragment>
+
+    <!-- ══ DRIVER RIDE CANCELLED SCREEN ════════════════════════════════ -->
+    <fragment
+        android:id="@+id/driverRideCancelledFragment"
+        android:name="com.example.chalride.ui.driver.DriverRideCancelledFragment"
+        android:label="DriverRideCancelledFragment">
+        <action
+            android:id="@+id/action_driverRideCancelled_to_driverHome"
+            app:destination="@id/driverHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
+
+        <action
+            android:id="@+id/action_driverRideCancelled_to_driverEarnings"
+            app:destination="@id/driverEarningsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+
+    </fragment>
+
+
+    <!-- ══ DRIVER EARNINGS SCREEN ════════════════════════════════════════ -->
+    <fragment
+        android:id="@+id/driverEarningsFragment"
+        android:name="com.example.chalride.ui.driver.DriverEarningsFragment"
+        android:label="DriverEarningsFragment">
+
+        <action
+            android:id="@+id/action_driverEarnings_to_driverHome"
+            app:destination="@id/driverHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_left"
+            app:exitAnim="@anim/slide_out_right" />
+
+    </fragment>
+
 
 
 </navigation>
