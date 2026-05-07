@@ -11,6 +11,7 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -854,53 +855,43 @@ class DriverHomeFragment : Fragment() {
 
     private fun listenForRideRequests() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val vehicleType = FirebaseFirestore.getInstance()
-            .collection("drivers").document(uid)
 
-        // First fetch this driver's vehicleType
-        vehicleType.get().addOnSuccessListener { doc ->
-            val myVehicleType = doc.getString("vehicleType") ?: return@addOnSuccessListener
+        rideRequestListener = FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .whereEqualTo("targetDriverId", uid)
+            .whereEqualTo("status", "pending")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                if (_binding == null) return@addSnapshotListener
 
-            rideRequestListener = FirebaseFirestore.getInstance()
-                .collection("rideRequests")
-                .whereEqualTo("status", "pending")
-                .whereEqualTo("vehicleType", myVehicleType)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null || snapshot == null) return@addSnapshotListener
-                    if (_binding == null) return@addSnapshotListener
+                for (change in snapshot.documentChanges) {
+                    if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED ||
+                        change.type == com.google.firebase.firestore.DocumentChange.Type.MODIFIED
+                    ) {
+                        val doc = change.document
+                        if (doc.id == currentRideRequestId) continue
 
-                    for (change in snapshot.documentChanges) {
-                        if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
-                            val doc2 = change.document
+                        currentRideRequestId = doc.id
 
-                            // Skip if already handled or if this driver is in rejectedDrivers
-                            val rejectedDrivers = doc2.get("rejectedDrivers") as? List<*> ?: emptyList<String>()
-                            if (uid in rejectedDrivers) continue
-                            if (doc2.id == currentRideRequestId) continue
+                        val pickupLat  = doc.getDouble("pickupLat")  ?: 0.0
+                        val pickupLng  = doc.getDouble("pickupLng")  ?: 0.0
+                        val driverLat  = currentLocation?.latitude   ?: 0.0
+                        val driverLng  = currentLocation?.longitude  ?: 0.0
+                        val distanceKm = haversineDistance(driverLat, driverLng, pickupLat, pickupLng)
 
-                            currentRideRequestId = doc2.id
-
-                            val pickupLat = doc2.getDouble("pickupLat") ?: 0.0
-                            val pickupLng = doc2.getDouble("pickupLng") ?: 0.0
-                            val driverLat = currentLocation?.latitude ?: 0.0
-                            val driverLng = currentLocation?.longitude ?: 0.0
-
-                            val distanceKm = haversineDistance(driverLat, driverLng, pickupLat, pickupLng)
-
-                            showRideRequestSheet(
-                                rideRequestId = doc2.id,
-                                riderName     = doc2.getString("riderName") ?: "Rider",
-                                pickupAddress = doc2.getString("pickupAddress") ?: "",
-                                destAddress   = doc2.getString("destAddress") ?: "",
-                                vehicleType   = myVehicleType,
-                                estimatedFare = (doc2.getLong("estimatedFare") ?: 0).toInt(),
-                                distanceKm    = distanceKm
-                            )
-                            break
-                        }
+                        showRideRequestSheet(
+                            rideRequestId = doc.id,
+                            riderName     = doc.getString("riderName")  ?: "Rider",
+                            pickupAddress = doc.getString("pickupAddress") ?: "",
+                            destAddress   = doc.getString("destAddress")   ?: "",
+                            vehicleType   = doc.getString("vehicleType")   ?: "",
+                            estimatedFare = (doc.getLong("estimatedFare")  ?: 0).toInt(),
+                            distanceKm    = distanceKm
+                        )
+                        break
                     }
                 }
-        }
+            }
     }
 
     private fun haversineDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
@@ -936,12 +927,12 @@ class DriverHomeFragment : Fragment() {
             }
 
             onRejected = {
-                rejectRide(rideRequestId)
+                markRideAsRejected(rideRequestId)
                 currentRideRequestId = null
             }
 
             onTimeout = {
-                rejectRide(rideRequestId)
+                markRideAsRejected(rideRequestId)
                 currentRideRequestId = null
             }
         }
@@ -951,68 +942,93 @@ class DriverHomeFragment : Fragment() {
 
     private fun acceptRide(rideRequestId: String) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db  = FirebaseFirestore.getInstance()
 
-        FirebaseFirestore.getInstance()
-            .collection("drivers").document(uid)
-            .get()
-            .addOnSuccessListener { doc ->
-                val driverName = doc.getString("name") ?: "Driver"
+        // Step 1: Fetch driver name (read-only, not part of the transaction)
+        db.collection("drivers").document(uid).get()
+            .addOnSuccessListener { driverDoc ->
+                val driverName = driverDoc.getString("name") ?: "Driver"
+                val rideRef    = db.collection("rideRequests").document(rideRequestId)
 
-                FirebaseFirestore.getInstance()
-                    .collection("rideRequests").document(rideRequestId)
-                    .get()
-                    .addOnSuccessListener { rideDoc ->
+                // Step 2: Atomic transaction — only succeed if the ride is still
+                // pending AND still targeting THIS driver.
+                // If two drivers or two riders race here, only one will win.
+                db.runTransaction { transaction ->
+                    val rideSnap      = transaction.get(rideRef)
+                    val currentStatus = rideSnap.getString("status")       ?: ""
+                    val currentTarget = rideSnap.getString("targetDriverId") ?: ""
 
-                        // Update ride status
-                        FirebaseFirestore.getInstance()
-                            .collection("rideRequests").document(rideRequestId)
-                            .update(mapOf(
-                                "status"     to "accepted",
-                                "driverId"   to uid,
-                                "driverName" to driverName,
-                                "assignedAt" to System.currentTimeMillis()
-                            ))
+                    if (currentStatus != "pending" || currentTarget != uid) {
+                        // Ride was cancelled, already accepted by someone else,
+                        // or re-targeted to a different driver — abort.
+                        throw Exception("ride_no_longer_available")
+                    }
 
-                        // Transition driver to ON_TRIP_TO_PICKUP — sets isAvailable=false,
-                        // activeRideId, tripPhase, driverState atomically
-                        FirebaseFirestore.getInstance()
-                            .collection("drivers").document(uid)
-                            .update(DriverState.ON_TRIP_TO_PICKUP.toFirestoreMap(rideRequestId))
-
-                        val bundle = Bundle().apply {
-                            putString("rideRequestId", rideRequestId)
-                            putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
-                            putDouble("pickupLat",     rideDoc.getDouble("pickupLat")     ?: 0.0)
-                            putDouble("pickupLng",     rideDoc.getDouble("pickupLng")     ?: 0.0)
-                            putDouble("destLat",       rideDoc.getDouble("destLat")       ?: 0.0)
-                            putDouble("destLng",       rideDoc.getDouble("destLng")       ?: 0.0)
-                            putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
-                            putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
-                            putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
-                            putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
-                            putString("riderPhone", rideDoc.getString("riderPhone") ?: "")
-                        }
-
-                        findNavController().navigate(
-                            R.id.action_driverHome_to_driverActiveRide,
-                            bundle
+                    transaction.update(
+                        rideRef, mapOf(
+                            "status"     to "accepted",
+                            "driverId"   to uid,
+                            "driverName" to driverName,
+                            "assignedAt" to System.currentTimeMillis()
                         )
+                    )
+                }
+                    .addOnSuccessListener {
+                        // Transaction won — now fetch full ride details for navigation
+                        rideRef.get().addOnSuccessListener { rideDoc ->
+
+                            // Update driver state only after the ride is confirmed accepted
+                            db.collection("drivers").document(uid)
+                                .update(DriverState.ON_TRIP_TO_PICKUP.toFirestoreMap(rideRequestId))
+                                .addOnFailureListener {
+                                    // If this fails, retry once — driver must be marked unavailable
+                                    db.collection("drivers").document(uid)
+                                        .update(DriverState.ON_TRIP_TO_PICKUP.toFirestoreMap(rideRequestId))
+                                }
+
+                            val bundle = Bundle().apply {
+                                putString("rideRequestId", rideRequestId)
+                                putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
+                                putDouble("pickupLat",      rideDoc.getDouble("pickupLat")     ?: 0.0)
+                                putDouble("pickupLng",      rideDoc.getDouble("pickupLng")     ?: 0.0)
+                                putDouble("destLat",        rideDoc.getDouble("destLat")       ?: 0.0)
+                                putDouble("destLng",        rideDoc.getDouble("destLng")       ?: 0.0)
+                                putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
+                                putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
+                                putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
+                                putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
+                                putString("riderPhone",    rideDoc.getString("riderPhone")    ?: "")
+                            }
+
+                            if (_binding != null) {
+                                findNavController().navigate(
+                                    R.id.action_driverHome_to_driverActiveRide, bundle
+                                )
+                            }
+                        }
+                    }
+                    .addOnFailureListener {
+                        // Transaction lost — ride was taken by another driver or cancelled
+                        currentRideRequestId = null
+                        if (_binding != null) {
+                            Toast.makeText(
+                                requireContext(),
+                                "Ride is no longer available",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
             }
     }
 
-    private fun rejectRide(rideRequestId: String) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // Add this driver to rejectedDrivers list so request goes to next driver
+    private fun markRideAsRejected(rideRequestId: String) {
         FirebaseFirestore.getInstance()
             .collection("rideRequests")
             .document(rideRequestId)
-            .update(
-                "rejectedDrivers",
-                com.google.firebase.firestore.FieldValue.arrayUnion(uid)
-            )
+            .update("status", "rejected")
     }
+
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -1041,36 +1057,5 @@ class DriverHomeFragment : Fragment() {
 
         rideRequestListener?.remove()
     }
-
-    // ── Geohash encoder ─────────────────────────────────────────────────────
-
-    /**
-     * Lightweight geohash encoder — no external library needed.
-     * Precision 6 = ~1.2km x 0.6km cell, good enough for 3km radius queries.
-     */
-    private fun encodeGeohash(lat: Double, lng: Double, precision: Int = 6): String {
-        val base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
-        var minLat = -90.0;  var maxLat = 90.0
-        var minLng = -180.0; var maxLng = 180.0
-        val hash = StringBuilder()
-        var bits = 0; var bitsTotal = 0; var hashValue = 0
-
-        while (hash.length < precision) {
-            if (bitsTotal % 2 == 0) {
-                val mid = (minLng + maxLng) / 2
-                if (lng >= mid) { hashValue = hashValue * 2 + 1; minLng = mid }
-                else            { hashValue *= 2;                 maxLng = mid }
-            } else {
-                val mid = (minLat + maxLat) / 2
-                if (lat >= mid) { hashValue = hashValue * 2 + 1; minLat = mid }
-                else            { hashValue *= 2;                 maxLat = mid }
-            }
-            bits++; bitsTotal++
-            if (bits == 5) {
-                hash.append(base32[hashValue])
-                bits = 0; hashValue = 0
-            }
-        }
-        return hash.toString()
-    }
+    
 }

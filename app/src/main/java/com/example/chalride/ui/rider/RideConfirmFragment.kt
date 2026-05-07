@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
@@ -15,7 +14,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentRideConfirmBinding
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -30,6 +28,7 @@ import java.net.URL
 import androidx.core.graphics.toColorInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlin.math.pow
+import androidx.core.view.isGone
 
 class RideConfirmFragment : Fragment() {
 
@@ -56,6 +55,8 @@ class RideConfirmFragment : Fragment() {
     private var allRoutePoints: ArrayList<GeoPoint> = arrayListOf()
     private var travelingDot: Marker? = null
     private var dotAnimationRunning = false
+    private var selectedRadiusKm: Int = 5
+    private var pendingRadiusKm: Int = 5
 
     // ── Vehicle card data — keeps all card meta in one place ──────────────
     private data class VehicleCardMeta(
@@ -152,8 +153,117 @@ class RideConfirmFragment : Fragment() {
         binding.tvDriverCountBadge.text = "Searching nearby..."
 
         initMap()
+        setupRadiusFilter()
         fetchNearbyDriversAndFilterVehicles()
     }
+
+    private fun setupRadiusFilter() {
+        val chips = listOf(
+            binding.chip5km to 5,
+            binding.chip10km to 10,
+            binding.chip15km to 15,
+            binding.chip25km to 25
+        )
+
+        fun updateChipVisuals(selectedKm: Int) {
+            chips.forEach { (chip, km) ->
+                if (km == selectedKm) {
+                    chip.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(), R.color.brand_primary
+                        )
+                    )
+                    chip.setBackgroundResource(R.drawable.bg_chip_selected)
+                } else {
+                    chip.setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(), R.color.text_hint
+                        )
+                    )
+                    chip.setBackgroundResource(R.drawable.bg_chip_unselected)
+                }
+            }
+        }
+
+        // Expand / collapse toggle
+        binding.filterRadiusHeader.setOnClickListener {
+            val panel = binding.filterRadiusPanel
+            val chevron = binding.tvRadiusChevron
+            if (panel.isGone) {
+                panel.visibility = View.VISIBLE
+                chevron.animate().rotation(270f).setDuration(200).start()
+            } else {
+                panel.visibility = View.GONE
+                chevron.animate().rotation(90f).setDuration(200).start()
+            }
+        }
+
+        // Chip selection — only updates pendingRadiusKm, not applied yet
+        chips.forEach { (chip, km) ->
+            chip.setOnClickListener {
+                pendingRadiusKm = km
+                updateChipVisuals(km)
+            }
+        }
+
+        // Apply button
+        binding.btnApplyRadius.setOnClickListener {
+            val chosen = pendingRadiusKm
+            if (chosen == selectedRadiusKm) {
+                // No change — just collapse
+                binding.filterRadiusPanel.visibility = View.GONE
+                binding.tvRadiusChevron.animate().rotation(90f).setDuration(200).start()
+                return@setOnClickListener
+            }
+
+            if (chosen > 5) {
+                // Show warning dialog for larger radii
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Wider Search Area")
+                    .setMessage(
+                        "You've selected a $chosen km radius. Drivers may be farther away " +
+                                "and could take longer to reach your pickup point."
+                    )
+                    .setPositiveButton("Continue") { _, _ ->
+                        applyRadiusAndRefresh(chosen)
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        // Revert chip visuals to currently active radius
+                        pendingRadiusKm = selectedRadiusKm
+                        updateChipVisuals(selectedRadiusKm)
+                    }
+                    .show()
+            } else {
+                applyRadiusAndRefresh(chosen)
+            }
+        }
+
+        // Set initial chip visuals
+        updateChipVisuals(selectedRadiusKm)
+    }
+
+    private fun applyRadiusAndRefresh(radiusKm: Int) {
+        selectedRadiusKm = radiusKm
+        pendingRadiusKm = radiusKm
+        binding.tvCurrentRadius.text = "$radiusKm km"
+
+        // Collapse panel
+        binding.filterRadiusPanel.visibility = View.GONE
+        binding.tvRadiusChevron.animate().rotation(90f).setDuration(200).start()
+
+        // Reset vehicle cards and badge to searching state
+        binding.tvDriverCountBadge.text = "Searching nearby..."
+        availableVehicleTypes.clear()
+        nearbyDrivers = emptyList()
+        selectedVehicleType = ""
+        selectedFare = 0
+        renderVehicleCards()
+
+        // Re-run the fetch with new radius
+        fetchNearbyDriversAndFilterVehicles()
+    }
+
+
 
     // ── Route summary ─────────────────────────────────────────────────────
 
@@ -205,13 +315,13 @@ class RideConfirmFragment : Fragment() {
      * Renders every card in its correct available / unavailable state.
      */
     private fun renderVehicleCards() {
-        val availableCount = availableVehicleTypes.size
+        val driverCount = nearbyDrivers.size
 
         // Update driver count badge
         binding.tvDriverCountBadge.text = when {
-            availableCount == 0 -> "No drivers nearby"
-            availableCount == 1 -> "1 vehicle available"
-            else                -> "$availableCount vehicle types available"
+            driverCount == 0 -> "No drivers nearby"
+            driverCount == 1 -> "1 driver nearby"
+            else             -> "$driverCount drivers nearby"
         }
 
         vehicleCards.forEach { meta ->
@@ -562,9 +672,12 @@ class RideConfirmFragment : Fragment() {
     private fun fetchNearbyDriversAndFilterVehicles() {
         val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
 
-        // Use precision 5 (≈ 4.9 km x 4.9 km cells) — matches what the service writes.
-        // Precision 4 cells are ~156km wide which is too coarse for city-level matching.
-        val centerHash = encodeGeohash(pickupLat, pickupLng, precision = 5)
+        val geohashPrecision = when {
+            selectedRadiusKm <= 15 -> 5   // cells ≈ 4.9 km — correct for 5/10/15 km radius
+            else -> 4                     // cells ≈ 156 km — only use for 25 km+
+        }
+
+        val centerHash = encodeGeohash(pickupLat, pickupLng, precision = geohashPrecision)
 
         // Get all 9 cells: center + 8 neighbors
         val cellsToQuery = geohashNeighbors(centerHash) + centerHash
@@ -591,7 +704,7 @@ class RideConfirmFragment : Fragment() {
                 if (lastUpdated < fiveMinutesAgo) return@filter false
                 val distanceKm = haversineDistance(pickupLat, pickupLng, lat, lng)
                 android.util.Log.d("NearbyDrivers", "Driver ${driver["driverId"]}: ${String.format("%.2f", distanceKm)}km away")
-                distanceKm <= 20.0
+                distanceKm <= selectedRadiusKm.toDouble()
             }
 
             android.util.Log.d("NearbyDrivers", "Found ${nearby.size} drivers within 10km")
@@ -652,69 +765,36 @@ class RideConfirmFragment : Fragment() {
             return
         }
 
-        val driversOfType = nearbyDrivers
+        android.util.Log.d("FindRide", "Selected type: $selectedVehicleType")
+        android.util.Log.d("FindRide", "All nearby drivers: ${nearbyDrivers.map { "${it["driverId"]} → ${it["vehicleType"]}" }}")
+
+        val sortedDriverIds = nearbyDrivers
             .filter { it["vehicleType"] == selectedVehicleType }
-            .sortedBy {
-                val lat = it["lat"] as? Double ?: 0.0
-                val lng = it["lng"] as? Double ?: 0.0
+            .sortedBy { driver ->
+                val lat = driver["lat"] as? Double ?: 0.0
+                val lng = driver["lng"] as? Double ?: 0.0
                 haversineDistance(pickupLat, pickupLng, lat, lng)
             }
+            .mapNotNull { it["driverId"] as? String }
 
-        if (driversOfType.isEmpty()) {
-            Toast.makeText(requireContext(), "No ${selectedVehicleType} available right now", Toast.LENGTH_SHORT).show()
+        if (sortedDriverIds.isEmpty()) {
+            Toast.makeText(requireContext(), "No $selectedVehicleType available right now", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        binding.btnFindRide.isEnabled = false
-        binding.btnFindRide.text = "Searching..."
+        val bundle = Bundle().apply {
+            putString("vehicleType",   selectedVehicleType)
+            putInt("estimatedFare",    selectedFare)
+            putDouble("pickupLat",     pickupLat)
+            putDouble("pickupLng",     pickupLng)
+            putString("pickupAddress", pickupAddress)
+            putDouble("destLat",       destLat)
+            putDouble("destLng",       destLng)
+            putString("destAddress",   destAddress)
+            putInt("searchRadiusKm",   selectedRadiusKm)  // ← ADD THIS
+        }
 
-        FirebaseFirestore.getInstance().collection("riders").document(uid).get()
-            .addOnSuccessListener { doc ->
-                val rideData = hashMapOf(
-                    "riderId"         to uid,
-                    "riderName"       to (doc.getString("name") ?: "Rider"),
-                    "pickupLat"       to pickupLat,
-                    "pickupLng"       to pickupLng,
-                    "pickupAddress"   to pickupAddress,
-                    "destLat"         to destLat,
-                    "destLng"         to destLng,
-                    "destAddress"     to destAddress,
-                    "vehicleType"     to selectedVehicleType,
-                    "estimatedFare"   to selectedFare,
-                    "status"          to "pending",
-                    "createdAt"       to System.currentTimeMillis(),
-                    "driverId"        to "",
-                    "driverName"      to "",
-                    "rejectedDrivers" to emptyList<String>()
-                )
-
-                FirebaseFirestore.getInstance().collection("rideRequests").add(rideData)
-                    .addOnSuccessListener { docRef ->
-                        // AFTER — all 9 fields that RideLiveFragment needs
-                        val bundle = Bundle().apply {
-                            putString("rideRequestId", docRef.id)
-                            putString("vehicleType",   selectedVehicleType)
-                            putDouble("pickupLat",     pickupLat)
-                            putDouble("pickupLng",     pickupLng)
-                            putString("pickupAddress", pickupAddress)   // ← added
-                            putDouble("destLat",       destLat)         // ← added
-                            putDouble("destLng",       destLng)         // ← added
-                            putString("destAddress",   destAddress)     // ← added
-                            putInt("estimatedFare",    selectedFare)    // ← added
-                        }
-                        findNavController().navigate(R.id.action_rideConfirm_to_rideSearching, bundle)
-                    }
-                    .addOnFailureListener { e ->
-                        binding.btnFindRide.isEnabled = true
-                        binding.btnFindRide.text = "Find a Ride"
-                        Toast.makeText(requireContext(), "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener {
-                binding.btnFindRide.isEnabled = true
-                binding.btnFindRide.text = "Find a Ride"
-            }
+        findNavController().navigate(R.id.action_rideConfirm_to_rideSearching, bundle)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

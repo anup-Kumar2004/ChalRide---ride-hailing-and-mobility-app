@@ -7,6 +7,7 @@
     android:background="@color/bg_dark">
 
     <!-- Pulse ring 3 (outermost) -->
+
     <View
         android:id="@+id/pulseRing3"
         android:layout_width="200dp"
@@ -18,7 +19,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
+
     <!-- Pulse ring 2 -->
+
     <View
         android:id="@+id/pulseRing2"
         android:layout_width="150dp"

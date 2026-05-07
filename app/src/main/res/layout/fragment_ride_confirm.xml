@@ -629,7 +629,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="8dp">
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardSuv"
@@ -727,6 +727,176 @@
                     android:visibility="gone" />
 
             </FrameLayout>
+
+            <!-- ── Search Radius Filter ── -->
+            <LinearLayout
+                android:id="@+id/layoutRadiusFilter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_scrim_rounded"
+                android:elevation="2dp">
+
+                <!-- Collapsed header row — always visible -->
+                <LinearLayout
+                    android:id="@+id/filterRadiusHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/ic_distance"
+                        android:layout_marginEnd="8dp"
+                        app:tint="@color/brand_primary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Search Radius"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:id="@+id/tvCurrentRadius"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="5 km"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/tvRadiusChevron"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textColor="@color/text_hint"
+                        android:textSize="18sp"
+                        android:rotation="90" />
+
+                </LinearLayout>
+
+                <!-- Expanding panel — GONE by default -->
+                <LinearLayout
+                    android:id="@+id/filterRadiusPanel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="14dp"
+                    android:paddingBottom="14dp"
+                    android:visibility="gone">
+
+                    <!-- Thin separator inside panel -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/divider_color"
+                        android:layout_marginBottom="14dp" />
+
+                    <!-- Four chips in a horizontal row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="14dp">
+
+                        <TextView
+                            android:id="@+id/chip5km"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:gravity="center"
+                            android:text="5 km"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textColor="@color/brand_primary"
+                            android:background="@drawable/bg_chip_selected"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chip10km"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:gravity="center"
+                            android:text="10 km"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textColor="@color/text_hint"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chip15km"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:gravity="center"
+                            android:text="15 km"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textColor="@color/text_hint"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/chip25km"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="25 km"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textColor="@color/text_hint"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                    </LinearLayout>
+
+                    <!-- Apply button inside panel -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnApplyRadius"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        app:strokeColor="@color/rider_color"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="Apply"
+                        android:textAllCaps="false"
+                        android:layout_marginHorizontal="120dp"
+                        android:textSize="14sp"
+                        android:letterSpacing="0.05"
+                        android:textColor="#BAAFAF"
+                        app:cornerRadius="12dp"
+                        app:elevation="0dp"
+                        app:rippleColor="@color/pink_light"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+
 
             <!-- ── Find a Ride button ── -->
             <com.google.android.material.button.MaterialButton

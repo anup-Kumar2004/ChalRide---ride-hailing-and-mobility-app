@@ -19,6 +19,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
 
     private var timerJob: Job? = null
     private var secondsLeft = 15
+    private var hasResponded = false
 
     // Callbacks
     var onAccepted: (() -> Unit)? = null
@@ -51,12 +52,16 @@ class RideRequestSheet : BottomSheetDialogFragment() {
         startTimer()
 
         binding.btnAccept.setOnClickListener {
+            if (hasResponded) return@setOnClickListener
+            hasResponded = true
             timerJob?.cancel()
             onAccepted?.invoke()
             dismiss()
         }
 
         binding.btnReject.setOnClickListener {
+            if (hasResponded) return@setOnClickListener
+            hasResponded = true
             timerJob?.cancel()
             onRejected?.invoke()
             dismiss()
@@ -105,7 +110,8 @@ class RideRequestSheet : BottomSheetDialogFragment() {
             }
 
             // Timeout — no response from driver
-            if (isActive) {
+            if (isActive && !hasResponded) {
+                hasResponded = true
                 onTimeout?.invoke()
                 dismiss()
             }
