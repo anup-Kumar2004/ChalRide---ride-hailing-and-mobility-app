@@ -102,6 +102,11 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right"/>
+        <action
+            android:id="@+id/action_rider_home_to_ride_live"
+            app:destination="@id/rideLiveFragment"
+            app:popUpTo="@id/riderHomeFragment"
+            app:popUpToInclusive="true"/>
     </fragment>
 
     <fragment

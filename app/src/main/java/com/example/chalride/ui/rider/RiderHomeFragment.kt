@@ -126,6 +126,18 @@ class RiderHomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         userIsInteracting = false  // Reset on every view creation
 
+        // Restore pickup state after process death or rotation
+        if (confirmedPickupLabel.isEmpty() && savedInstanceState != null) {
+            val savedLabel = savedInstanceState.getString("confirmedPickupLabel", "")
+            val savedLat   = savedInstanceState.getDouble("confirmedPickupLat", 0.0)
+            val savedLng   = savedInstanceState.getDouble("confirmedPickupLng", 0.0)
+            if (savedLabel.isNotEmpty() && savedLat != 0.0) {
+                confirmedPickupLabel   = savedLabel
+                confirmedPickupLocation = GeoPoint(savedLat, savedLng)
+                currentLocation        = confirmedPickupLocation
+            }
+        }
+
         // Back button: if in search mode → exit search mode. Otherwise do nothing.
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner, object : OnBackPressedCallback(true) {
@@ -171,6 +183,11 @@ class RiderHomeFragment : Fragment() {
             // We already have a pickup — just restore the UI, no GPS needed
             restoreConfirmedPickupUI()
         }
+
+        // Check if there is an active ride in progress from a previous session
+        checkAndRejoinActiveRide()
+
+
     }
 
     // ── Confirmed pickup ────────────────────────────────────────────────────
@@ -738,6 +755,61 @@ class RiderHomeFragment : Fragment() {
 
     }
 
+
+
+
+    /**
+     * Checks SharedPreferences for an active ride left over from a previous
+     * session (process death, app relaunch). If found and the ride is still
+     * active in Firestore, navigates directly to RideLiveFragment.
+     */
+    private fun checkAndRejoinActiveRide() {
+        val prefs = requireContext().getSharedPreferences(
+            RideLiveService.PREFS_NAME, Context.MODE_PRIVATE
+        )
+        val savedRideId = prefs.getString(RideLiveService.PREFS_KEY_RIDE_ID, "") ?: ""
+        if (savedRideId.isEmpty()) return  // no active ride saved
+
+        android.util.Log.d("RiderHome", "Found saved rideId=$savedRideId — verifying with Firestore")
+
+        // Verify the ride is still actually active before navigating
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(savedRideId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener
+                val status = doc.getString("status") ?: ""
+                android.util.Log.d("RiderHome", "Saved ride status=$status")
+
+                // Only rejoin if ride is in an active state
+                if (status in listOf("accepted", "arrived_at_pickup", "in_progress")) {
+                    val bundle = Bundle().apply {
+                        putString("rideRequestId", savedRideId)
+                        putString("driverId",      prefs.getString(RideLiveService.PREFS_KEY_DRIVER_ID, ""))
+                        putString("driverName",    prefs.getString(RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
+                        putString("vehicleType",   prefs.getString(RideLiveService.PREFS_KEY_VEHICLE, ""))
+                        putDouble("pickupLat",     prefs.getFloat(RideLiveService.PREFS_KEY_PICKUP_LAT, 0f).toDouble())
+                        putDouble("pickupLng",     prefs.getFloat(RideLiveService.PREFS_KEY_PICKUP_LNG, 0f).toDouble())
+                        putDouble("destLat",       prefs.getFloat(RideLiveService.PREFS_KEY_DEST_LAT, 0f).toDouble())
+                        putDouble("destLng",       prefs.getFloat(RideLiveService.PREFS_KEY_DEST_LNG, 0f).toDouble())
+                        putString("pickupAddress", prefs.getString(RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
+                        putString("destAddress",   prefs.getString(RideLiveService.PREFS_KEY_DEST_ADDR, ""))
+                        putInt("estimatedFare",    prefs.getInt(RideLiveService.PREFS_KEY_FARE, 0))
+                    }
+                    findNavController().navigate(R.id.action_rider_home_to_ride_live, bundle)
+                } else {
+                    // Ride ended while app was closed — clear stale prefs
+                    prefs.edit().clear().apply()
+                    android.util.Log.d("RiderHome", "Saved ride is no longer active ($status) — cleared prefs")
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("RiderHome", "Failed to verify saved ride: ${e.message}")
+                // Don't clear prefs on network failure — try again next launch
+            }
+    }
+
     // ── Navigation ───────────────────────────────────────────────────────────
 
     private fun openDestinationSearch() {
@@ -754,22 +826,54 @@ class RiderHomeFragment : Fragment() {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     override fun onResume() {
-        super.onResume(); binding.mapView.onResume()
+        super.onResume()
+        binding.mapView.onResume()
+        // Restart pulse animation if marker exists — it stops when app is backgrounded
+        if (confirmedPickupLocation != null) {
+            binding.pulseView.animate().cancel()
+            binding.pulseView.clearAnimation()
+            if (binding.pulseView.isVisible) {
+                startPulse(binding.pulseView)
+            }
+        }
+        // If GPS was still fetching when user backgrounded, restart it on resume
+        if (isLocationBeingFetched && !locationUpdatesStarted) {
+            startFetchingMessages()
+            checkAndRequestPermission()
+        }
     }
 
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+        // Cancel the fetching message coroutine — no point updating UI while paused
+        fetchingMessageJob?.cancel()
         if (::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
             locationUpdatesStarted = false
         }
+        // Exit search mode cleanly so keyboard doesn't linger when user comes back
+        if (isInSearchMode) {
+            exitSearchMode(restoreLabel = true)
+        }
     }
 
     override fun onDestroyView() {
+        fetchingMessageJob?.cancel()
+        searchJob?.cancel()
         super.onDestroyView()
         if (::locationCallback.isInitialized) fusedLocationClient.removeLocationUpdates(locationCallback)
         pickupMarker = null
         _binding = null
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save confirmed pickup so it survives process death and rotation
+        outState.putString("confirmedPickupLabel", confirmedPickupLabel)
+        confirmedPickupLocation?.let {
+            outState.putDouble("confirmedPickupLat", it.latitude)
+            outState.putDouble("confirmedPickupLng", it.longitude)
+        }
     }
 }
