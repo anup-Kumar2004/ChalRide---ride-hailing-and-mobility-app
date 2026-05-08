@@ -6,134 +6,393 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- ── Full screen map ── -->
+    <!-- ═══════════════════════════════════════════
+         FULL-SCREEN MAP — always the bottom layer
+    ═══════════════════════════════════════════ -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <!-- ────────────────────────────────────────────
-         TOP NAV HEADER — destination + phase tag
-    ──────────────────────────────────────────── -->
-    <LinearLayout
+    <!-- ═══════════════════════════════════════════
+         TOP NAVIGATION CARD
+         Shows: phase pill · destination · ETA chip
+    ═══════════════════════════════════════════ -->
+    <androidx.cardview.widget.CardView
         android:id="@+id/topNavCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/bg_dark"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="20dp"
-        android:paddingBottom="12dp"
-        android:elevation="12dp"
-        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="16dp"
+        android:elevation="24dp"
+        app:cardBackgroundColor="@color/bg_card"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Phase tag -->
-        <TextView
-            android:id="@+id/tvPhaseTag"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TO PICKUP"
-            android:textColor="@color/brand_primary"
-            android:textSize="10sp"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.14"
-            android:layout_marginBottom="4dp"/>
-
-        <!-- Destination label -->
-        <TextView
-            android:id="@+id/tvDestLabel"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Fetching address..."
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="2"
-            android:ellipsize="end"/>
+            android:orientation="vertical"
+            android:paddingHorizontal="18dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp">
 
-        <!-- Distance · ETA -->
-        <TextView
-            android:id="@+id/tvDistEta"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Calculating..."
-            android:textColor="@color/text_hint"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp"/>
+            <!-- ── Row 1: Phase pill + refresh indicator ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
 
-    </LinearLayout>
+                <!-- Phase pill (TO PICKUP / IN TRIP) -->
+                <TextView
+                    android:id="@+id/tvPhaseTag"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_phase_pill"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.10"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:text="TO PICKUP"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="10sp"/>
 
-    <!-- ── Arrival toast bar — appears above bottom bar on arrival ── -->
-    <TextView
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <!-- Live ETA refresh indicator — small animated dot + label -->
+                <View
+                    android:id="@+id/dotLiveEta"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/dot_live_green"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif"
+                    android:text="Live"
+                    android:textColor="@color/success_color"
+                    android:textSize="11sp"/>
+
+            </LinearLayout>
+
+            <!-- ── Row 2: Destination address ── -->
+            <TextView
+                android:id="@+id/tvDestLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:text="Fetching address…"
+                android:textColor="@color/text_primary"
+                android:textSize="17sp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- ── Row 3: ETA chip · Distance chip · Speed indicator ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- ETA chip -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_eta_chip"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:layout_marginEnd="8dp">
+
+                    <ImageView
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
+                        android:layout_marginEnd="5dp"
+                        android:src="@android:drawable/ic_lock_idle_alarm"
+                        app:tint="@color/brand_primary"/>
+
+                    <TextView
+                        android:id="@+id/tvEta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="-- min"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"/>
+
+                </LinearLayout>
+
+                <!-- Distance chip -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_dist_chip"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
+                        android:layout_marginEnd="5dp"
+                        android:src="@drawable/ic_pin_road"
+                        app:tint="@color/text_secondary"/>
+
+                    <TextView
+                        android:id="@+id/tvDistEta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif"
+                        android:text="-- km"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"/>
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <!-- Last-updated label — e.g. "Updated 30s ago" -->
+                <TextView
+                    android:id="@+id/tvLastUpdated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif"
+                    android:text=""
+                    android:textColor="@color/text_hint"
+                    android:textSize="10sp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- ═══════════════════════════════════════════
+         "PICKUP NEARBY" TOAST BANNER
+         Slides up from above the bottom sheet
+    ═══════════════════════════════════════════ -->
+    <androidx.cardview.widget.CardView
         android:id="@+id/tvArrivedBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="You have arrived!"
-        android:textColor="@color/white"
-        android:textSize="14sp"
-        android:fontFamily="sans-serif-medium"
-        android:gravity="center"
-        android:background="#CC32E091"
-        android:paddingVertical="10dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="10dp"
+        android:elevation="16dp"
         android:visibility="gone"
-        android:elevation="8dp"
-        app:layout_constraintBottom_toTopOf="@id/bottomBar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:cardBackgroundColor="#1A2E1A"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomSheet"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-    <!-- ── Bottom bar — Back + Recenter + Arrived action ── -->
-    <LinearLayout
-        android:id="@+id/bottomBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/bg_dark"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp"
-        android:elevation="12dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <!-- Back to overview -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnBack"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:text="Overview"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            app:strokeColor="@color/divider_color"
-            app:cornerRadius="12dp"
-            android:layout_marginEnd="10dp"/>
-
-        <!-- Recenter -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btnRecenter"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:src="@drawable/bg_my_location_icon"
-            app:backgroundTint="@color/input_bg"
-            app:tint="@color/brand_primary"
-            app:fabSize="mini"
-            android:layout_marginEnd="10dp"/>
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
 
-        <!-- Arrived / Complete action (hidden until arrival detected) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnArrivedAction"
-            style="@style/ChalRide.Button.Primary"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="Arrived at Pickup →"
-            android:textSize="14sp"
-            android:visibility="gone"
-            app:cornerRadius="14dp"/>
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/dot_live_green"
+                android:layout_marginEnd="10dp"/>
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/tvArrivedBarText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:text="You're near the pickup spot"
+                android:textColor="@color/success_color"
+                android:textSize="13sp"/>
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@android:drawable/ic_menu_mylocation"
+                app:tint="@color/success_color"/>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- ═══════════════════════════════════════════
+         RECENTER FAB
+    ═══════════════════════════════════════════ -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnRecenter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:elevation="20dp"
+        android:src="@drawable/bg_my_location_icon"
+        android:visibility="gone"
+        app:backgroundTint="@color/bg_card"
+        app:borderWidth="0dp"
+        app:fabSize="mini"
+        app:layout_constraintBottom_toTopOf="@id/tvArrivedBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/brand_primary"/>
+
+    <!-- ═══════════════════════════════════════════
+         BOTTOM SHEET / ACTION CARD
+         Compact, pill-style action bar
+    ═══════════════════════════════════════════ -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/bottomSheet"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginBottom="20dp"
+        android:elevation="24dp"
+        app:cardBackgroundColor="@color/bg_card"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
+
+            <!-- ── Rider info strip (name + fare) ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="14dp">
+
+                <!-- Avatar circle -->
+                <TextView
+                    android:id="@+id/tvRiderAvatar"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:text="R"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:layout_marginEnd="12dp"/>
+
+                <!-- Name + label -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvRiderNameNav"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="Rider"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif"
+                        android:text="Your passenger"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"/>
+
+                </LinearLayout>
+
+                <!-- Fare badge -->
+                <TextView
+                    android:id="@+id/tvFareBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_fare_badge"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="₹ --"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"/>
+
+            </LinearLayout>
+
+            <!-- ── Divider ── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="14dp"
+                android:background="@color/divider_color"/>
+
+            <!-- ── Action buttons row ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Overview / back pill button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBack"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="0.38"
+                    android:layout_marginEnd="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Overview"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="@color/divider_color"
+                    app:strokeWidth="1dp"/>
+
+                <!-- Primary action button (Arrived / Complete) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnArrivedAction"
+                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="0.62"
+                    android:enabled="false"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.01"
+                    android:text="Arrived at Pickup"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp"
+                    app:elevation="0dp"
+                    app:rippleColor="#33FFFFFF"
+                    app:strokeWidth="1dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

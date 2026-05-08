@@ -93,6 +93,8 @@ class DriverNavigationFragment : Fragment() {
     private var mapInitialized        = false
     private var hasFirstFix           = false
     private var arrivedDetected       = false
+    private var userIsInteracting = false
+    private var recenterHandler = android.os.Handler(Looper.getMainLooper())
     private var riderCancelListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var markerAnimator: android.animation.ValueAnimator? = null
 
@@ -120,6 +122,10 @@ class DriverNavigationFragment : Fragment() {
 
         binding.tvDestLabel.text = targetAddress
         binding.tvPhaseTag.text  = if (isHeadingToPickup) "TO PICKUP" else "TO DESTINATION"
+        binding.btnArrivedAction.text = if (isHeadingToPickup) "Arrived at Pickup" else "Arrived at Destination"
+        binding.tvRiderNameNav.text  = riderName
+        binding.tvRiderAvatar.text   = riderName.firstOrNull()?.uppercaseChar()?.toString() ?: "R"
+        binding.tvFareBadge.text     = "₹$estimatedFare"
 
         binding.btnBack.setOnClickListener {
             // Stop location updates to save battery while on overview screen
@@ -128,13 +134,45 @@ class DriverNavigationFragment : Fragment() {
             }
             findNavController().popBackStack()
         }
+
+        @Suppress("ClickableViewAccessibility")
+        binding.btnArrivedAction.setOnTouchListener { _, event ->
+            if (event.action == android.view.MotionEvent.ACTION_UP && !binding.btnArrivedAction.isEnabled) {
+                val message = if (isHeadingToPickup)
+                    "You have not reached the pickup spot yet"
+                else
+                    "You have not reached the destination spot yet"
+                android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show()
+            }
+            false
+        }
+
+        // Show recenter FAB when user pans the map
+        @Suppress("ClickableViewAccessibility")
+        binding.mapView.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN,
+                android.view.MotionEvent.ACTION_POINTER_DOWN -> {
+                    userIsInteracting = true
+                    binding.btnRecenter.visibility = View.VISIBLE
+                    recenterHandler.removeCallbacksAndMessages(null)
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_POINTER_UP -> {
+                    v.performClick()
+                }
+            }
+            false // pass touch through to map
+        }
+
         binding.btnRecenter.setOnClickListener {
+            userIsInteracting = false
+            binding.btnRecenter.visibility = View.GONE
             currentLocation?.let {
-                isProgrammaticMapMove = true
                 rotateAndCenterMap(it, currentBearing)
-                binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 600)
             }
         }
+
 
         startLocationUpdates()
         listenForRiderCancellation()
@@ -148,6 +186,9 @@ class DriverNavigationFragment : Fragment() {
 
     override fun onDestroyView() {
         markerAnimator?.cancel()
+        recenterHandler.removeCallbacksAndMessages(null)
+        // Cancel blink animation if running
+        (binding.tvArrivedBar.tag as? android.animation.ObjectAnimator)?.cancel()
         riderCancelListener?.remove()    // ADD THIS LINE
         if (::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
@@ -328,12 +369,49 @@ class DriverNavigationFragment : Fragment() {
         }
     }
 
+    private fun setActionButtonState(enabled: Boolean) {
+        binding.btnArrivedAction.isEnabled = enabled
+
+        // Force Material to respect our colors regardless of enabled state
+        val bgColor = if (enabled) "#24196B" else "#1A1A2E"
+        val textColor = if (enabled) "#FFFFFF" else "#555570"
+        val strokeColor = if (enabled) "#6C63FF" else "#2A2A45"
+
+        // This is the key — override the entire background tint list with
+        // a single-state list so Material can't substitute its disabled color
+        binding.btnArrivedAction.backgroundTintList =
+            android.content.res.ColorStateList(
+                arrayOf(intArrayOf()),         // one rule: matches ALL states
+                intArrayOf(bgColor.toColorInt())
+            )
+        binding.btnArrivedAction.setTextColor(
+            android.content.res.ColorStateList(
+                arrayOf(intArrayOf()),
+                intArrayOf(textColor.toColorInt())
+            )
+        )
+        binding.btnArrivedAction.strokeColor =
+            android.content.res.ColorStateList(
+                arrayOf(intArrayOf()),
+                intArrayOf(strokeColor.toColorInt())
+            )
+        binding.btnArrivedAction.strokeWidth =
+            (1 * resources.displayMetrics.density).toInt()
+    }
+
     private fun updateDistanceEta(distKm: Double, durMin: Double) {
-        val dist = if (distKm < 1.0) "${(distKm * 1000).toInt()} m"
-        else String.format("%.1f km", distKm)
-        val eta  = if (durMin < 60) "${durMin.toInt()} min"
-        else String.format("%.0fh %02.0fm", durMin / 60, durMin % 60)
-        binding.tvDistEta.text = "$dist · $eta"
+        val distText = when {
+            distKm < 0.1 -> "${(distKm * 1000).toInt()} m"
+            distKm < 1.0 -> String.format("%.0f m", distKm * 1000)
+            else         -> String.format("%.1f km", distKm)
+        }
+        val etaText = when {
+            durMin < 1   -> "< 1 min"
+            durMin < 60  -> "${durMin.toInt()} min"
+            else         -> String.format("%.0fh %02.0fm", durMin / 60, durMin % 60)
+        }
+        binding.tvEta.text     = etaText      // NEW: dedicated ETA chip TextView
+        binding.tvDistEta.text = distText     // now shows distance only
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -341,34 +419,68 @@ class DriverNavigationFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun checkArrival(location: GeoPoint) {
-        if (arrivedDetected) return
         val distMeters = location.distanceToAsDouble(GeoPoint(targetLat, targetLng))
+
         if (distMeters < 80.0) {
-            arrivedDetected = true
-            showArrivalPrompt()
+            // Near the target — show banner and enable button (only animate in once)
+            if (!arrivedDetected) {
+                arrivedDetected = true
+                showArrivalPrompt()
+            }
         } else {
-            // Show how far we are
-            binding.tvArrivedBar.visibility = View.GONE
+            // Moved away — hide everything and reset so it can trigger again if they return
+            if (arrivedDetected) {
+                arrivedDetected = false
+
+                // Stop blink animation
+                (binding.tvArrivedBar.tag as? android.animation.ObjectAnimator)?.cancel()
+                binding.tvArrivedBar.alpha = 1f
+
+                // Hide banner
+                binding.tvArrivedBar.visibility = View.GONE
+
+                // Disable action button again
+                binding.btnArrivedAction.isEnabled = false
+                setActionButtonState(false)   // ← replaces all the manual color lines
+            }
         }
     }
 
     private fun showArrivalPrompt() {
         binding.tvArrivedBar.visibility = View.VISIBLE
-        binding.tvArrivedBar.text = if (isHeadingToPickup) "You have arrived at pickup!" else "You have reached the destination!"
+
+        val blink = android.animation.ObjectAnimator.ofFloat(
+            binding.tvArrivedBar, "alpha", 1f, 0.25f
+        ).apply {
+            duration = 600
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        }
+        blink.start()
+        binding.tvArrivedBar.tag = blink
+
+        binding.tvArrivedBarText.text = if (isHeadingToPickup)
+            "You're near the pickup spot"
+        else
+            "You're near the destination"
+
+        binding.btnArrivedAction.text = if (isHeadingToPickup) "Arrived at Pickup" else "Complete Trip"
         binding.btnArrivedAction.visibility = View.VISIBLE
-        binding.btnArrivedAction.text = if (isHeadingToPickup) "Arrived at Pickup →" else "Complete Trip →"
+
+        setActionButtonState(true)   // ← replaces all the manual color lines
+
         binding.btnArrivedAction.setOnClickListener {
-            if (isHeadingToPickup) {
-                navigateToArrivedScreen()
-            } else {
-                completeTrip()
-            }
+            if (isHeadingToPickup) navigateToArrivedScreen() else completeTrip()
         }
 
-        // Pop-in animation
-        binding.btnArrivedAction.scaleX = 0.8f; binding.btnArrivedAction.scaleY = 0.8f; binding.btnArrivedAction.alpha = 0f
+        binding.btnArrivedAction.scaleX = 0.8f
+        binding.btnArrivedAction.scaleY = 0.8f
+        binding.btnArrivedAction.alpha = 0f
         binding.btnArrivedAction.animate().scaleX(1f).scaleY(1f).alpha(1f)
-            .setDuration(300).setInterpolator(android.view.animation.OvershootInterpolator(1.5f)).start()
+            .setDuration(300)
+            .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+            .start()
     }
 
     private fun navigateToArrivedScreen() {
@@ -461,10 +573,12 @@ class DriverNavigationFragment : Fragment() {
                 // Animate the driver arrow
                 placeOrAnimateDriverMarker(geoPoint)
 
-                // Rotate map to heading-up
-                isProgrammaticMapMove = true
-                rotateAndCenterMap(geoPoint, currentBearing)
-                binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 700)
+                // Only auto-follow if user is not exploring the map
+                if (!userIsInteracting) {
+                    isProgrammaticMapMove = true
+                    rotateAndCenterMap(geoPoint, currentBearing)
+                    binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 700)
+                }
 
                 // Zoom in on first fix
                 if (!hasFirstFix) {
