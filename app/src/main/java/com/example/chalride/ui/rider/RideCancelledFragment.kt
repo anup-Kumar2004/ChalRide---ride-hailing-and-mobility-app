@@ -67,6 +67,13 @@ class RideCancelledFragment : Fragment() {
                 binding.tvInfoLabel.text   = "No charges applied"
                 binding.tvInfoSub.text     = "Your payment method was not charged."
             }
+            CancelReason.RIDER_NO_SHOW -> {
+                binding.tvEmoji.text     = "⏳"
+                binding.tvTitle.text     = "Ride Cancelled"
+                binding.tvMessage.text   = "Your driver waited but could not reach you in time. The ride was automatically cancelled."
+                binding.tvInfoLabel.text = "Missed your ride?"
+                binding.tvInfoSub.text   = "Head back home to book a new one anytime."
+            }
         }
 
         binding.btnGoHome.setOnClickListener {

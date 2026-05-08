@@ -1057,17 +1057,10 @@ class RideLiveFragment : Fragment() {
                         stalenessPollingJob?.cancel()
                         rideListener?.remove()
                         driverListener?.remove()
-                        // Read the actual cancellation reason written by the driver or system
-                        // instead of hardcoding DRIVER_OFFLINE for all external cancellations
-                        val rawReason = snapshot.getString("cancellationReason")
-                            ?: CancelReason.DRIVER_OFFLINE.name
-                        val safeReason = try {
-                            CancelReason.valueOf(rawReason).name
-                        } catch (_: Exception) {
-                            CancelReason.DRIVER_OFFLINE.name
-                        }
+                        val reason = snapshot.getString("cancellationReason")
+                            ?: CancelReason.RIDER_CANCELLED.name
                         val bundle = Bundle().apply {
-                            putString("cancelReason", safeReason)
+                            putString("cancelReason", reason)
                         }
                         safeNavigate(R.id.action_rideLive_to_rideCancelled, bundle)
                     }

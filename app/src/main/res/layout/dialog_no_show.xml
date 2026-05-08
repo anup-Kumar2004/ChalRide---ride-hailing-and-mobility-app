@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_glass"
+    android:padding="28dp">
+
+    <!-- Icon -->
+    <TextView
+        android:id="@+id/tvDialogEmoji"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⏱️"
+        android:textSize="38sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Waiting Time is Over"
+        android:textSize="19sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:letterSpacing="-0.02"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvDialogEmoji" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/tvDialogMessage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.55"
+        android:text="Did the rider board your vehicle?\nYou can still enter the OTP or cancel this ride."
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvDialogTitle" />
+
+    <!-- Divider -->
+    <View
+        android:id="@+id/dialogDivider"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:background="@color/divider_color"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvDialogMessage" />
+
+    <!-- Cancel Ride button — destructive, outlined -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnNoShow"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="20dp"
+        android:text="Cancel the Ride"
+        android:textSize="14sp"
+        android:textColor="@color/error_color"
+        android:textStyle="bold"
+        android:letterSpacing="0.01"
+        app:backgroundTint="#14FF4757"
+        app:cornerRadius="14dp"
+        app:strokeColor="#55FF4757"
+        app:strokeWidth="1dp"
+        app:elevation="0dp"
+        app:rippleColor="#1FFF4757"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dialogDivider" />
+
+    <!-- Enter OTP button — primary action -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnEnterOtp"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="10dp"
+        android:text="Enter OTP"
+        android:textSize="14sp"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:letterSpacing="0.01"
+        app:backgroundTint="@color/brand_primary"
+        app:cornerRadius="14dp"
+        app:elevation="0dp"
+        app:rippleColor="#33FFFFFF"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnNoShow"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/bg_dark"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -246,5 +244,21 @@
             app:backgroundTint="@color/success_color"
             app:cornerRadius="16dp"/>
 
+        <!-- Cancel ride fallback — shown only after driver dismisses no-show dialog via "Enter OTP" -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelAfterDialog"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="35dp"
+            android:layout_marginHorizontal="125dp"
+            android:text="Cancel Ride"
+            android:textColor="@color/error_color"
+            android:textSize="10sp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:strokeColor="@color/error_color"
+            app:cornerRadius="16dp"/>
+
     </LinearLayout>
-</ScrollView>
+
+</FrameLayout>

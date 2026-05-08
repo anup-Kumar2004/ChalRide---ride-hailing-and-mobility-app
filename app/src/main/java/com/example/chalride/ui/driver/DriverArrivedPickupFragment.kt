@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 /**
  * DriverArrivedPickupFragment
@@ -90,6 +91,9 @@ class DriverArrivedPickupFragment : Fragment() {
         setupOtpInput()
         setupContactButtons()
         setupStartTripButton()
+        binding.btnCancelAfterDialog.setOnClickListener {
+            performNoShowCancellation()
+        }
         listenForRiderCancellation()
     }
 
@@ -202,18 +206,12 @@ class DriverArrivedPickupFragment : Fragment() {
                 android.widget.Toast.makeText(requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$riderPhone"))
+            val intent = Intent(Intent.ACTION_DIAL, "tel:$riderPhone".toUri())
             startActivity(intent)
         }
 
         binding.btnMessage.setOnClickListener {
-            if (riderPhone.isBlank()) {
-                android.widget.Toast.makeText(requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("sms:$riderPhone"))
-            intent.putExtra("sms_body", "Hi, I'm your ChalRide driver! I've arrived at the pickup location. Your OTP is $generatedOtp.")
-            startActivity(intent)
+            android.widget.Toast.makeText(requireContext(), "Coming soon...", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -308,7 +306,7 @@ class DriverArrivedPickupFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun startWaitingTimer() {
-        val totalSeconds = 150   // 2 min 30 sec
+        val totalSeconds = 150 // 2 min 30 sec
         timerJob = viewLifecycleOwner.lifecycleScope.launch {
             var remaining = totalSeconds
             while (isActive && remaining >= 0) {
@@ -330,7 +328,73 @@ class DriverArrivedPickupFragment : Fragment() {
             // Timer expired
             if (_binding != null && isActive) {
                 binding.tvTimerLabel.text = "Wait time expired"
+                showNoShowDialog()
             }
         }
     }
+
+
+    private fun showNoShowDialog() {
+        if (_binding == null) return
+
+        val dialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_no_show, null)
+
+        val dialog = android.app.Dialog(requireContext(), R.style.TransparentDialog)
+        dialog.setContentView(dialogView)
+        dialog.setCancelable(false)
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.88).toInt(),
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            // Dim the background behind the dialog
+            addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            attributes = attributes?.also { it.dimAmount = 0.85f }
+        }
+
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnNoShow)
+            .setOnClickListener {
+                dialog.dismiss()
+                performNoShowCancellation()
+            }
+
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnEnterOtp)
+            .setOnClickListener {
+                dialog.dismiss()
+                // Reveal the fallback cancel button so driver can still cancel
+                // without needing the dialog to reappear
+                binding.btnCancelAfterDialog.visibility = View.VISIBLE
+            }
+
+        dialog.show()
+    }
+
+    private fun performNoShowCancellation() {
+        timerJob?.cancel()
+        riderCancelListener?.remove()
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests").document(rideRequestId)
+            .update(mapOf(
+                "status"             to "cancelled",
+                "cancellationReason" to com.example.chalride.ui.rider.CancelReason.RIDER_NO_SHOW.name
+            ))
+
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .update(DriverState.ONLINE_AVAILABLE.toFirestoreMap())
+
+        val bundle = Bundle().apply {
+            putString("cancelReason", com.example.chalride.ui.rider.CancelReason.RIDER_NO_SHOW.name)
+        }
+        findNavController().navigate(
+            R.id.action_driverArrivedPickup_to_driverRideCancelled, bundle
+        )
+    }
+
+
 }
