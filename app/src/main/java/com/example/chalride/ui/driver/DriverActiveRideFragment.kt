@@ -13,7 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentDriverActiveRideBinding
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -74,6 +73,11 @@ class DriverActiveRideFragment : Fragment() {
     private var savedStartLat: Double = 0.0
     private var savedStartLng: Double = 0.0
 
+    private var mapPadTop    = 0
+    private var mapPadBottom = 0
+    private var mapPadSide   = 0
+
+
     // ─────────────────────────────────────────────────────────────────────────
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -93,6 +97,21 @@ class DriverActiveRideFragment : Fragment() {
         )
 
         initMap()
+
+        binding.mapView.post {
+            if (_binding == null) return@post
+            val screenH = binding.mapView.height.takeIf { it > 0 }
+                ?: resources.displayMetrics.heightPixels
+            val screenW = binding.mapView.width.takeIf { it > 0 }
+                ?: resources.displayMetrics.widthPixels
+            // Top card ~16% of screen, bottom sheet ~40%, nav button side ~10%
+            mapPadTop    = (screenH * 0.18).toInt()
+            mapPadBottom = (screenH * 0.40).toInt()
+            mapPadSide   = (screenW * 0.08).toInt()
+        }
+
+
+
         bindRideDetails()
         setupClickListeners()
         listenForRiderCancellation()
@@ -178,18 +197,26 @@ class DriverActiveRideFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun initMap() {
+
         Configuration.getInstance().userAgentValue = requireContext().packageName
+
         binding.mapView.setTileSource(TileSourceFactory.MAPNIK)
-        binding.mapView.setMultiTouchControls(false)
-        binding.mapView.isClickable = false
-        binding.mapView.isFocusable = false
+
+        // Allow gestures
+        binding.mapView.setMultiTouchControls(true)
+
+        // Hide OSMDroid zoom buttons
         binding.mapView.zoomController.setVisibility(
             org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER
         )
-        binding.mapView.setOnTouchListener { _, _ -> true }
+
+        binding.mapView.setBuiltInZoomControls(false)
+
+        binding.mapView.isTilesScaledToDpi = true
 
         val midLat = (pickupLat + destLat) / 2.0
         val midLng = (pickupLng + destLng) / 2.0
+
         binding.mapView.controller.setCenter(GeoPoint(midLat, midLng))
         binding.mapView.controller.setZoom(12.0)
     }
@@ -304,20 +331,9 @@ class DriverActiveRideFragment : Fragment() {
                 binding.mapView.overlays.add(1, routePolyline)
                 binding.mapView.invalidate()
 
-                // Zoom to fit with asymmetric padding (bottom sheet covers lower area)
-                val bbox = org.osmdroid.util.BoundingBox.fromGeoPoints(routePoints)
-                binding.mapView.post {
-                    val latSpan = bbox.latNorth - bbox.latSouth
-                    val lonSpan = bbox.lonEast  - bbox.lonWest
-                    val paddedBox = org.osmdroid.util.BoundingBox(
-                        bbox.latNorth + latSpan * 0.12,
-                        bbox.lonEast  + lonSpan * 0.12,
-                        bbox.latSouth - latSpan * 0.50,   // more bottom padding for sheet
-                        bbox.lonWest  - lonSpan * 0.12
-                    )
-                    binding.mapView.zoomToBoundingBox(paddedBox, true)
-                    binding.mapView.invalidate()
-                }
+                val allPoints = arrayListOf(from, to)
+
+                zoomToFitWithPadding(allPoints)
 
                 // Show Navigate button with a pop-in animation after route is drawn
                 delay(600)
@@ -384,20 +400,9 @@ class DriverActiveRideFragment : Fragment() {
         binding.mapView.overlays.add(0, shadow)
         binding.mapView.overlays.add(1, routePolyline)
 
-        // Re-zoom to fit bounding box
-        val bbox = org.osmdroid.util.BoundingBox.fromGeoPoints(points)
-        binding.mapView.post {
-            val latSpan = bbox.latNorth - bbox.latSouth
-            val lonSpan = bbox.lonEast  - bbox.lonWest
-            val paddedBox = org.osmdroid.util.BoundingBox(
-                bbox.latNorth + latSpan * 0.12,
-                bbox.lonEast  + lonSpan * 0.12,
-                bbox.latSouth - latSpan * 0.50,
-                bbox.lonWest  - lonSpan * 0.12
-            )
-            binding.mapView.zoomToBoundingBox(paddedBox, true)
-            binding.mapView.invalidate()
-        }
+        val allPoints = arrayListOf(from, to)
+
+        zoomToFitWithPadding(allPoints)
 
         lifecycleScope.launch {
             delay(400)
@@ -419,7 +424,7 @@ class DriverActiveRideFragment : Fragment() {
                     tripPhase == TripPhase.IN_PROGRESS -> R.drawable.ic_destination_marker  // red dest
                     else -> R.drawable.ic_pickup_marker                // green pickup for phase1 TO
                 }
-                val sizePx = (38 * resources.displayMetrics.density).toInt() // increased from 20
+                val sizePx = (30 * resources.displayMetrics.density).toInt()
                 icon = ContextCompat.getDrawable(requireContext(), res)?.let { d ->
                     val bmp = createBitmap(sizePx, sizePx)
                     val cvs = android.graphics.Canvas(bmp)
@@ -433,6 +438,64 @@ class DriverActiveRideFragment : Fragment() {
         binding.mapView.overlays.add(marker)
     }
 
+    private fun zoomToFitWithPadding(allPoints: List<GeoPoint>) {
+        if (allPoints.isEmpty()) return
+
+        val bbox = org.osmdroid.util.BoundingBox.fromGeoPoints(allPoints)
+        val centerLat = (bbox.latNorth + bbox.latSouth) / 2.0
+        val centerLng = (bbox.lonEast  + bbox.lonWest)  / 2.0
+
+        // Minimum span ~800m so single/close points still zoom out enough
+        val minSpan = 0.008
+        val north = maxOf(bbox.latNorth, centerLat + minSpan / 2)
+        val south = minOf(bbox.latSouth, centerLat - minSpan / 2)
+        val east  = maxOf(bbox.lonEast,  centerLng + minSpan / 2)
+        val west  = minOf(bbox.lonWest,  centerLng - minSpan / 2)
+
+        binding.mapView.post {
+            if (_binding == null) return@post
+
+            val mapW = binding.mapView.width.takeIf  { it > 0 } ?: return@post
+            val mapH = binding.mapView.height.takeIf { it > 0 } ?: return@post
+
+            val padTop    = if (mapPadTop    > 0) mapPadTop    else (mapH * 0.18).toInt()
+            val padBottom = if (mapPadBottom > 0) mapPadBottom else (mapH * 0.40).toInt()
+            val padSide   = if (mapPadSide   > 0) mapPadSide   else (mapW * 0.08).toInt()
+
+            val usableW = (mapW - padSide  * 2).coerceAtLeast(mapW / 2)
+            val usableH = (mapH - padTop - padBottom).coerceAtLeast(mapH / 3)
+
+            val latSpan = north - south
+            val lonSpan = east  - west
+
+            val latScale = mapH.toDouble() / usableH.toDouble()
+            val lonScale = mapW.toDouble() / usableW.toDouble()
+
+            val latExpand = latSpan * (latScale - 1.0)
+            val lonExpand = lonSpan * (lonScale - 1.0)
+
+            val topShare    = padTop.toDouble()    / (padTop + padBottom).toDouble()
+            val bottomShare = padBottom.toDouble() / (padTop + padBottom).toDouble()
+
+            val paddedBox = org.osmdroid.util.BoundingBox(
+                north + latExpand * topShare,
+                east  + lonExpand * 0.5,
+                south - latExpand * bottomShare,
+                west  - lonExpand * 0.5
+            )
+
+            binding.mapView.zoomToBoundingBox(paddedBox, false)
+
+            if (binding.mapView.zoomLevelDouble > 16.5) {
+                binding.mapView.controller.setZoom(16.5)
+            }
+            binding.mapView.controller.setZoom(binding.mapView.zoomLevelDouble - 0.1)
+            binding.mapView.invalidate()
+        }
+    }
+
+
+
     // ─────────────────────────────────────────────────────────────────────────
     // UI helpers
     // ─────────────────────────────────────────────────────────────────────────
@@ -445,7 +508,7 @@ class DriverActiveRideFragment : Fragment() {
                     ContextCompat.getColor(requireContext(), R.color.brand_primary)
                 )
                 binding.tvCurrentTarget.text = pickupAddress
-                binding.btnNavigate.text     = "▲  Navigate to Pickup"
+                binding.btnNavigate.text = "Navigate to Pickup"
             }
             TripPhase.ARRIVED_AT_PICKUP -> {
                 // Navigate immediately to arrived screen
@@ -472,30 +535,28 @@ class DriverActiveRideFragment : Fragment() {
                     ContextCompat.getColor(requireContext(), R.color.success_color)
                 )
                 binding.tvCurrentTarget.text = destAddress
-                binding.btnNavigate.text     = "▲  Navigate to Destination"
+                binding.btnNavigate.text = "Navigate to Destination"
             }
         }
     }
 
     private fun showNavigateButton() {
         binding.btnNavigate.visibility = View.VISIBLE
-        binding.btnNavigate.scaleX = 0.8f
-        binding.btnNavigate.scaleY = 0.8f
-        binding.btnNavigate.alpha  = 0f
-        binding.btnNavigate.animate()
-            .scaleX(1f).scaleY(1f).alpha(1f)
-            .setDuration(300)
-            .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
-            .start()
+        binding.btnNavigate.alpha = 1f
+        binding.btnNavigate.scaleX = 1f
+        binding.btnNavigate.scaleY = 1f
     }
+
 
     private fun bindRideDetails() {
         binding.tvRiderName.text     = riderName
+        binding.tvRiderAvatar.text   = riderName.firstOrNull()?.uppercaseChar()?.toString() ?: "R"  // NEW
         binding.tvFare.text          = "₹$estimatedFare"
         binding.tvVehicleType.text   = vehicleType.replaceFirstChar { it.uppercase() }
         binding.tvPickupAddress.text = pickupAddress
         binding.tvDestAddress.text   = destAddress
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Click listeners
