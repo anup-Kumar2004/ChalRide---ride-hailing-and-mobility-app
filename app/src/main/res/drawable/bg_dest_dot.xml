@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_dest_dot.xml
+    Place in: res/drawable/
+
+    Filled brand_accent (teal) circle used as the bottom dot in the
+    pickup → destination route timeline strip inside the bottom sheet.
+    Using accent colour distinguishes destination clearly from pickup.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/brand_secondary"/>
+    <size
+        android:width="10dp"
+        android:height="10dp"/>
+</shape>

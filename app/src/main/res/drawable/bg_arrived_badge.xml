@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_arrived_badge.xml
+    Place in: res/drawable/
+
+    A solid teal-green oval used as the circular background behind
+    the "✓" checkmark in the OTP card's "Driver has arrived!" header.
+    Size set to 34dp × 34dp to match the TextView dimensions.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#34857D"/>
+    <size
+        android:width="34dp"
+        android:height="34dp"/>
+</shape>

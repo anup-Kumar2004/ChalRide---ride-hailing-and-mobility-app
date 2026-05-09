@@ -38,6 +38,9 @@ import android.content.Intent
 import android.os.IBinder
 import android.content.pm.PackageManager
 import android.os.Build
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import androidx.core.content.edit
 
 class RideLiveFragment : Fragment() {
 
@@ -109,11 +112,6 @@ class RideLiveFragment : Fragment() {
     private var stalenessPollingJob: kotlinx.coroutines.Job? = null
     private val LOCATION_STALE_THRESHOLD_MS = 5 * 60 * 1000L  // 5 minutes
     private val POLLING_INTERVAL_MS = 60_000L                  // check every 1 minute
-
-    // ── Phase 1 cancel button visibility ─────────────────────────────────────
-    // Only shown in Phase 1, hidden as soon as OTP is generated (arrived_at_pickup)
-    private var otpGenerated = false
-
 
 
     private var otpDisplayed      = false
@@ -190,6 +188,9 @@ class RideLiveFragment : Fragment() {
         initMap()
         bindStaticData()
 
+        bindNewViews()
+        startStatusDotPulse()
+
         binding.mapView.post {
             if (_binding == null) return@post
             val screenH = binding.mapView.height.takeIf { it > 0 }
@@ -210,15 +211,48 @@ class RideLiveFragment : Fragment() {
         // Start and bind to RideLiveService
         startAndBindService()
         listenForRideUpdates()
+        // Reset marker reference — the old MapView overlay list is gone after view destruction.
+        // onResume() will redraw once mapView.onResume() has been called.
+        driverMarker = null
+        routePolyline = null
+        initialFitViewDone = false
+
         listenForDriverLocation()
         setupCancelButton()
+
+        binding.chipRideDetails.setOnClickListener {
+            val bundle = Bundle().apply {
+                putString("rideRequestId", rideRequestId)
+                putString("driverId",      driverId)
+                putString("driverName",    driverName)
+                putString("vehicleType",   vehicleType)
+                putString("pickupAddress", pickupAddress)
+                putString("destAddress",   destAddress)
+                putInt("estimatedFare",    estimatedFare)
+                putString("currentStatus", currentRideStatus)
+            }
+            safeNavigate(R.id.action_rideLive_to_rideSummary, bundle)
+        }
+
+
         startStalenessPolling()
     }
 
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
-        // Restart smooth marker animation if it was paused
+
+        // If we're returning from RideSummaryFragment (view was destroyed and recreated),
+        // driverMarker is null but we know where the driver is. Force a redraw so the
+        // marker the Firestore listener already placed becomes visible.
+        if (driverMarker != null) {
+            binding.mapView.invalidate()
+        } else if (lastKnownDriverLat != 0.0 || lastKnownDriverLng != 0.0) {
+            // Listener already fired in onViewCreated but map wasn't resumed yet —
+            // manually trigger a marker update with last known position so it renders.
+            updateDriverMarker(lastKnownDriverLat, lastKnownDriverLng)
+        }
+
         markerAnimator?.resume()
         // Reschedule snap-back from NOW, not from when the user last touched
         // the map (which may have been before they backgrounded the app)
@@ -249,9 +283,14 @@ class RideLiveFragment : Fragment() {
         rideListener?.remove()
         driverListener?.remove()
         markerAnimator?.cancel()
+        markerAnimator = null
+        driverMarker = null
+        routePolyline = null
         stalenessPollingJob?.cancel()
         driverOfflineWatchdogJob?.cancel()   // ADD THIS LINE
         snapBackHandler.removeCallbacks(snapBackRunnable)
+        binding.viewStatusDot.animate().cancel()
+
         super.onDestroyView()
         _binding = null
     }
@@ -382,6 +421,92 @@ class RideLiveFragment : Fragment() {
         }
     }
 
+    private fun startStatusDotPulse() {
+        ObjectAnimator.ofPropertyValuesHolder(
+            binding.viewStatusDot,
+            PropertyValuesHolder.ofFloat(View.ALPHA, 1f, 0.25f, 1f),
+            PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.40f, 1f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.40f, 1f)
+        ).apply {
+            duration = 1600L
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.RESTART
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        }.start()
+    }
+
+    private fun bindNewViews() {
+        binding.tvPhaseLabel.text = "● PICKUP PHASE"
+    }
+
+    private fun updateEtaAndDistance(
+        etaMinutes: Int,
+        distMeters: Double
+    ) {
+
+        val etaText = when {
+            etaMinutes <= 0 -> "-- min"
+            etaMinutes == 1 -> "1 min"
+            else -> "$etaMinutes min"
+        }
+
+        val distKm = distMeters / 1000.0
+
+        val distText = when {
+            distMeters <= 0 -> "-- km"
+            distMeters < 100 -> "Arriving"
+            distMeters < 1000 -> "${distMeters.toInt()} m"
+            else -> String.format("%.1f km", distKm)
+        }
+
+        binding.tvEta.text = etaText
+        binding.tvDistance.text = distText
+
+    }
+
+    private fun updatePhaseUiForPhase2() {
+
+        binding.tvPhaseLabel.text = "● TRIP IN PROGRESS"
+
+        binding.tvPhaseLabel.setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.brand_accent)
+        )
+
+        binding.tvEta.text = "-- min"
+        binding.tvDistance.text = "-- km"
+    }
+
+    private fun updateContextualStatus(
+        distMeters: Double,
+        isPhase2: Boolean
+    ) {
+
+        if (!isDriverOnline) return
+
+        if (isPhase2) return
+
+        val msg = when {
+
+            distMeters > 3000 ->
+                "Your driver is on the way"
+
+            distMeters > 1200 ->
+                "Driver is getting close"
+
+            distMeters > 150 ->
+                "Driver is almost there!"
+
+            else ->
+                "Driver has nearly arrived"
+        }
+
+        updateStatus(msg)
+    }
+
+
+
+
+
     // ─────────────────────────────────────────────────────────────────────────
     // Static data
     // ─────────────────────────────────────────────────────────────────────────
@@ -398,13 +523,13 @@ class RideLiveFragment : Fragment() {
             "arrived_at_pickup", "in_progress" -> {
                 binding.btnCancelRide.visibility = View.GONE
                 binding.tvStatus.text = if (currentRideStatus == "in_progress")
-                    "Trip in progress 🚗"
+                    "🛣️ Enjoy your ride!"
                 else
-                    "Driver has arrived! Share the OTP to start your ride"
+                    "✅ Driver is here — share OTP to start the ride"
             }
             else -> {
                 binding.btnCancelRide.visibility = View.VISIBLE
-                binding.tvStatus.text = "Driver is heading to you"
+                binding.tvStatus.text = "🚗 Your driver is on the way"
             }
         }
     }
@@ -434,7 +559,7 @@ class RideLiveFragment : Fragment() {
 
         // Clear prefs and stop service — ride is over
         requireContext().getSharedPreferences(RideLiveService.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().clear().apply()
+            .edit { clear() }
         requireContext().stopService(
             Intent(requireContext(), RideLiveService::class.java)
         )
@@ -468,6 +593,7 @@ class RideLiveFragment : Fragment() {
     private fun switchToPhase2() {
         if (isPhase2) return
         isPhase2 = true
+        updatePhaseUiForPhase2()
         phase2InitialRouteFetched = false
 
         android.util.Log.d("CHALRIDE_LIVE",
@@ -561,6 +687,10 @@ class RideLiveFragment : Fragment() {
                 }
                 if (snapshot == null) return@addSnapshotListener
 
+                val lat = snapshot.getDouble("lat") ?: return@addSnapshotListener
+                val lng = snapshot.getDouble("lng") ?: return@addSnapshotListener
+                if (lat == 0.0 && lng == 0.0) return@addSnapshotListener
+
                 // ── Driver offline watchdog ───────────────────────────────────
                 val driverOnlineNow = snapshot.getBoolean("isOnline") ?: true
                 if (!driverOnlineNow && isDriverOnline) {
@@ -576,13 +706,23 @@ class RideLiveFragment : Fragment() {
                         "Driver came back online — cancelling watchdog")
                     driverOfflineWatchdogJob?.cancel()
                     driverOfflineWatchdogJob = null
-                    updateStatus(if (isPhase2) "Trip in progress 🚗" else "Driver is heading to you")
+                    if (isPhase2) {
+                        updateStatus("🛣️ Enjoy your ride!")
+                    } else {
+
+                        val distM = haversineMeters(
+                            lat,
+                            lng,
+                            pickupLat,
+                            pickupLng
+                        )
+
+                        updateContextualStatus(distM, false)
+                    }
                 }
                 // ─────────────────────────────────────────────────────────────
 
-                val lat = snapshot.getDouble("lat") ?: return@addSnapshotListener
-                val lng = snapshot.getDouble("lng") ?: return@addSnapshotListener
-                if (lat == 0.0 && lng == 0.0) return@addSnapshotListener
+
                 updateDriverMarker(lat, lng)
             }
     }
@@ -697,6 +837,26 @@ class RideLiveFragment : Fragment() {
         // Track latest driver position so snap-back can use it
         lastKnownDriverLat = lat
         lastKnownDriverLng = lng
+
+        val targetLat = if (isPhase2) destLat else pickupLat
+        val targetLng = if (isPhase2) destLng else pickupLng
+
+        val distM = haversineMeters(
+            lat,
+            lng,
+            targetLat,
+            targetLng
+        )
+
+        val etaMins = (
+                (distM / 1000.0) / 30.0 * 60
+                ).roundToInt().coerceAtLeast(1)
+
+        updateEtaAndDistance(etaMins, distM)
+
+        updateContextualStatus(distM, isPhase2)
+
+
 
         if (driverMarker == null) {
             // First fix — create driver marker
@@ -862,7 +1022,7 @@ class RideLiveFragment : Fragment() {
 
                 // Read driver doc directly — not a listener
                 try {
-                    val doc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    val doc = FirebaseFirestore.getInstance()
                         .collection("drivers").document(driverId)
                         .get().await()
 
@@ -1027,32 +1187,32 @@ class RideLiveFragment : Fragment() {
 
                 when (status) {
                     "accepted" -> {
-                        updateStatus("Driver is heading to you")
+                        updateStatus("🚗 Your driver is on the way")
                         binding.btnCancelRide.visibility = View.VISIBLE  // allow cancel in phase 1
                     }
                     "arrived_at_pickup" -> {
-                        // OTP is about to be shown — hide cancel button
-                        otpGenerated = true
                         binding.btnCancelRide.visibility = View.GONE
-                        updateStatus("Driver has arrived! Share the OTP to start your ride")
+                        updateStatus("✅ Driver is here — share OTP to start the ride")
                     }
                     "in_progress" -> {
-                        otpGenerated = true
+                        otpDisplayed = false
                         binding.btnCancelRide.visibility = View.GONE
-                        updateStatus("Trip in progress 🚗")
+                        updateStatus("🛣️ Enjoy your ride!")
                         binding.cardOtp.visibility = View.GONE
                         switchToPhase2()
                     }
                     "completed" -> {
+                        otpDisplayed = false
                         driverOfflineWatchdogJob?.cancel()
                         stalenessPollingJob?.cancel()
-                        updateStatus("You have reached your destination! 🎉")
+                        updateStatus("You have reached your destination!")
                         android.widget.Toast.makeText(
                             requireContext(), "Trip completed!", android.widget.Toast.LENGTH_LONG
                         ).show()
                         safeNavigate(R.id.action_rideLive_to_riderHome)
                     }
                     "cancelled" -> {
+                        otpDisplayed = false
                         driverOfflineWatchdogJob?.cancel()
                         stalenessPollingJob?.cancel()
                         rideListener?.remove()
@@ -1097,27 +1257,31 @@ class RideLiveFragment : Fragment() {
      */
     private fun handleStatusFromService(status: String, otp: String) {
         if (_binding == null) return
+        if (status == currentRideStatus) return
+        currentRideStatus = status
 
         // Show OTP if it arrived while we were in background
         if (otp.isNotEmpty() && !otpDisplayed) showOtp(otp)
 
         when (status) {
+            "accepted" -> {
+                binding.btnCancelRide.visibility = View.VISIBLE
+                updateStatus("🚗 Your driver is on the way")
+            }
             "arrived_at_pickup" -> {
-                otpGenerated = true
                 binding.btnCancelRide.visibility = View.GONE
-                updateStatus("Driver has arrived! Share the OTP to start your ride")
+                updateStatus("✅ Driver is here — share OTP to start the ride")
                 // Cancel the OTP notification since user is now looking at the app
                 NotificationHelper.cancelOtpNotification(requireContext())
             }
             "in_progress" -> {
-                otpGenerated = true
                 binding.btnCancelRide.visibility = View.GONE
                 binding.cardOtp.visibility = View.GONE
-                updateStatus("Trip in progress 🚗")
+                updateStatus("🛣️ Enjoy your ride!")
                 if (!isPhase2) switchToPhase2()
             }
             "completed" -> {
-                updateStatus("You have reached your destination! 🎉")
+                updateStatus("You have reached your destination!")
                 android.widget.Toast.makeText(
                     requireContext(), "Trip completed!", android.widget.Toast.LENGTH_LONG
                 ).show()
@@ -1127,7 +1291,6 @@ class RideLiveFragment : Fragment() {
                 safeNavigate(R.id.action_rideLive_to_riderHome)
             }
             "cancelled" -> {
-                val rawReason = rideLiveService?.currentStatus ?: CancelReason.DRIVER_OFFLINE.name
                 val bundle = Bundle().apply {
                     putString("cancelReason", CancelReason.DRIVER_OFFLINE.name)
                 }

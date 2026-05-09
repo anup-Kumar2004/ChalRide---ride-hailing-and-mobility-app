@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!--
+        Solid fill using a gradient that sweeps around the circle.
+        startColor  = brand_primary  (#6C63FF  — purple)
+        centerColor = brand_accent   (#4ECDC4  — teal)
+        endColor    = brand_primary  (#6C63FF  — back to purple for seamless loop)
+        type="sweep" paints the gradient around the circumference.
+    -->
+    <gradient
+        android:type="sweep"
+        android:startColor="#6C63FF"
+        android:centerColor="#4ECDC4"
+        android:endColor="#6C63FF"
+        android:useLevel="false"/>
+
+    <!--
+        No stroke needed — the gradient IS the ring.
+        The avatar view on top covers the centre, leaving only the outer 4dp rim.
+    -->
+
+</shape>

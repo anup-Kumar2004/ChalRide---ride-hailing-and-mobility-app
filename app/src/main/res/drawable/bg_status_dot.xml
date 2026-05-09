@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_status_dot.xml
+    Place in: res/drawable/
+
+    Small teal filled oval used as the "live" indicator inside the
+    top status pill.  Animate it from Kotlin with ObjectAnimator
+    (see RideLive_KotlinSnippets.kt) for a real-time pulse effect.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#4ECDC4"/>
+    <size
+        android:width="8dp"
+        android:height="8dp"/>
+</shape>

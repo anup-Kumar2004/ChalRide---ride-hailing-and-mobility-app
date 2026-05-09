@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import androidx.core.content.edit
 
 class RideLiveService : Service() {
 
@@ -214,7 +215,7 @@ class RideLiveService : Service() {
     }
 
     fun clearActiveRidePrefs() {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().clear().apply()
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit { clear() }
         Log.d(TAG, "Active ride prefs cleared")
     }
 }

@@ -6,125 +6,325 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Full screen map — takes ~60% of screen -->
+    <!-- ══════════════════════════════════════════════════════════
+         LAYER 1 ─ Full-screen map  (base, always behind everything)
+    ══════════════════════════════════════════════════════════ -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-    <!-- Top scrim gradient over map -->
+    <!-- ══════════════════════════════════════════════════════════
+         LAYER 2 ─ Top scrim  (makes top UI readable over any map tile)
+    ══════════════════════════════════════════════════════════ -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="140dp"
         android:background="@drawable/bg_map_top_scrim"
-        android:layout_gravity="top"/>
+        android:layout_gravity="top"
+        android:importantForAccessibility="no"/>
 
-    <!-- Status pill — floats over map at top -->
-    <androidx.cardview.widget.CardView
+    <!-- ══════════════════════════════════════════════════════════
+         LAYER 3 ─ Status pill  +  ETA / Distance chips
+         Stacked vertically, centered horizontally, gravity=top.
+         Total height ≈ 96dp  →  safely within the 18 % top pad.
+    ══════════════════════════════════════════════════════════ -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="20dp"
-        android:elevation="16dp"
-        app:cardBackgroundColor="#E60F0F1A"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="12dp">
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="22dp">
 
-        <TextView
-            android:id="@+id/tvStatus"
+        <!-- ── Status pill ── -->
+        <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Driver is heading to you"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif-medium"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="10dp"/>
+            android:elevation="16dp"
+            app:cardBackgroundColor="#DF0F0F1A"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="14dp">
 
-    </androidx.cardview.widget.CardView>
-
-    <!-- OTP Card — centered over map, revealed on arrival -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardOtp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginHorizontal="28dp"
-        android:layout_marginBottom="260dp"
-        android:visibility="gone"
-        android:clickable="true"
-        android:focusable="true"
-        android:elevation="24dp"
-        app:cardBackgroundColor="@color/bg_card"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="20dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:paddingHorizontal="28dp"
-            android:paddingVertical="28dp">
-
-            <!-- Lock icon row -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:paddingStart="14dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
 
+                <!--
+                    Live dot — teal, small circle.
+                    Add a pulsing ObjectAnimator in Kotlin (see snippet file):
+                      ObjectAnimator.ofPropertyValuesHolder(
+                          binding.viewStatusDot,
+                          PropertyValuesHolder.ofFloat(View.ALPHA, 1f, 0.25f, 1f),
+                          PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.4f, 1f),
+                          PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.4f, 1f)
+                      ).apply { duration = 1600; repeatCount = INFINITE }.start()
+                -->
+                <View
+                    android:id="@+id/viewStatusDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/bg_status_dot"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your driver is on the way"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxWidth="264dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- ── ETA chip  +  Distance chip ── -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <!-- ETA chip (filled brand_primary at ~80 % opacity) -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                app:cardBackgroundColor="#CC6C63FF"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="7dp"
+                    android:paddingBottom="7dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⏱"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="5dp"/>
+
+                    <!--
+                        Update from Kotlin:
+                          binding.tvEta.text = "$etaMinutes min"
+                    -->
+                    <TextView
+                        android:id="@+id/tvEta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-- min"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Distance chip (dark semi-transparent) -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#CC1A1A2E"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="7dp"
+                    android:paddingBottom="7dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📍"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="5dp"/>
+
+                    <!--
+                        Update from Kotlin:
+                          binding.tvDistance.text = "$distKm km"
+                    -->
+                    <TextView
+                        android:id="@+id/tvDistance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-- km"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ══════════════════════════════════════════════════════════
+         LAYER 4 ─ OTP card
+         Positioned with gravity=bottom, above the bottom sheet.
+         marginBottom 248dp ensures the card clears the sheet top
+         (~240dp) on screens from 600dp to 1000dp tall.
+
+         When cancel button is visible (Phase 1 before OTP), the
+         sheet is slightly taller (~290dp), but cardOtp is GONE in
+         that state — they are mutually exclusive so no overlap.
+
+         The existing showOtp() animation (scale + alpha overshoot)
+         works identically at this new position.
+    ══════════════════════════════════════════════════════════ -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardOtp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="170dp"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="28dp"
+        app:cardBackgroundColor="#F21A1A2E"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="24dp"
+        app:strokeColor="#2D6C63FF"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="18dp">
+
+            <!-- ── "Driver has arrived" header row ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <!-- Green check badge -->
+                <TextView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_arrived_badge"
+                    android:gravity="center"
+                    android:text="✓"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:layout_marginEnd="12dp"/>
+
+                <!-- Title + subtitle -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Driver has arrived!"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-medium"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Share this OTP to begin your ride"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:layout_marginTop="1dp"/>
+
+                </LinearLayout>
+
+                <!-- Lock icon -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="🔐"
-                    android:textSize="16sp"
-                    android:layout_marginEnd="6dp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="RIDE OTP"
-                    android:textColor="@color/brand_primary"
-                    android:textSize="10sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.16"/>
+                    android:textSize="18sp"/>
 
             </LinearLayout>
 
-            <!-- 4-digit OTP in large spaced text -->
+            <!-- Thin separator -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#18FFFFFF"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- ── Large OTP code ── -->
             <TextView
                 android:id="@+id/tvOtpCode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
                 android:text="0000"
-                android:textColor="@color/text_primary"
-                android:textSize="52sp"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.25"
-                android:layout_marginBottom="10dp"/>
+                android:textColor="@color/brand_primary"
+                android:textSize="54sp"
+                android:fontFamily="sans-serif-bold"
+                android:letterSpacing="0.28"
+                android:layout_marginBottom="6dp"/>
 
+            <!-- Accent underline beneath OTP -->
             <View
-                android:layout_width="60dp"
+                android:layout_width="80dp"
                 android:layout_height="2dp"
+                android:layout_gravity="center_horizontal"
                 android:background="@color/brand_primary"
-                android:alpha="0.4"
+                android:alpha="0.32"
                 android:layout_marginBottom="10dp"/>
 
+            <!-- Hint text -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Share this code with your driver"
+                android:layout_gravity="center_horizontal"
+                android:text="Only share with your driver · Never give to anyone else"
                 android:textColor="@color/text_hint"
-                android:textSize="12sp"
-                android:gravity="center"/>
+                android:textSize="10.5sp"
+                android:gravity="center"
+                android:maxLines="2"/>
 
         </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
-    </androidx.cardview.widget.CardView>
-
-    <!-- Bottom details sheet -->
+    <!-- ══════════════════════════════════════════════════════════
+         LAYER 5 ─ Bottom info sheet
+         Approximate height (cancel hidden) ≈ 240dp
+                           (cancel visible) ≈ 296dp
+         Both well within the Kotlin map padding of 35 % ≈ 315dp
+         on a typical 900dp tall device.
+    ══════════════════════════════════════════════════════════ -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -136,37 +336,145 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="36dp">
+            android:paddingBottom="24dp">
 
-            <!-- Drag handle -->
             <View
                 android:layout_width="36dp"
                 android:layout_height="4dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="10dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/bg_drag_handle"/>
+                android:layout_marginBottom="16dp"/>
 
-            <!-- Driver info row -->
+            <!-- ══ Phase badge  +  live ETA · Distance  (one row) ══ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingHorizontal="24dp"
-                android:layout_marginBottom="20dp">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:layout_marginBottom="14dp">
 
-                <!-- Avatar circle -->
+                <!--
+                    Phase badge pill.
+                    Update text from Kotlin:
+                      Phase 1 → binding.tvPhaseLabel.text = "● PICKUP PHASE"
+                      Phase 2 → binding.tvPhaseLabel.text = "● TRIP IN PROGRESS"
+                    Optionally change cardBackgroundColor to "#1A4ECDC4" in Phase 2
+                    and tvPhaseLabel textColor to brand_accent for a green hue.
+                -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="#1A6C63FF"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp">
+
+                    <TextView
+                        android:id="@+id/tvPhaseLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="● PICKUP PHASE"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="9.5sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.10"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="5dp"
+                        android:paddingBottom="5dp"/>
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- Spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"/>
+
+                <!-- Ride details -->
+                <!-- Premium Ride Details chip -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/chipRideDetails"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardBackgroundColor="#1AFFC107"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp"
+                    app:strokeColor="#33FFC107"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📋"
+                            android:textSize="10sp"
+                            android:layout_marginEnd="5dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Details"
+                            android:textColor="@color/amber"
+                            android:textSize="11sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=" ›"
+                            android:textColor="@color/amber"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider_color"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="14dp"/>
+
+            <!-- ══ Driver info row ══ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:layout_marginBottom="14dp">
+
+                <!-- Driver avatar circle (car emoji) -->
                 <TextView
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
                     android:background="@drawable/bg_driver_avatar_inner"
                     android:gravity="center"
                     android:text="🚗"
-                    android:textSize="22sp"
+                    android:textSize="20sp"
                     android:layout_marginEnd="14dp"/>
 
-                <!-- Name + vehicle -->
+                <!-- Name + vehicle type -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -192,12 +500,12 @@
 
                 </LinearLayout>
 
-                <!-- Safety badge -->
+                <!-- Verified / Safe badge (teal tinted) -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="#1A6C63FF"
-                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="#1A4ECDC4"
+                    app:cardCornerRadius="10dp"
                     app:cardElevation="0dp">
 
                     <LinearLayout
@@ -205,26 +513,27 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="6dp">
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="🛡️"
-                            android:textSize="12sp"
+                            android:textSize="11sp"
                             android:layout_marginEnd="4dp"/>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Safe"
-                            android:textColor="@color/brand_primary"
-                            android:textSize="11sp"
+                            android:text="Verified"
+                            android:textColor="@color/brand_accent"
+                            android:textSize="10sp"
                             android:fontFamily="sans-serif-medium"/>
 
                     </LinearLayout>
-
                 </androidx.cardview.widget.CardView>
 
             </LinearLayout>
@@ -234,37 +543,34 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/divider_color"
-                android:alpha="0.3"
-                android:layout_marginHorizontal="24dp"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="14dp"/>
 
 
+
+            <!-- ══ Cancel ride button -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="24dp">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp">
 
-                <!--cancel ride button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCancelRide"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="54dp"
+                    android:layout_height="50dp"
                     android:layout_weight="1"
                     android:text="Cancel Ride"
                     android:textColor="@color/error_color"
-                    android:layout_marginEnd="8dp"
                     app:strokeColor="@color/error_color"
                     android:visibility="gone"
                     app:cornerRadius="14dp"/>
 
             </LinearLayout>
 
-
         </LinearLayout>
-
     </androidx.core.widget.NestedScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

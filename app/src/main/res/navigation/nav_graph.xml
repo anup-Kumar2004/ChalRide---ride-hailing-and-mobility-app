@@ -220,6 +220,28 @@
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
 
+        <action
+            android:id="@+id/action_rideLive_to_rideSummary"
+            app:destination="@id/rideSummaryFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
+
+    </fragment>
+
+    <!-- ══ RIDE DETAILS SCREEN (current ongoing ride) ════════════════════════ -->
+    <fragment
+        android:id="@+id/rideSummaryFragment"
+        android:name="com.example.chalride.ui.rider.RideSummaryFragment"
+        android:label="RideSummaryFragment">
+        <action
+            android:id="@+id/action_rideSummary_to_rideLive"
+            app:destination="@id/rideLiveFragment"
+            app:popUpTo="@id/rideLiveFragment"
+            app:popUpToInclusive="false"
+            app:enterAnim="@anim/slide_in_left"
+            app:exitAnim="@anim/slide_out_right"/>
     </fragment>
 
     <fragment
