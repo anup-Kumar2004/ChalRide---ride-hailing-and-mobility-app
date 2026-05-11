@@ -42,7 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:elevation="16dp"
-            app:cardBackgroundColor="#DF0F0F1A"
+            app:cardBackgroundColor="@color/bg_card"
             app:cardCornerRadius="28dp"
             app:cardElevation="14dp">
 
@@ -115,11 +115,10 @@
                     android:paddingTop="7dp"
                     android:paddingBottom="7dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="⏱"
-                        android:textSize="11sp"
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:src="@drawable/ic_eta"
                         android:layout_marginEnd="5dp"/>
 
                     <!--
@@ -156,11 +155,10 @@
                     android:paddingTop="7dp"
                     android:paddingBottom="7dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="📍"
-                        android:textSize="11sp"
+                    <ImageView
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:src="@drawable/ic_distance_different_color"
                         android:layout_marginEnd="5dp"/>
 
                     <!--
@@ -180,6 +178,49 @@
             </androidx.cardview.widget.CardView>
 
         </LinearLayout>
+
+        <!-- ── Network status banner ── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardNetworkBanner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:visibility="gone"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="14dp"
+            app:cardBackgroundColor="@color/bg_surface"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FF4757">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp">
+
+                <View
+                    android:id="@+id/viewNetworkDot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bg_status_dot"
+                    android:backgroundTint="@color/error_color"
+                    android:layout_marginEnd="7dp"/>
+
+                <TextView
+                    android:id="@+id/tvNetworkBannerText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No internet connection"
+                    android:textColor="@color/error_color"
+                    android:textSize="11.5sp"
+                    android:fontFamily="sans-serif-medium"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════════════

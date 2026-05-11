@@ -429,6 +429,9 @@ class RiderHomeFragment : Fragment() {
 
     private fun startLocationUpdates() {
         if (locationUpdatesStarted) return
+        // Fragment may have been detached by checkAndRejoinActiveRide() navigating
+        // away before this async callback fires — guard against that here.
+        if (!isAdded || context == null) return
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
@@ -789,10 +792,13 @@ class RiderHomeFragment : Fragment() {
                         putString("driverId",      prefs.getString(RideLiveService.PREFS_KEY_DRIVER_ID, ""))
                         putString("driverName",    prefs.getString(RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
                         putString("vehicleType",   prefs.getString(RideLiveService.PREFS_KEY_VEHICLE, ""))
-                        putDouble("pickupLat",     prefs.getFloat(RideLiveService.PREFS_KEY_PICKUP_LAT, 0f).toDouble())
-                        putDouble("pickupLng",     prefs.getFloat(RideLiveService.PREFS_KEY_PICKUP_LNG, 0f).toDouble())
-                        putDouble("destLat",       prefs.getFloat(RideLiveService.PREFS_KEY_DEST_LAT, 0f).toDouble())
-                        putDouble("destLng",       prefs.getFloat(RideLiveService.PREFS_KEY_DEST_LNG, 0f).toDouble())
+
+                        putDouble("pickupLat",     Double.fromBits(prefs.getLong(RideLiveService.PREFS_KEY_PICKUP_LAT, 0L)))
+                        putDouble("pickupLng",     Double.fromBits(prefs.getLong(RideLiveService.PREFS_KEY_PICKUP_LNG, 0L)))
+                        putDouble("destLat",       Double.fromBits(prefs.getLong(RideLiveService.PREFS_KEY_DEST_LAT, 0L)))
+                        putDouble("destLng",       Double.fromBits(prefs.getLong(RideLiveService.PREFS_KEY_DEST_LNG, 0L)))
+
+
                         putString("pickupAddress", prefs.getString(RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
                         putString("destAddress",   prefs.getString(RideLiveService.PREFS_KEY_DEST_ADDR, ""))
                         putInt("estimatedFare",    prefs.getInt(RideLiveService.PREFS_KEY_FARE, 0))

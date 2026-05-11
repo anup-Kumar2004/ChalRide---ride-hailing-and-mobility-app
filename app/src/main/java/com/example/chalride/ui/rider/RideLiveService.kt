@@ -33,7 +33,7 @@ class RideLiveService : Service() {
     private var rideListener: ListenerRegistration? = null
 
     // ── Callback so bound fragment gets live updates ──────────────────────────
-    var onStatusChanged: ((status: String, otp: String) -> Unit)? = null
+    var onStatusChanged: ((status: String, otp: String, cancelReason: String) -> Unit)? = null
 
     companion object {
         const val EXTRA_RIDE_REQUEST_ID = "rideRequestId"
@@ -53,20 +53,34 @@ class RideLiveService : Service() {
         const val PREFS_KEY_DEST_ADDR   = "activeDestAddress"
         const val PREFS_KEY_FARE        = "activeEstimatedFare"
         const val TAG                   = "RideLiveService"
+        var isRunning = false
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         NotificationHelper.createChannels(this)
         Log.d(TAG, "Service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        rideRequestId = intent?.getStringExtra(EXTRA_RIDE_REQUEST_ID) ?: ""
-        driverId      = intent?.getStringExtra(EXTRA_DRIVER_ID)       ?: ""
-        driverName    = intent?.getStringExtra(EXTRA_DRIVER_NAME)     ?: "Driver"
-        vehicleType   = intent?.getStringExtra(EXTRA_VEHICLE_TYPE)    ?: ""
+        // On START_STICKY restart after process kill, intent is null.
+        // Recover ride info from SharedPreferences so the service knows which ride to listen to.
+        if (intent != null) {
+            rideRequestId = intent.getStringExtra(EXTRA_RIDE_REQUEST_ID) ?: ""
+            driverId      = intent.getStringExtra(EXTRA_DRIVER_ID)       ?: ""
+            driverName    = intent.getStringExtra(EXTRA_DRIVER_NAME)     ?: "Driver"
+            vehicleType   = intent.getStringExtra(EXTRA_VEHICLE_TYPE)    ?: ""
+        } else {
+            // Sticky restart — recover from prefs
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            rideRequestId = prefs.getString(PREFS_KEY_RIDE_ID,     "") ?: ""
+            driverId      = prefs.getString(PREFS_KEY_DRIVER_ID,   "") ?: ""
+            driverName    = prefs.getString(PREFS_KEY_DRIVER_NAME, "Driver") ?: "Driver"
+            vehicleType   = prefs.getString(PREFS_KEY_VEHICLE,     "") ?: ""
+            Log.d(TAG, "Sticky restart — recovered rideId=$rideRequestId from prefs")
+        }
 
         Log.d(TAG, "onStartCommand: rideId=$rideRequestId driver=$driverName")
 
@@ -76,7 +90,7 @@ class RideLiveService : Service() {
             "Your ride is active",
             "$driverName is heading to your pickup"
         )
-        startForeground(NotificationHelper.NOTIF_ID_RIDE_ONGOING, notification)
+        startForeground(NotificationHelper.NOTIF_ID_RIDE, notification)
 
         // Start listening to the ride document
         startRideListener()
@@ -94,11 +108,11 @@ class RideLiveService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         rideListener?.remove()
         Log.d(TAG, "Service destroyed")
         super.onDestroy()
     }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Firestore listener
     // ─────────────────────────────────────────────────────────────────────────
@@ -129,13 +143,13 @@ class RideLiveService : Service() {
                 updateOngoingNotification(status, otp)
 
                 // Notify bound fragment if it's attached
-                onStatusChanged?.invoke(status, otp)
-
+                val cancelReason = snapshot.getString("cancellationReason") ?: ""
+                onStatusChanged?.invoke(status, otp, cancelReason)
                 when (status) {
                     "in_progress" -> isPhase2 = true
 
                     "completed" -> {
-                        NotificationHelper.showDestinationReachedNotification(this)
+                        updateOngoingNotification("completed", "")
                         clearActiveRidePrefs()
                         stopSelf()
                     }
@@ -153,65 +167,46 @@ class RideLiveService : Service() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun updateOngoingNotification(status: String, otp: String) {
-        val (title, message) = when (status) {
-            "accepted"         -> Pair(
-                "Ride confirmed",
-                "$driverName is heading to your pickup"
-            )
+        val alertUser: Boolean
+        val title: String
+        val message: String
+
+        when (status) {
+            "accepted" -> {
+                alertUser = false
+                title = "Ride confirmed"
+                message = "$driverName is heading to your pickup"
+            }
             "arrived_at_pickup" -> {
-                // Play OTP alert sound notification — only once
                 if (!otpNotifShown && otp.isNotEmpty()) {
                     otpNotifShown = true
-                    NotificationHelper.showOtpNotification(this, driverName, otp)
                 }
-                Pair(
-                    "$driverName has arrived!",
-                    "OTP: $otp — Share this to start your ride"
-                )
+                alertUser = !otpNotifShown  // alert only the first time
+                title = "$driverName has arrived!"
+                message = "OTP: $otp — Share this to start your ride"
             }
-            "in_progress"      -> Pair(
-                "Trip in progress",
-                "You're on your way to the destination"
-            )
-            else               -> Pair(
-                "Your ride is active",
-                "$driverName is heading to your pickup"
-            )
+            "in_progress" -> {
+                alertUser = true            // ping once when trip starts
+                title = "Trip in progress"
+                message = "You're on your way to the destination"
+            }
+            "completed" -> {
+                alertUser = true
+                title = "You've reached your destination! 🎉"
+                message = "Your trip is complete. Thank you for riding with ChalRide!"
+            }
+            else -> {
+                alertUser = false
+                title = "Your ride is active"
+                message = "$driverName is heading to your pickup"
+            }
         }
 
-        // Update the ongoing foreground notification silently
-        val updatedNotification = NotificationHelper.buildRideOngoingNotification(
-            this, title, message
+        val notification = NotificationHelper.buildRideOngoingNotification(
+            this, title, message, alertUser
         )
         val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-        manager.notify(NotificationHelper.NOTIF_ID_RIDE_ONGOING, updatedNotification)
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // SharedPreferences — active ride persistence
-    // ─────────────────────────────────────────────────────────────────────────
-
-    fun saveActiveRidePrefs(
-        pickupLat: Double, pickupLng: Double,
-        destLat: Double,   destLng: Double,
-        pickupAddress: String, destAddress: String,
-        estimatedFare: Int
-    ) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().apply {
-            putString(PREFS_KEY_RIDE_ID,     rideRequestId)
-            putString(PREFS_KEY_DRIVER_ID,   driverId)
-            putString(PREFS_KEY_DRIVER_NAME, driverName)
-            putString(PREFS_KEY_VEHICLE,     vehicleType)
-            putFloat(PREFS_KEY_PICKUP_LAT,   pickupLat.toFloat())
-            putFloat(PREFS_KEY_PICKUP_LNG,   pickupLng.toFloat())
-            putFloat(PREFS_KEY_DEST_LAT,     destLat.toFloat())
-            putFloat(PREFS_KEY_DEST_LNG,     destLng.toFloat())
-            putString(PREFS_KEY_PICKUP_ADDR, pickupAddress)
-            putString(PREFS_KEY_DEST_ADDR,   destAddress)
-            putInt(PREFS_KEY_FARE,           estimatedFare)
-            apply()
-        }
-        Log.d(TAG, "Active ride prefs saved: $rideRequestId")
+        manager.notify(NotificationHelper.NOTIF_ID_RIDE, notification)
     }
 
     fun clearActiveRidePrefs() {

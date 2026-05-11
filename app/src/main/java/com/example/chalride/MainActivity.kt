@@ -9,6 +9,8 @@ import androidx.navigation.fragment.NavHostFragment
 import com.example.chalride.data.repository.AuthRepository
 import com.example.chalride.databinding.ActivityMainBinding
 import kotlinx.coroutines.runBlocking
+import android.content.Context
+import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,6 +38,74 @@ class MainActivity : AppCompatActivity() {
         val startDestination = getStartDestination()
         navGraph.setStartDestination(startDestination)
         navController.graph = navGraph
+
+
+        // Handle tap from RideLive notification — route to active ride screen
+        if (intent?.getBooleanExtra("openRideLive", false) == true) {
+            val prefs = getSharedPreferences(
+                com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+            val savedRideId = prefs.getString(
+                com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
+            ) ?: ""
+            if (savedRideId.isNotEmpty()) {
+                val bundle = android.os.Bundle().apply {
+                    putString("rideRequestId", savedRideId)
+                    putString("driverId",      prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_ID, ""))
+                    putString("driverName",    prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
+                    putString("vehicleType",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_VEHICLE, ""))
+                    putDouble("pickupLat",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LAT, 0L)))
+                    putDouble("pickupLng",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LNG, 0L)))
+                    putDouble("destLat",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LAT, 0L)))
+                    putDouble("destLng",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LNG, 0L)))
+                    putString("pickupAddress", prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
+                    putString("destAddress",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_ADDR, ""))
+                    putInt("estimatedFare",    prefs.getInt(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_FARE, 0))
+                }
+                navController.navigate(R.id.rideLiveFragment, bundle)
+            }
+        }
+
+    }
+
+
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)  // update the intent so getIntent() returns the new one
+
+        if (intent.getBooleanExtra("openRideLive", false)) {
+            val prefs = getSharedPreferences(
+                com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+            val savedRideId = prefs.getString(
+                com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
+            ) ?: ""
+            if (savedRideId.isNotEmpty()) {
+                val navHostFragment = supportFragmentManager
+                    .findFragmentById(R.id.nav_host_fragment) as? androidx.navigation.fragment.NavHostFragment
+                val navController = navHostFragment?.navController ?: return
+                val bundle = Bundle().apply {
+                    putString("rideRequestId", savedRideId)
+                    putString("driverId",      prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_ID, ""))
+                    putString("driverName",    prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
+                    putString("vehicleType",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_VEHICLE, ""))
+                    putDouble("pickupLat",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LAT, 0L)))
+                    putDouble("pickupLng",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LNG, 0L)))
+                    putDouble("destLat",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LAT, 0L)))
+                    putDouble("destLng",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LNG, 0L)))
+                    putString("pickupAddress", prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
+                    putString("destAddress",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_ADDR, ""))
+                    putInt("estimatedFare",    prefs.getInt(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_FARE, 0))
+                }
+                // Only navigate if we're not already on RideLiveFragment
+                if (navController.currentDestination?.id != R.id.rideLiveFragment) {
+                    navController.navigate(R.id.rideLiveFragment, bundle)
+                }
+            }
+        }
     }
 
     private fun getStartDestination(): Int {

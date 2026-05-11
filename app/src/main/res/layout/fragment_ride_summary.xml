@@ -353,14 +353,20 @@
                         android:layout_marginBottom="14dp">
 
                         <!-- Icon bubble -->
-                        <TextView
+                        <FrameLayout
                             android:layout_width="36dp"
                             android:layout_height="36dp"
+                            android:padding="8dp"
                             android:background="@drawable/bg_info_icon_bubble"
-                            android:gravity="center"
-                            android:text="📞"
-                            android:textSize="15sp"
-                            android:layout_marginEnd="12dp"/>
+                            android:layout_marginEnd="12dp">
+
+                            <ImageView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:src="@drawable/ic_call"/>
+
+                        </FrameLayout>
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -602,7 +608,7 @@
                             android:orientation="vertical"
                             android:gravity="center_horizontal"
                             android:layout_marginEnd="14dp"
-                            android:layout_marginTop="2dp">
+                            android:layout_marginTop="10dp">
 
                             <!-- Pickup dot (brand_primary filled) -->
                             <View
@@ -613,7 +619,7 @@
                             <!-- Dashed vertical line -->
                             <View
                                 android:layout_width="2dp"
-                                android:layout_height="44dp"
+                                android:layout_height="45dp"
                                 android:background="#336C63FF"
                                 android:layout_gravity="center_horizontal"
                                 android:layout_marginTop="4dp"

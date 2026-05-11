@@ -90,9 +90,9 @@ class RideSummaryFragment : Fragment() {
     private fun bindArgumentData() {
         // Status banner
         binding.tvDetailStatus.text = when (currentStatus) {
-            "arrived_at_pickup" -> "✅ Driver has arrived at pickup"
-            "in_progress"       -> "🛣️ Trip is in progress"
-            else                -> "🚗 Your driver is on the way"
+            "arrived_at_pickup" -> "Driver has arrived at pickup"
+            "in_progress"       -> "Trip is in progress"
+            else                -> "Driver is on the way"
         }
         binding.tvDetailPhase.text = when (currentStatus) {
             "in_progress" -> "TRIP"
