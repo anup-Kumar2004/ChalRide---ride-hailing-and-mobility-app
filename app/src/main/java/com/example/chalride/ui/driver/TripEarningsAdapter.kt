@@ -50,7 +50,7 @@ class TripEarningsAdapter :
     }
 
     // ── ViewHolder: Header ────────────────────────────────────────────────────
-    inner class HeaderViewHolder(private val b: ItemEarningsHeaderBinding) :
+    class HeaderViewHolder(private val b: ItemEarningsHeaderBinding) :
         RecyclerView.ViewHolder(b.root) {
 
         fun bind(item: EarningsListItem.Header) {
@@ -60,7 +60,7 @@ class TripEarningsAdapter :
     }
 
     // ── ViewHolder: Trip card ─────────────────────────────────────────────────
-    inner class TripViewHolder(private val b: ItemTripEarningsBinding) :
+    class TripViewHolder(private val b: ItemTripEarningsBinding) :
         RecyclerView.ViewHolder(b.root) {
 
         fun bind(item: TripEarningsItem) {
@@ -100,9 +100,6 @@ class TripEarningsAdapter :
                 b.tvFareCancelled.visibility = android.view.View.VISIBLE
                 b.tvFareCancelled.text       = "₹${item.fare}"
 
-                // FIX 2: Yellow amount text — clearly visible on dark bg,
-                // distinct from both green (earned) and the background.
-                b.tvFareCancelled.setTextColor(0xFFFFD600.toInt()) // vivid amber-yellow
 
                 // Bold + strikethrough — line color matches text (yellow),
                 // which is perfectly visible. No custom span needed.
@@ -140,7 +137,7 @@ class TripEarningsAdapter :
             val time   = SimpleDateFormat("h:mm a", Locale.getDefault()).format(date)
             return when {
                 isSameDay(cal, now)   -> "Today, $time"
-                isYesterday(cal, now) -> "Yesterday, $time"
+                isYesterday(cal) -> "Yesterday, $time"
                 else -> SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(date)
             }
         }
@@ -149,7 +146,7 @@ class TripEarningsAdapter :
             a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
                     a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
-        private fun isYesterday(cal: Calendar, now: Calendar): Boolean {
+        private fun isYesterday(cal: Calendar): Boolean {
             val yesterday = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, -1) }
             return cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
                     cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)

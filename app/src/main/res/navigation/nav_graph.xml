@@ -207,10 +207,12 @@
         android:name="com.example.chalride.ui.rider.RideLiveFragment"
         android:label="RideLiveFragment">
         <action
-            android:id="@+id/action_rideLive_to_riderHome"
-            app:destination="@id/riderHomeFragment"
+            android:id="@+id/action_rideLive_to_rideCompletion"
+            app:destination="@id/rideCompletionFragment"
             app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"/>
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
 
         <action
             android:id="@+id/action_rideLive_to_rideCancelled"
@@ -275,6 +277,18 @@
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
 
+    </fragment>
+
+
+    <fragment
+        android:id="@+id/rideCompletionFragment"
+        android:name="com.example.chalride.ui.rider.RideCompletionFragment"
+        android:label="RideCompletionFragment">
+        <action
+            android:id="@+id/action_rideCompletion_to_riderHome"
+            app:destination="@id/riderHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"/>
     </fragment>
 
 

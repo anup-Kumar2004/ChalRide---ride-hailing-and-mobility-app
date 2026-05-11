@@ -56,6 +56,7 @@ import java.util.Locale
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isVisible
+import androidx.core.content.edit
 
 class RiderHomeFragment : Fragment() {
 
@@ -806,7 +807,7 @@ class RiderHomeFragment : Fragment() {
                     findNavController().navigate(R.id.action_rider_home_to_ride_live, bundle)
                 } else {
                     // Ride ended while app was closed — clear stale prefs
-                    prefs.edit().clear().apply()
+                    prefs.edit { clear() }
                     android.util.Log.d("RiderHome", "Saved ride is no longer active ($status) — cleared prefs")
                 }
             }

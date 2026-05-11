@@ -272,7 +272,7 @@ class RideLiveFragment : Fragment() {
         when (currentRideStatus) {
             "completed" -> {
                 requireContext().stopService(Intent(requireContext(), RideLiveService::class.java))
-                safeNavigate(R.id.action_rideLive_to_riderHome)
+                safeNavigate(R.id.action_rideLive_to_rideCompletion)
             }
             "cancelled" -> {
                 safeNavigate(R.id.action_rideLive_to_rideCancelled)
@@ -1287,10 +1287,20 @@ class RideLiveFragment : Fragment() {
                         driverOfflineWatchdogJob?.cancel()
                         stalenessPollingJob?.cancel()
                         updateStatus("You have reached your destination!")
-                        android.widget.Toast.makeText(
-                            requireContext(), "Trip completed!", android.widget.Toast.LENGTH_LONG
-                        ).show()
-                        safeNavigate(R.id.action_rideLive_to_riderHome)
+                        val bundle = Bundle().apply {
+                            putString("rideRequestId", rideRequestId)
+                            putString("driverName",    driverName)
+                            putString("vehicleType",   vehicleType)
+                            putString("pickupAddress", pickupAddress)
+                            putString("destAddress",   destAddress)
+                            putInt("estimatedFare",    estimatedFare)
+                            putDouble("pickupLat",     pickupLat)
+                            putDouble("pickupLng",     pickupLng)
+                            putDouble("destLat",       destLat)
+                            putDouble("destLng",       destLng)
+                        }
+                        requireContext().stopService(Intent(requireContext(), RideLiveService::class.java))
+                        safeNavigate(R.id.action_rideLive_to_rideCompletion, bundle)
                     }
                     "cancelled" -> {
                         otpVerified    = true
@@ -1365,13 +1375,20 @@ class RideLiveFragment : Fragment() {
             }
             "completed" -> {
                 updateStatus("You have reached your destination!")
-                android.widget.Toast.makeText(
-                    requireContext(), "Trip completed!", android.widget.Toast.LENGTH_LONG
-                ).show()
-                requireContext().stopService(
-                    Intent(requireContext(), RideLiveService::class.java)
-                )
-                safeNavigate(R.id.action_rideLive_to_riderHome)
+                val bundle = Bundle().apply {
+                    putString("rideRequestId", rideRequestId)
+                    putString("driverName",    driverName)
+                    putString("vehicleType",   vehicleType)
+                    putString("pickupAddress", pickupAddress)
+                    putString("destAddress",   destAddress)
+                    putInt("estimatedFare",    estimatedFare)
+                    putDouble("pickupLat",     pickupLat)
+                    putDouble("pickupLng",     pickupLng)
+                    putDouble("destLat",       destLat)
+                    putDouble("destLng",       destLng)
+                }
+                requireContext().stopService(Intent(requireContext(), RideLiveService::class.java))
+                safeNavigate(R.id.action_rideLive_to_rideCompletion, bundle)
             }
             "cancelled" -> {
                 val bundle = Bundle().apply {
