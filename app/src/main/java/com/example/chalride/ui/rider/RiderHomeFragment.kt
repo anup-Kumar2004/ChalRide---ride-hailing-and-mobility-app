@@ -103,7 +103,8 @@ class RiderHomeFragment : Fragment() {
         ) {
             checkLocationSettings()
         } else {
-            setConfirmedPickup(null, "Location permission denied")
+            stopFetchingState()
+            showPermissionDeniedUX("Location permission needed to set your pickup")
         }
     }
 
@@ -111,7 +112,11 @@ class RiderHomeFragment : Fragment() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) startLocationUpdates()
-        else setConfirmedPickup(null, "Enable location to use ChalRide")
+        else {
+            // User cancelled the GPS enable dialog — stop fetching, show snackbar
+            stopFetchingState()
+            showPermissionDeniedUX("Please enable location to use ChalRide") // repurpose this to say "Enable location to use ChalRide"
+        }
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -177,6 +182,7 @@ class RiderHomeFragment : Fragment() {
         if (confirmedPickupLabel.isEmpty()) {
             binding.progressLocation.visibility = View.VISIBLE
             isLocationBeingFetched = true
+            setPickupSearchEnabled(false)
             checkAndRequestPermission()
             // ADD THIS LINE:
             startFetchingMessages()
@@ -203,6 +209,7 @@ class RiderHomeFragment : Fragment() {
         isLocationBeingFetched = false
         // ADD THIS LINE:
         fetchingMessageJob?.cancel()
+        setPickupSearchEnabled(true)
 
         hidePickupWarning()   // ← ADD THIS LINE — clears warning on any new pickup selection
         confirmedPickupLocation = geoPoint
@@ -222,7 +229,7 @@ class RiderHomeFragment : Fragment() {
         if (geoPoint != null && !userIsInteracting) {
             placePickupMarker(geoPoint)
             binding.mapView.controller.animateTo(geoPoint)
-            binding.mapView.controller.setZoom(17.0)
+            binding.mapView.controller.setZoom(15.0)
         }
     }
 
@@ -242,7 +249,7 @@ class RiderHomeFragment : Fragment() {
             binding.mapView.post {
                 placePickupMarker(loc)
                 binding.mapView.controller.animateTo(loc)
-                binding.mapView.controller.setZoom(17.0)
+                binding.mapView.controller.setZoom(15.0)
             }
         }
     }
@@ -302,9 +309,13 @@ class RiderHomeFragment : Fragment() {
 
     private fun setPickupFromMapTap(geoPoint: GeoPoint) {
         placePickupMarker(geoPoint)
+        setPickupSearchEnabled(false)
 
         isProgrammaticTextChange = true
-        binding.etPickupSearch.setText("Finding address...")
+        binding.etPickupSearch.setText("Fetching location...")
+        binding.etPickupSearch.setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.text_secondary)
+        )
         isProgrammaticTextChange = false
         binding.progressLocation.visibility = View.VISIBLE
 
@@ -394,9 +405,46 @@ class RiderHomeFragment : Fragment() {
                         )
                     } catch (_: IntentSender.SendIntentException) {}
                 } else {
-                    setConfirmedPickup(null, "Enable location to use ChalRide")
+                    stopFetchingState()
                 }
             }
+    }
+
+    private fun stopFetchingState() {
+        isLocationBeingFetched = false
+        fetchingMessageJob?.cancel()
+        binding.progressLocation.visibility = View.GONE
+        setPickupSearchEnabled(true)
+        // Restore hint text without triggering search mode
+        if (!isInSearchMode) {
+            isProgrammaticTextChange = true
+            binding.etPickupSearch.setText("")
+            binding.etPickupSearch.hint = "Search pickup location..."
+            isProgrammaticTextChange = false
+        }
+    }
+
+    private fun showPermissionDeniedUX(
+        message: String = "Location access needed to set your pickup"
+    ) {
+        com.google.android.material.snackbar.Snackbar.make(
+            binding.root,
+            message,
+            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+        ).setAction("Open Settings") {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", requireContext().packageName, null)
+            )
+            startActivity(intent)
+        }.show()
+    }
+
+    private fun setPickupSearchEnabled(enabled: Boolean) {
+        binding.etPickupSearch.isEnabled = enabled
+        binding.etPickupSearch.isFocusable = enabled
+        binding.etPickupSearch.isFocusableInTouchMode = enabled
+        binding.etPickupSearch.alpha = if (enabled) 1.0f else 0.6f
     }
 
     private fun setupLocationCallback() {
@@ -405,25 +453,35 @@ class RiderHomeFragment : Fragment() {
                 val location = result.lastLocation ?: return
                 val geoPoint = GeoPoint(location.latitude, location.longitude)
 
-                // Only use GPS fix to SET the pickup if we don't have one yet
                 if (!gpsHasBeenFetched) {
                     gpsHasBeenFetched = true
+                    fusedLocationClient.removeLocationUpdates(locationCallback)
 
-                    // Animate map to user location immediately
+                    // ── Step 1: Immediately show map + marker + stop the
+                    //    fetching messages. User sees the map respond instantly.
+                    isLocationBeingFetched = false
+                    fetchingMessageJob?.cancel()
+                    setPickupSearchEnabled(false)   // keep locked while geocoding
+
                     binding.mapView.controller.animateTo(geoPoint)
-                    binding.mapView.controller.setZoom(17.0)
+                    binding.mapView.controller.setZoom(15.0)
                     placePickupMarker(geoPoint)
 
-                    // Reverse geocode and set as confirmed pickup
+                    isProgrammaticTextChange = true
+                    binding.etPickupSearch.setText("Fetching location...")
+                    binding.etPickupSearch.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.text_secondary)
+                    )
+                    isProgrammaticTextChange = false
+                    binding.progressLocation.visibility = View.VISIBLE
+
+                    // ── Step 2: Geocode in background — field unlocks when done
                     lifecycleScope.launch {
                         val address = reverseGeocodeAddress(location.latitude, location.longitude)
                         setConfirmedPickup(geoPoint, address)
+                        // setConfirmedPickup already calls setPickupSearchEnabled(true)
                     }
-
-                    // Stop updates — we only needed one fix for pickup
-                    fusedLocationClient.removeLocationUpdates(locationCallback)
                 }
-                // After first fix, GPS no longer drives anything automatically
             }
         }
     }
@@ -485,10 +543,13 @@ class RiderHomeFragment : Fragment() {
         }
 
         binding.etPickupSearch.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                hidePickupWarning()   // ✅ ADD THIS
-                if (!isInSearchMode) enterSearchMode()
+            if (!hasFocus) return@setOnFocusChangeListener
+            if (isLocationBeingFetched) {
+                binding.etPickupSearch.clearFocus()   // ← reject focus during fetch
+                return@setOnFocusChangeListener
             }
+            hidePickupWarning()
+            if (!isInSearchMode) enterSearchMode()
         }
 
         binding.etPickupSearch.addTextChangedListener(object : TextWatcher {
@@ -686,9 +747,9 @@ class RiderHomeFragment : Fragment() {
         fetchingMessageJob = lifecycleScope.launch {
             val messages = listOf(
                 0L    to "Fetching location...",
-                6000L to "Just a sec, hold on tight...",
-                9000L to "Almost there, bear with us...",
-                12000L to "Taking longer than usual..."
+                4000L to "Just a sec, hold on tight...",
+                6000L to "Almost there, bear with us...",
+                10000L to "Taking longer than usual..."
             )
             for ((delayMs, message) in messages) {
                 delay(delayMs)
@@ -720,12 +781,16 @@ class RiderHomeFragment : Fragment() {
             userIsInteracting = false
             // ADD THIS LINE:
             isLocationBeingFetched = true
+            setPickupSearchEnabled(false)     // ← ADD THIS LINE
 
             if (isInSearchMode) exitSearchMode(restoreLabel = false)
 
             binding.progressLocation.visibility = View.VISIBLE
             isProgrammaticTextChange = true
             binding.etPickupSearch.setText("Fetching location...")
+            binding.etPickupSearch.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.text_secondary)
+            )
             isProgrammaticTextChange = false
 
             checkAndRequestPermission()
