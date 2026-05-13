@@ -55,860 +55,853 @@
 
     <!-- ═══════════════════════════════════════════════════
          BOTTOM SHEET
-         peekHeight is set in Kotlin to (screenHeight * 0.24)
+         The bottom sheet is a LinearLayout (not NestedScrollView).
+         BottomSheetBehavior attaches to this LinearLayout.
+         Inside it: drag handle (always visible) + NestedScrollView (scrollable content).
+         This is the correct architecture used by Google Maps / Uber.
     ═══════════════════════════════════════════════════ -->
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/bg_ride_confirm_sheet"
         android:elevation="20dp"
         android:layout_gravity="bottom"
-        android:fillViewport="false"
+        android:orientation="vertical"
         app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-        app:behavior_peekHeight="180dp"
         app:behavior_hideable="false"
         app:behavior_fitToContents="false"
-        app:behavior_halfExpandedRatio="0.55"
-        app:behavior_expandedOffset="0dp">
+        app:behavior_skipCollapsed="false">
 
-        <LinearLayout
+        <!-- Drag handle — OUTSIDE the scroll view so it always drags the sheet -->
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_drag_handle" />
+
+        <!-- NestedScrollView fills all remaining space inside the sheet -->
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingBottom="40dp">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never">
 
-            <!-- ── Drag handle ── -->
-            <View
-                android:layout_width="36dp"
-                android:layout_height="4dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="18dp"
-                android:background="@drawable/bg_drag_handle" />
-
-            <!-- ══════════════════════════════════════════════════════
-                 ROUTE SUMMARY
-            ══════════════════════════════════════════════════════ -->
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="20dp"
-                android:paddingBottom="16dp">
-
-                <View
-                    android:id="@+id/dotPickup"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:background="@drawable/bg_status_dot_online"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="@id/tvPickupAddress"
-                    app:layout_constraintBottom_toBottomOf="@id/tvPickupAddress" />
-
-                <View
-                    android:id="@+id/connectorLine"
-                    android:layout_width="2dp"
-                    android:layout_height="0dp"
-                    android:background="@color/text_hint"
-                    android:alpha="0.30"
-                    app:layout_constraintStart_toStartOf="@id/dotPickup"
-                    app:layout_constraintEnd_toEndOf="@id/dotPickup"
-                    app:layout_constraintTop_toBottomOf="@id/dotPickup"
-                    app:layout_constraintBottom_toTopOf="@id/dotDest" />
-
-                <View
-                    android:id="@+id/dotDest"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:background="@drawable/bg_destination_dot"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="@id/tvDestAddress"
-                    app:layout_constraintBottom_toBottomOf="@id/tvDestAddress" />
-
-                <TextView
-                    android:id="@+id/labelPickup"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="PICKUP"
-                    android:textColor="@color/text_hint"
-                    android:textSize="9sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.10"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginBottom="2dp"
-                    app:layout_constraintStart_toEndOf="@id/dotPickup"
-                    app:layout_constraintEnd_toStartOf="@id/chipStack"
-                    app:layout_constraintTop_toTopOf="parent" />
-
-                <TextView
-                    android:id="@+id/tvPickupAddress"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:lineSpacingMultiplier="1.25"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="10dp"
-                    app:layout_constraintStart_toEndOf="@id/dotPickup"
-                    app:layout_constraintEnd_toStartOf="@id/chipStack"
-                    app:layout_constraintTop_toBottomOf="@id/labelPickup" />
-
-                <TextView
-                    android:id="@+id/labelDropoff"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="DROP-OFF"
-                    android:textColor="@color/text_hint"
-                    android:textSize="9sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.10"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="2dp"
-                    app:layout_constraintStart_toEndOf="@id/dotDest"
-                    app:layout_constraintEnd_toStartOf="@id/chipStack"
-                    app:layout_constraintTop_toBottomOf="@id/tvPickupAddress" />
-
-                <TextView
-                    android:id="@+id/tvDestAddress"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:lineSpacingMultiplier="1.25"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="10dp"
-                    app:layout_constraintStart_toEndOf="@id/dotDest"
-                    app:layout_constraintEnd_toStartOf="@id/chipStack"
-                    app:layout_constraintTop_toBottomOf="@id/labelDropoff" />
-
-                <LinearLayout
-                    android:id="@+id/chipStack"
-                    android:layout_width="90dp"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="28dp"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:background="@drawable/bg_role_badge"
-                        android:layout_marginBottom="14dp">
-
-                        <ImageView
-                            android:layout_width="13dp"
-                            android:layout_height="13dp"
-                            android:src="@drawable/ic_distance"
-                            android:layout_marginEnd="5dp"
-                            app:tint="@color/text_hint" />
-
-                        <TextView
-                            android:id="@+id/tvRouteDistance"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:maxLines="1"
-                            android:ellipsize="end" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="28dp"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:background="@drawable/bg_role_badge">
-
-                        <ImageView
-                            android:layout_width="13dp"
-                            android:layout_height="13dp"
-                            android:src="@drawable/ic_eta"
-                            android:layout_marginEnd="5dp"
-                            app:tint="@color/text_hint" />
-
-                        <TextView
-                            android:id="@+id/tvRouteEta"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="11sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:maxLines="1"
-                            android:ellipsize="end" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <!-- Thin divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/text_hint"
-                android:alpha="0.10"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="14dp" />
-
-            <!-- ── "Choose a ride" heading row with driver count badge ── -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Choose a ride"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.01" />
-
-                <!-- Live driver count badge — updated from Kotlin -->
-                <TextView
-                    android:id="@+id/tvDriverCountBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Searching..."
-                    android:textColor="@color/text_hint"
-                    android:textSize="11sp"
-                    android:fontFamily="sans-serif-medium" />
-
-            </LinearLayout>
-
-            <!-- ══════════════════════════════════════════════════════════════
-                 VEHICLE CARDS — all 4 always visible.
-                 Available  → normal colors, clickable, fare shown
-                 Unavailable → dimmed overlay, NOT clickable, "Not available" badge
-
-                 Each card is a FrameLayout so the "Not available" scrim overlay
-                 can be stacked precisely on top of the card content.
-            ══════════════════════════════════════════════════════════════ -->
-
-            <!-- ── BIKE card ── -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="8dp">
-
-                <!-- Card content -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardBike"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/divider_color"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="14dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <!-- Emoji icon -->
-                        <TextView
-                            android:id="@+id/tvBikeEmoji"
-                            android:layout_width="36dp"
-                            android:layout_height="wrap_content"
-                            android:text="🏍️"
-                            android:textSize="24sp"
-                            android:gravity="center" />
-
-                        <!-- Name + subtitle -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:id="@+id/tvBikeName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Bike"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvBikeSubtitle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Fastest · 1 seat"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <!-- Right side: fare OR "Not available" pill -->
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end|center_vertical">
-
-                            <TextView
-                                android:id="@+id/tvBikeFare"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="₹--"
-                                android:textColor="@color/brand_primary"
-                                android:textSize="16sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <!-- "Not available" badge — hidden when available -->
-                            <TextView
-                                android:id="@+id/tvBikeUnavailable"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Not available"
-                                android:textColor="#FF5C5C"
-                                android:textSize="10sp"
-                                android:fontFamily="sans-serif-medium"
-                                android:paddingHorizontal="8dp"
-                                android:paddingVertical="3dp"
-                                android:background="@drawable/bg_unavailable_badge"
-                                android:visibility="gone" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Disabled scrim overlay — shown on top when unavailable -->
-                <View
-                    android:id="@+id/scrimBike"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_scrim_rounded"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- ── AUTO card ── -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardAuto"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/divider_color"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="14dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <TextView
-                            android:id="@+id/tvAutoEmoji"
-                            android:layout_width="36dp"
-                            android:layout_height="wrap_content"
-                            android:text="🛺"
-                            android:textSize="24sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:id="@+id/tvAutoName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Auto"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvAutoSubtitle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Affordable · 3 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end|center_vertical">
-
-                            <TextView
-                                android:id="@+id/tvAutoFare"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="₹--"
-                                android:textColor="@color/brand_primary"
-                                android:textSize="16sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvAutoUnavailable"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Not available"
-                                android:textColor="#FF5C5C"
-                                android:textSize="10sp"
-                                android:fontFamily="sans-serif-medium"
-                                android:paddingHorizontal="8dp"
-                                android:paddingVertical="3dp"
-                                android:background="@drawable/bg_unavailable_badge"
-                                android:visibility="gone" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <View
-                    android:id="@+id/scrimAuto"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_scrim_rounded"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- ── SEDAN card ── -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardSedan"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/divider_color"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="14dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <TextView
-                            android:id="@+id/tvSedanEmoji"
-                            android:layout_width="36dp"
-                            android:layout_height="wrap_content"
-                            android:text="🚗"
-                            android:textSize="24sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:id="@+id/tvSedanName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Sedan"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvSedanSubtitle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Comfortable · 4 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end|center_vertical">
-
-                            <TextView
-                                android:id="@+id/tvSedanFare"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="₹--"
-                                android:textColor="@color/brand_primary"
-                                android:textSize="16sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvSedanUnavailable"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Not available"
-                                android:textColor="#FF5C5C"
-                                android:textSize="10sp"
-                                android:fontFamily="sans-serif-medium"
-                                android:paddingHorizontal="8dp"
-                                android:paddingVertical="3dp"
-                                android:background="@drawable/bg_unavailable_badge"
-                                android:visibility="gone" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <View
-                    android:id="@+id/scrimSedan"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_scrim_rounded"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- ── SUV card ── -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardSuv"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/divider_color"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="14dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <TextView
-                            android:id="@+id/tvSuvEmoji"
-                            android:layout_width="36dp"
-                            android:layout_height="wrap_content"
-                            android:text="🚙"
-                            android:textSize="24sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:id="@+id/tvSuvName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="SUV"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvSuvSubtitle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Premium · 6 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp"
-                                android:layout_marginTop="2dp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end|center_vertical">
-
-                            <TextView
-                                android:id="@+id/tvSuvFare"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="₹--"
-                                android:textColor="@color/brand_primary"
-                                android:textSize="16sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:id="@+id/tvSuvUnavailable"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Not available"
-                                android:textColor="#FF5C5C"
-                                android:textSize="10sp"
-                                android:fontFamily="sans-serif-medium"
-                                android:paddingHorizontal="8dp"
-                                android:paddingVertical="3dp"
-                                android:background="@drawable/bg_unavailable_badge"
-                                android:visibility="gone" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <View
-                    android:id="@+id/scrimSuv"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_scrim_rounded"
-                    android:visibility="gone" />
-
-            </FrameLayout>
-
-            <!-- ── Search Radius Filter ── -->
-            <LinearLayout
-                android:id="@+id/layoutRadiusFilter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_scrim_rounded"
-                android:elevation="2dp">
+                android:paddingBottom="40dp">
 
-                <!-- Collapsed header row — always visible -->
-                <LinearLayout
-                    android:id="@+id/filterRadiusHeader"
+                <!-- ══════════════════════════════════════════════════════
+                     ROUTE SUMMARY
+                ══════════════════════════════════════════════════════ -->
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="20dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="16dp">
+
+                    <View
+                        android:id="@+id/dotPickup"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/bg_status_dot_online"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="@id/tvPickupAddress"
+                        app:layout_constraintBottom_toBottomOf="@id/tvPickupAddress" />
+
+                    <View
+                        android:id="@+id/connectorLine"
+                        android:layout_width="2dp"
+                        android:layout_height="0dp"
+                        android:background="@color/text_hint"
+                        android:alpha="0.30"
+                        app:layout_constraintStart_toStartOf="@id/dotPickup"
+                        app:layout_constraintEnd_toEndOf="@id/dotPickup"
+                        app:layout_constraintTop_toBottomOf="@id/dotPickup"
+                        app:layout_constraintBottom_toTopOf="@id/dotDest" />
+
+                    <View
+                        android:id="@+id/dotDest"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/bg_destination_dot"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="@id/tvDestAddress"
+                        app:layout_constraintBottom_toBottomOf="@id/tvDestAddress" />
+
+                    <TextView
+                        android:id="@+id/labelPickup"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="PICKUP"
+                        android:textColor="@color/text_hint"
+                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.10"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginBottom="2dp"
+                        app:layout_constraintStart_toEndOf="@id/dotPickup"
+                        app:layout_constraintEnd_toStartOf="@id/chipStack"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/tvPickupAddress"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:lineSpacingMultiplier="1.25"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="10dp"
+                        app:layout_constraintStart_toEndOf="@id/dotPickup"
+                        app:layout_constraintEnd_toStartOf="@id/chipStack"
+                        app:layout_constraintTop_toBottomOf="@id/labelPickup" />
+
+                    <TextView
+                        android:id="@+id/labelDropoff"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="DROP-OFF"
+                        android:textColor="@color/text_hint"
+                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.10"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="2dp"
+                        app:layout_constraintStart_toEndOf="@id/dotDest"
+                        app:layout_constraintEnd_toStartOf="@id/chipStack"
+                        app:layout_constraintTop_toBottomOf="@id/tvPickupAddress" />
+
+                    <TextView
+                        android:id="@+id/tvDestAddress"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:lineSpacingMultiplier="1.25"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="10dp"
+                        app:layout_constraintStart_toEndOf="@id/dotDest"
+                        app:layout_constraintEnd_toStartOf="@id/chipStack"
+                        app:layout_constraintTop_toBottomOf="@id/labelDropoff" />
+
+                    <LinearLayout
+                        android:id="@+id/chipStack"
+                        android:layout_width="90dp"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="28dp"
+                            android:orientation="horizontal"
+                            android:gravity="center"
+                            android:background="@drawable/bg_role_badge"
+                            android:layout_marginBottom="14dp">
+
+                            <ImageView
+                                android:layout_width="13dp"
+                                android:layout_height="13dp"
+                                android:src="@drawable/ic_distance"
+                                android:layout_marginEnd="5dp"
+                                app:tint="@color/text_hint" />
+
+                            <TextView
+                                android:id="@+id/tvRouteDistance"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="28dp"
+                            android:orientation="horizontal"
+                            android:gravity="center"
+                            android:background="@drawable/bg_role_badge">
+
+                            <ImageView
+                                android:layout_width="13dp"
+                                android:layout_height="13dp"
+                                android:src="@drawable/ic_eta"
+                                android:layout_marginEnd="5dp"
+                                app:tint="@color/text_hint" />
+
+                            <TextView
+                                android:id="@+id/tvRouteEta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <!-- Thin divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/text_hint"
+                    android:alpha="0.10"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- ── "Choose a ride" heading row with driver count badge ── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:paddingHorizontal="14dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?attr/selectableItemBackgroundBorderless">
-
-                    <ImageView
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:src="@drawable/ic_distance"
-                        android:layout_marginEnd="8dp"
-                        app:tint="@color/brand_primary" />
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="12dp">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Search Radius"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
-                        android:fontFamily="sans-serif-medium" />
-
-                    <TextView
-                        android:id="@+id/tvCurrentRadius"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="5 km"
-                        android:textColor="@color/brand_primary"
-                        android:textSize="13sp"
+                        android:text="Choose a ride"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
                         android:fontFamily="sans-serif-medium"
-                        android:layout_marginEnd="6dp" />
+                        android:letterSpacing="0.01" />
 
                     <TextView
-                        android:id="@+id/tvRadiusChevron"
+                        android:id="@+id/tvDriverCountBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="›"
+                        android:text="Searching..."
                         android:textColor="@color/text_hint"
-                        android:textSize="18sp"
-                        android:rotation="90" />
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif-medium" />
 
                 </LinearLayout>
 
-                <!-- Expanding panel — GONE by default -->
+                <!-- ── BIKE card ── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardBike"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/input_bg"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/divider_color"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="14dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:id="@+id/tvBikeEmoji"
+                                android:layout_width="36dp"
+                                android:layout_height="wrap_content"
+                                android:text="🏍️"
+                                android:textSize="24sp"
+                                android:gravity="center" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/tvBikeName"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Bike"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvBikeSubtitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Fastest · 1 seat"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:gravity="end|center_vertical">
+
+                                <TextView
+                                    android:id="@+id/tvBikeFare"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="₹--"
+                                    android:textColor="@color/brand_primary"
+                                    android:textSize="16sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvBikeUnavailable"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Not available"
+                                    android:textColor="#FF5C5C"
+                                    android:textSize="10sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="3dp"
+                                    android:background="@drawable/bg_unavailable_badge"
+                                    android:visibility="gone" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View
+                        android:id="@+id/scrimBike"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_scrim_rounded"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <!-- ── AUTO card ── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardAuto"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/input_bg"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/divider_color"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="14dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:id="@+id/tvAutoEmoji"
+                                android:layout_width="36dp"
+                                android:layout_height="wrap_content"
+                                android:text="🛺"
+                                android:textSize="24sp"
+                                android:gravity="center" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/tvAutoName"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Auto"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvAutoSubtitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Affordable · 3 seats"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:gravity="end|center_vertical">
+
+                                <TextView
+                                    android:id="@+id/tvAutoFare"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="₹--"
+                                    android:textColor="@color/brand_primary"
+                                    android:textSize="16sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvAutoUnavailable"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Not available"
+                                    android:textColor="#FF5C5C"
+                                    android:textSize="10sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="3dp"
+                                    android:background="@drawable/bg_unavailable_badge"
+                                    android:visibility="gone" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View
+                        android:id="@+id/scrimAuto"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_scrim_rounded"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <!-- ── SEDAN card ── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardSedan"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/input_bg"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/divider_color"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="14dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:id="@+id/tvSedanEmoji"
+                                android:layout_width="36dp"
+                                android:layout_height="wrap_content"
+                                android:text="🚗"
+                                android:textSize="24sp"
+                                android:gravity="center" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/tvSedanName"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Sedan"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvSedanSubtitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Comfortable · 4 seats"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:gravity="end|center_vertical">
+
+                                <TextView
+                                    android:id="@+id/tvSedanFare"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="₹--"
+                                    android:textColor="@color/brand_primary"
+                                    android:textSize="16sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvSedanUnavailable"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Not available"
+                                    android:textColor="#FF5C5C"
+                                    android:textSize="10sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="3dp"
+                                    android:background="@drawable/bg_unavailable_badge"
+                                    android:visibility="gone" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View
+                        android:id="@+id/scrimSedan"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_scrim_rounded"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <!-- ── SUV card ── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardSuv"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@color/input_bg"
+                        app:cardCornerRadius="14dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/divider_color"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingHorizontal="14dp"
+                            android:paddingTop="14dp"
+                            android:paddingBottom="14dp">
+
+                            <TextView
+                                android:id="@+id/tvSuvEmoji"
+                                android:layout_width="36dp"
+                                android:layout_height="wrap_content"
+                                android:text="🚙"
+                                android:textSize="24sp"
+                                android:gravity="center" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="12dp">
+
+                                <TextView
+                                    android:id="@+id/tvSuvName"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="SUV"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="14sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvSuvSubtitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Premium · 6 seats"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="11sp"
+                                    android:layout_marginTop="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:gravity="end|center_vertical">
+
+                                <TextView
+                                    android:id="@+id/tvSuvFare"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="₹--"
+                                    android:textColor="@color/brand_primary"
+                                    android:textSize="16sp"
+                                    android:fontFamily="sans-serif-medium" />
+
+                                <TextView
+                                    android:id="@+id/tvSuvUnavailable"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Not available"
+                                    android:textColor="#FF5C5C"
+                                    android:textSize="10sp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="3dp"
+                                    android:background="@drawable/bg_unavailable_badge"
+                                    android:visibility="gone" />
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View
+                        android:id="@+id/scrimSuv"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_scrim_rounded"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <!-- ── Search Radius Filter ── -->
                 <LinearLayout
-                    android:id="@+id/filterRadiusPanel"
+                    android:id="@+id/layoutRadiusFilter"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingBottom="14dp"
-                    android:visibility="gone">
+                    android:layout_marginHorizontal="20dp"
+                    android:alpha="0.9"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_search_result"
+                    android:elevation="2dp">
 
-                    <!-- Thin separator inside panel -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/divider_color"
-                        android:layout_marginBottom="14dp" />
-
-                    <!-- Four chips in a horizontal row -->
+                    <!-- Collapsed header row — always visible -->
                     <LinearLayout
+                        android:id="@+id/filterRadiusHeader"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="14dp"
+                        android:layout_height="45dp"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="14dp">
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="2dp"
+                            android:src="@drawable/ic_filter"
+                            android:layout_marginEnd="8dp"
+                            app:tint="@color/text_secondary" />
 
                         <TextView
-                            android:id="@+id/chip5km"
                             android:layout_width="0dp"
-                            android:layout_height="36dp"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:gravity="center"
+                            android:text="Search Radius"
+                            android:layout_marginStart="5dp"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:id="@+id/tvCurrentRadius"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:text="5 km"
-                            android:textSize="12sp"
-                            android:fontFamily="sans-serif-medium"
                             android:textColor="@color/brand_primary"
-                            android:background="@drawable/bg_chip_selected"
-                            android:clickable="true"
-                            android:focusable="true" />
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginEnd="8dp" />
 
                         <TextView
-                            android:id="@+id/chip10km"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:gravity="center"
-                            android:text="10 km"
-                            android:textSize="12sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:textColor="@color/text_hint"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/chip15km"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:gravity="center"
-                            android:text="15 km"
-                            android:textSize="12sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:textColor="@color/text_hint"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <TextView
-                            android:id="@+id/chip25km"
-                            android:layout_width="0dp"
-                            android:layout_height="36dp"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:text="25 km"
-                            android:textSize="12sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:textColor="@color/text_hint"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:clickable="true"
-                            android:focusable="true" />
+                            android:id="@+id/tvRadiusChevron"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/brand_primary"
+                            android:textSize="18sp"
+                            android:layout_marginEnd="4dp"
+                            android:rotation="90" />
 
                     </LinearLayout>
 
-                    <!-- Apply button inside panel -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnApplyRadius"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        app:strokeColor="@color/rider_color"
+                    <!-- Expanding panel — GONE by default -->
+                    <LinearLayout
+                        android:id="@+id/filterRadiusPanel"
                         android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:text="Apply"
-                        android:textAllCaps="false"
-                        android:layout_marginHorizontal="120dp"
-                        android:textSize="14sp"
-                        android:letterSpacing="0.05"
-                        android:textColor="#BAAFAF"
-                        app:cornerRadius="12dp"
-                        app:elevation="0dp"
-                        app:rippleColor="@color/pink_light"/>
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="14dp"
+                        android:layout_marginBottom="10dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider_color"
+                            android:layout_marginBottom="14dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="14dp">
+
+                            <TextView
+                                android:id="@+id/chip5km"
+                                android:layout_width="0dp"
+                                android:layout_height="36dp"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="6dp"
+                                android:gravity="center"
+                                android:text="5 km"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:textColor="@color/brand_primary"
+                                android:background="@drawable/bg_chip_selected"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                            <TextView
+                                android:id="@+id/chip10km"
+                                android:layout_width="0dp"
+                                android:layout_height="36dp"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="6dp"
+                                android:gravity="center"
+                                android:text="10 km"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:textColor="@color/text_hint"
+                                android:background="@drawable/bg_chip_unselected"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                            <TextView
+                                android:id="@+id/chip15km"
+                                android:layout_width="0dp"
+                                android:layout_height="36dp"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="6dp"
+                                android:gravity="center"
+                                android:text="15 km"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:textColor="@color/text_hint"
+                                android:background="@drawable/bg_chip_unselected"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                            <TextView
+                                android:id="@+id/chip25km"
+                                android:layout_width="0dp"
+                                android:layout_height="36dp"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="25 km"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:textColor="@color/text_hint"
+                                android:background="@drawable/bg_chip_unselected"
+                                android:clickable="true"
+                                android:focusable="true" />
+
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnApplyRadius"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            app:strokeColor="@color/rider_color"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:text="Apply"
+                            android:textAllCaps="false"
+                            android:layout_marginHorizontal="100dp"
+                            android:textSize="14sp"
+                            android:letterSpacing="0.05"
+                            android:textColor="#BAAFAF"
+                            app:cornerRadius="12dp"
+                            app:elevation="0dp"
+                            app:rippleColor="@color/pink_light"/>
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
+                <!-- ── Find a Ride button ── -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnFindRide"
+                    style="@style/ChalRide.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Find a Ride" />
+
             </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
 
-
-
-            <!-- ── Find a Ride button ── -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFindRide"
-                style="@style/ChalRide.Button.Primary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="10dp"
-                android:text="Find a Ride" />
-
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

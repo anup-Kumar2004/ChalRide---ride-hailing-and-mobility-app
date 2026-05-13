@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
@@ -35,7 +36,7 @@ class RideConfirmFragment : Fragment() {
     private var _binding: FragmentRideConfirmBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
+    private lateinit var bottomSheetBehavior: BottomSheetBehavior<LinearLayout>
 
     private val pickupLat        by lazy { arguments?.getDouble("pickupLat")        ?: 0.0 }
     private val pickupLng        by lazy { arguments?.getDouble("pickupLng")        ?: 0.0 }
@@ -134,20 +135,17 @@ class RideConfirmFragment : Fragment() {
         setupClickListeners()
 
         bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
-        bottomSheetBehavior.apply {
-            state = BottomSheetBehavior.STATE_COLLAPSED
-            isDraggable = true
-            skipCollapsed = false
-            isFitToContents = false
-        }
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        bottomSheetBehavior.isDraggable = true
+        bottomSheetBehavior.skipCollapsed = false
+        bottomSheetBehavior.isFitToContents = false
 
         binding.bottomSheet.post {
             val screenHeight = resources.displayMetrics.heightPixels
             bottomSheetBehavior.peekHeight = (screenHeight * 0.24).toInt()
-            bottomSheetBehavior.expandedOffset = (screenHeight * 0.2).toInt()
+            bottomSheetBehavior.expandedOffset = (screenHeight * 0.05).toInt()
         }
 
-        binding.bottomSheet.setOnTouchListener { _, _ -> false }
 
         // Show "Searching…" in badge immediately, then update after Firestore returns
         binding.tvDriverCountBadge.text = "Searching nearby..."
@@ -159,7 +157,7 @@ class RideConfirmFragment : Fragment() {
 
     private fun setupRadiusFilter() {
         val chips = listOf(
-            binding.chip5km to 5,
+            binding.chip5km  to 5,
             binding.chip10km to 10,
             binding.chip15km to 15,
             binding.chip25km to 25
@@ -168,18 +166,10 @@ class RideConfirmFragment : Fragment() {
         fun updateChipVisuals(selectedKm: Int) {
             chips.forEach { (chip, km) ->
                 if (km == selectedKm) {
-                    chip.setTextColor(
-                        ContextCompat.getColor(
-                            requireContext(), R.color.brand_primary
-                        )
-                    )
+                    chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.brand_primary))
                     chip.setBackgroundResource(R.drawable.bg_chip_selected)
                 } else {
-                    chip.setTextColor(
-                        ContextCompat.getColor(
-                            requireContext(), R.color.text_hint
-                        )
-                    )
+                    chip.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_hint))
                     chip.setBackgroundResource(R.drawable.bg_chip_unselected)
                 }
             }
@@ -198,47 +188,45 @@ class RideConfirmFragment : Fragment() {
             }
         }
 
-        // Chip selection — only updates pendingRadiusKm, not applied yet
+        // Chip selection — do nothing if tapping the already-applied chip,
+        // otherwise update preview state only (no backend refresh yet)
         chips.forEach { (chip, km) ->
             chip.setOnClickListener {
+                if (km == selectedRadiusKm) {
+                    // Rule 1: tapping the already-applied chip → absolutely nothing
+                    return@setOnClickListener
+                }
+                // Rule 2: different chip tapped → preview only, no apply yet
                 pendingRadiusKm = km
                 updateChipVisuals(km)
+                binding.tvCurrentRadius.text = "$km km"
             }
         }
 
-        // Apply button
+        // Apply button — Rule 3: always show dialog if pending != applied
         binding.btnApplyRadius.setOnClickListener {
-            val chosen = pendingRadiusKm
-            if (chosen == selectedRadiusKm) {
-                // No change — just collapse
+            if (pendingRadiusKm == selectedRadiusKm) {
+                // Nothing changed (e.g. panel opened but no chip tapped) — just collapse
                 binding.filterRadiusPanel.visibility = View.GONE
                 binding.tvRadiusChevron.animate().rotation(90f).setDuration(200).start()
                 return@setOnClickListener
             }
 
-            if (chosen > 5) {
-                // Show warning dialog for larger radii
-                android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Wider Search Area")
-                    .setMessage(
-                        "You've selected a $chosen km radius. Drivers may be farther away " +
-                                "and could take longer to reach your pickup point."
-                    )
-                    .setPositiveButton("Continue") { _, _ ->
-                        applyRadiusAndRefresh(chosen)
-                    }
-                    .setNegativeButton("Cancel") { _, _ ->
-                        // Revert chip visuals to currently active radius
-                        pendingRadiusKm = selectedRadiusKm
-                        updateChipVisuals(selectedRadiusKm)
-                    }
-                    .show()
-            } else {
-                applyRadiusAndRefresh(chosen)
-            }
+            // Rule 3: always show confirmation dialog when pending != applied
+            showRadiusConfirmDialog(
+                pendingKm = pendingRadiusKm,
+                onConfirm = {
+                    applyRadiusAndRefresh(pendingRadiusKm)
+                },
+                onCancel = {
+                    pendingRadiusKm = selectedRadiusKm
+                    updateChipVisuals(selectedRadiusKm)
+                    binding.tvCurrentRadius.text = "$selectedRadiusKm km"
+                }
+            )
         }
 
-        // Set initial chip visuals
+        // Set initial chip visuals to match the default applied radius (5 km)
         updateChipVisuals(selectedRadiusKm)
     }
 
@@ -672,15 +660,18 @@ class RideConfirmFragment : Fragment() {
     private fun fetchNearbyDriversAndFilterVehicles() {
         val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
 
-        val geohashPrecision = when {
-            selectedRadiusKm <= 15 -> 5   // cells ≈ 4.9 km — correct for 5/10/15 km radius
-            else -> 4                     // cells ≈ 156 km — only use for 25 km+
+        // Always use precision 5 (cell ≈ 4.9 km) so the query hash precision
+        // never exceeds the stored geohash precision, avoiding missed drivers.
+        // Grid size controls how wide a net we cast; haversine does exact trimming.
+        val (geohashPrecision, gridRadius) = when {
+            selectedRadiusKm <= 5  -> Pair(5, 1)   // 3×3 grid of 4.9 km cells ≈ 14.7 km net
+            selectedRadiusKm <= 10 -> Pair(5, 2)   // 5×5 grid of 4.9 km cells ≈ 24.5 km net
+            selectedRadiusKm <= 15 -> Pair(5, 2)   // same
+            else                   -> Pair(5, 3)   // 7×7 grid of 4.9 km cells ≈ 34.3 km net
         }
 
         val centerHash = encodeGeohash(pickupLat, pickupLng, precision = geohashPrecision)
-
-        // Get all 9 cells: center + 8 neighbors
-        val cellsToQuery = geohashNeighbors(centerHash) + centerHash
+        val cellsToQuery = geohashGrid(centerHash, gridRadius)
 
         android.util.Log.d("NearbyDrivers", "Querying ${cellsToQuery.size} geohash cells around $centerHash")
 
@@ -696,7 +687,7 @@ class RideConfirmFragment : Fragment() {
                 seen.add(id)
             }
 
-            // Filter: must have recent location update AND be within 10km of pickup
+            // Filter: must have recent location update AND be within selectedRadiusKm of pickup
             val nearby = deduplicated.filter { driver ->
                 val lat = driver["lat"] as? Double ?: return@filter false
                 val lng = driver["lng"] as? Double ?: return@filter false
@@ -707,7 +698,7 @@ class RideConfirmFragment : Fragment() {
                 distanceKm <= selectedRadiusKm.toDouble()
             }
 
-            android.util.Log.d("NearbyDrivers", "Found ${nearby.size} drivers within 10km")
+            android.util.Log.d("NearbyDrivers", "Found ${nearby.size} drivers within ${selectedRadiusKm}km")
 
             nearbyDrivers = nearby
             availableVehicleTypes.clear()
@@ -743,6 +734,50 @@ class RideConfirmFragment : Fragment() {
                     if (completedQueries == totalQueries) onAllQueriesComplete()
                 }
         }
+    }
+
+
+
+
+    private fun showRadiusConfirmDialog(
+        pendingKm: Int,
+        onConfirm: () -> Unit,
+        onCancel: () -> Unit
+    ) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_search_radius_confirm, null)
+
+        val dialog = android.app.Dialog(requireContext(), R.style.DriverWarningDialogTheme)
+        dialog.setContentView(dialogView)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.88).toInt(),
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCanceledOnTouchOutside(false)
+
+        // Build the message dynamically based on direction of change
+        val message = if (pendingKm > selectedRadiusKm) {
+            "Your search area will increase to $pendingKm km. " +
+                    "Drivers matched may be further away, with slightly longer pickup times."
+        } else {
+            "Your search area will reduce to $pendingKm km. " +
+                    "Only drivers within a closer range will be considered for this ride."
+        }
+
+        dialogView.findViewById<android.widget.TextView>(R.id.dialogMessage).text = message
+
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDialogCancel)
+            .setOnClickListener {
+                dialog.dismiss()
+                onCancel()
+            }
+
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDialogConfirm)
+            .setOnClickListener {
+                dialog.dismiss()
+                onConfirm()
+            }
+
+        dialog.show()
     }
 
 
@@ -791,7 +826,7 @@ class RideConfirmFragment : Fragment() {
             putDouble("destLat",       destLat)
             putDouble("destLng",       destLng)
             putString("destAddress",   destAddress)
-            putInt("searchRadiusKm",   selectedRadiusKm)  // ← ADD THIS
+            putInt("searchRadiusKm",   selectedRadiusKm)
         }
 
         findNavController().navigate(R.id.action_rideConfirm_to_rideSearching, bundle)
@@ -810,21 +845,23 @@ class RideConfirmFragment : Fragment() {
     }
 
     /**
-     * Returns the 8 neighboring geohash cells around the given cell.
-     * Together with the center cell, this gives full coverage for drivers
-     * near cell boundaries — the same approach used by Uber/Lyft.
+     * Returns all geohash cells in an NxN grid centered on [hash].
+     * radius=1 → 3×3 = 9 cells (standard neighbors + center)
+     * radius=2 → 5×5 = 25 cells
+     * radius=3 → 7×7 = 49 cells
      */
-    private fun geohashNeighbors(hash: String): List<String> {
-        return listOf(
-            geohashNeighbor(hash, 1, 0),   // N
-            geohashNeighbor(hash, 1, 1),   // NE
-            geohashNeighbor(hash, 0, 1),   // E
-            geohashNeighbor(hash, -1, 1),  // SE
-            geohashNeighbor(hash, -1, 0),  // S
-            geohashNeighbor(hash, -1, -1), // SW
-            geohashNeighbor(hash, 0, -1),  // W
-            geohashNeighbor(hash, 1, -1)   // NW
-        )
+    private fun geohashGrid(hash: String, radius: Int): List<String> {
+        val cells = mutableSetOf<String>()
+        for (latDir in -radius..radius) {
+            for (lngDir in -radius..radius) {
+                if (latDir == 0 && lngDir == 0) {
+                    cells.add(hash)
+                } else {
+                    cells.add(geohashNeighbor(hash, latDir, lngDir))
+                }
+            }
+        }
+        return cells.toList()
     }
 
     /**
