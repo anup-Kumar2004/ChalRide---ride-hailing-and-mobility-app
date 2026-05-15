@@ -21,7 +21,6 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -37,8 +36,6 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.Priority
 import com.google.android.gms.location.SettingsClient
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -89,9 +86,9 @@ class RiderHomeFragment : Fragment() {
     private var searchJob: Job? = null
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
 
-    // ── Ride booking state ──────────────────────────────────────────────────
+    // ── Ride booking state ──────────────────────────────────────────────
     private var userIsInteracting = false
-
+    private var isSpeedDialOpen = false
 
 
     // ── Permission launchers ────────────────────────────────────────────────
@@ -165,6 +162,11 @@ class RiderHomeFragment : Fragment() {
         setupPickupSearchBar()
         setupClickListeners()
 
+        binding.root.post {
+            val sheetVisibleHeight = binding.root.height - binding.bottomSheet.top
+            positionFabsAboveSheet(sheetVisibleHeight)
+        }
+
         // Observe destination result
         findNavController().currentBackStackEntry?.savedStateHandle?.apply {
             // ADD THIS — observe pickup unroutable signal from DestinationSearchFragment
@@ -223,14 +225,13 @@ class RiderHomeFragment : Fragment() {
         isProgrammaticTextChange = false
 
         binding.progressLocation.visibility = View.GONE
-        // No clear button — removed
 
-        // Place marker and animate map
         if (geoPoint != null && !userIsInteracting) {
             placePickupMarker(geoPoint)
             binding.mapView.controller.animateTo(geoPoint)
             binding.mapView.controller.setZoom(15.0)
         }
+
     }
 
     // currentLocation alias for fare calculation etc.
@@ -252,6 +253,7 @@ class RiderHomeFragment : Fragment() {
                 binding.mapView.controller.setZoom(15.0)
             }
         }
+
     }
 
     // ── Map ─────────────────────────────────────────────────────────────────
@@ -270,16 +272,17 @@ class RiderHomeFragment : Fragment() {
 
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
                 userIsInteracting = true
-                updatePulsePosition()   // 🔥 ADD THIS
+                updatePulsePosition()
                 return false
             }
 
             override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
                 userIsInteracting = true
-                updatePulsePosition()   // 🔥 ADD THIS
+                updatePulsePosition()
                 return false
             }
         })
+
 
         val mapTapOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
@@ -595,7 +598,6 @@ class RiderHomeFragment : Fragment() {
             isInSearchMode = false
             userIsInteracting = false
 
-            // Animate map first, then confirm
             binding.mapView.controller.animateTo(geoPoint)
             binding.mapView.controller.setZoom(16.0)
             setConfirmedPickup(geoPoint, label)
@@ -766,25 +768,87 @@ class RiderHomeFragment : Fragment() {
     }
 
 
+    private fun positionFabsAboveSheet(sheetVisibleHeight: Int) {
+        if (_binding == null) return
+        val density = resources.displayMetrics.density
+
+        // fabSpeedDial (normal FAB = 56dp) sits 16dp above sheet
+        val mainMargin = sheetVisibleHeight + (16 * density).toInt()
+
+        val tripDetailsMargin = sheetVisibleHeight + (88 * density).toInt()
+
+        val profileMargin = sheetVisibleHeight + (154 * density).toInt()
+
+        val myLocationMarginClosed = sheetVisibleHeight + (88 * density).toInt()
+        val myLocationMarginOpen   = sheetVisibleHeight + (225 * density).toInt()
+
+        fun setBottomMargin(view: View, margin: Int) {
+            val params = view.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+            params.bottomMargin = margin
+            view.layoutParams = params
+        }
+
+        setBottomMargin(binding.fabSpeedDial,  mainMargin)
+        setBottomMargin(binding.fabTripDetails, tripDetailsMargin)
+        setBottomMargin(binding.fabProfile,    profileMargin)
+        setBottomMargin(
+            binding.fabMyLocation,
+            if (isSpeedDialOpen) myLocationMarginOpen else myLocationMarginClosed
+        )
+    }
+
+    private fun openSpeedDial() {
+        isSpeedDialOpen = true
+        binding.fabScrim.visibility = View.VISIBLE
+        binding.fabScrim.animate().alpha(1f).setDuration(200).start()
+
+        listOf(binding.fabTripDetails, binding.fabProfile).forEachIndexed { index, fab ->
+            fab.visibility = View.VISIBLE
+            fab.animate()
+                .scaleX(1f).scaleY(1f).alpha(1f)
+                .setStartDelay((index * 50).toLong())
+                .setDuration(200)
+                .start()
+        }
+        binding.fabSpeedDial.animate().rotation(45f).setDuration(200).start()
+        val sheetVisibleHeight = binding.root.height - binding.bottomSheet.top
+        positionFabsAboveSheet(sheetVisibleHeight)
+
+    }
+
+    private fun closeSpeedDial() {
+        isSpeedDialOpen = false
+        binding.fabScrim.animate().alpha(0f).setDuration(200)
+            .withEndAction { binding.fabScrim.visibility = View.GONE }.start()
+
+        listOf(binding.fabProfile, binding.fabTripDetails).forEachIndexed { index, fab ->
+            fab.animate()
+                .scaleX(0f).scaleY(0f).alpha(0f)
+                .setStartDelay((index * 50).toLong())
+                .setDuration(150)
+                .withEndAction { fab.visibility = View.INVISIBLE }
+                .start()
+        }
+        binding.fabSpeedDial.animate().rotation(0f).setDuration(200).start()
+        val sheetVisibleHeight = binding.root.height - binding.bottomSheet.top
+        positionFabsAboveSheet(sheetVisibleHeight)
+    }
+
 
     // ── Click listeners ──────────────────────────────────────────────────────
 
     private fun setupClickListeners() {
-        binding.ivHamburger.setOnClickListener {
-            Toast.makeText(requireContext(), "Navigation menu coming soon", Toast.LENGTH_SHORT).show()
-        }
-
         binding.fabMyLocation.setOnClickListener {
-            // Re-fetch fresh GPS — reset state
+            // Close speed dial if open
+            if (isSpeedDialOpen) closeSpeedDial()
+
+            // Reset to fresh GPS fetch — same flow as app launch
             gpsHasBeenFetched = false
             locationUpdatesStarted = false
             userIsInteracting = false
-            // ADD THIS LINE:
             isLocationBeingFetched = true
-            setPickupSearchEnabled(false)     // ← ADD THIS LINE
 
-            if (isInSearchMode) exitSearchMode(restoreLabel = false)
-
+            setPickupSearchEnabled(false)
             binding.progressLocation.visibility = View.VISIBLE
             isProgrammaticTextChange = true
             binding.etPickupSearch.setText("Fetching location...")
@@ -793,9 +857,26 @@ class RiderHomeFragment : Fragment() {
             )
             isProgrammaticTextChange = false
 
-            checkAndRequestPermission()
-            // ADD THIS LINE:
             startFetchingMessages()
+            checkAndRequestPermission()
+        }
+
+        binding.fabSpeedDial.setOnClickListener {
+            if (isSpeedDialOpen) closeSpeedDial() else openSpeedDial()
+        }
+
+        binding.fabScrim.setOnClickListener {
+            closeSpeedDial()
+        }
+
+        binding.fabProfile.setOnClickListener {
+            closeSpeedDial()
+            findNavController().navigate(R.id.action_riderHome_to_riderProfile)
+        }
+
+        binding.fabTripDetails.setOnClickListener {
+            closeSpeedDial()
+            findNavController().navigate(R.id.action_riderHome_to_riderTripDetails)
         }
 
         binding.cardDestination.setOnClickListener {

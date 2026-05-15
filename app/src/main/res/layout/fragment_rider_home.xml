@@ -46,15 +46,6 @@
                 android:paddingHorizontal="14dp"
                 android:paddingVertical="12dp">
 
-                <ImageView
-                    android:id="@+id/ivHamburger"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:src="@android:drawable/ic_menu_more"
-                    android:alpha="0.85"
-                    android:layout_marginEnd="12dp"
-                    android:padding="2dp" />
-
                 <View
                     android:layout_width="10dp"
                     android:layout_height="10dp"
@@ -196,27 +187,13 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- GPS FAB -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabMyLocation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="320dp"
-        android:src="@drawable/bg_my_location_icon"
-        app:backgroundTint="#EDE5E5"
-        app:tint="#32E091"
-        app:fabSize="mini"
-        app:elevation="8dp" />
-
     <!-- BOTTOM SHEET -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_bottom_sheet"
+        android:background="@drawable/bg_rider_home_bottom_sheet"
         android:fillViewport="false">
 
         <LinearLayout
@@ -275,325 +252,87 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Quick Select"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.06"
-                android:layout_marginBottom="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="24dp">
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipHome"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🏠 Home"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    app:chipBackgroundColor="@color/input_bg"
-                    app:chipStrokeColor="@color/divider_color"
-                    app:chipStrokeWidth="1dp"
-                    android:layout_marginEnd="8dp" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipWork"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="💼 Work"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    app:chipBackgroundColor="@color/input_bg"
-                    app:chipStrokeColor="@color/divider_color"
-                    app:chipStrokeWidth="1dp"
-                    android:layout_marginEnd="8dp" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipAirport"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="✈️ Airport"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp"
-                    app:chipBackgroundColor="@color/input_bg"
-                    app:chipStrokeColor="@color/divider_color"
-                    app:chipStrokeWidth="1dp" />
-
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvChooseRide"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Choose a ride"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:fontFamily="sans-serif-medium"
-                android:layout_marginBottom="12dp"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:id="@+id/layoutVehicles"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone"
-                android:layout_marginBottom="8dp">
-
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cardBike"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    android:layout_marginBottom="10dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-
-                        <TextView
-                            android:layout_width="40dp"
-                            android:layout_height="wrap_content"
-                            android:text="🏍️"
-                            android:textSize="26sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Bike"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Fastest · 1 seat"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvBikeFare"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="₹--"
-                            android:textColor="@color/brand_primary"
-                            android:textSize="16sp"
-                            android:fontFamily="sans-serif-medium" />
-
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cardAuto"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    android:layout_marginBottom="10dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-
-                        <TextView
-                            android:layout_width="40dp"
-                            android:layout_height="wrap_content"
-                            android:text="🛺"
-                            android:textSize="26sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Auto"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Affordable · 3 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvAutoFare"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="₹--"
-                            android:textColor="@color/brand_primary"
-                            android:textSize="16sp"
-                            android:fontFamily="sans-serif-medium" />
-
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cardSedan"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    android:layout_marginBottom="10dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-
-                        <TextView
-                            android:layout_width="40dp"
-                            android:layout_height="wrap_content"
-                            android:text="🚗"
-                            android:textSize="26sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Sedan"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Comfortable · 4 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvSedanFare"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="₹--"
-                            android:textColor="@color/brand_primary"
-                            android:textSize="16sp"
-                            android:fontFamily="sans-serif-medium" />
-
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cardSuv"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@color/input_bg"
-                    app:cardCornerRadius="14dp"
-                    app:cardElevation="0dp"
-                    android:layout_marginBottom="10dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="14dp">
-
-                        <TextView
-                            android:layout_width="40dp"
-                            android:layout_height="wrap_content"
-                            android:text="🚙"
-                            android:textSize="26sp"
-                            android:gravity="center" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="SUV"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp"
-                                android:fontFamily="sans-serif-medium" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Premium · 6 seats"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvSuvFare"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="₹--"
-                            android:textColor="@color/brand_primary"
-                            android:textSize="16sp"
-                            android:fontFamily="sans-serif-medium" />
-
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFindRide"
-                style="@style/ChalRide.Button.Primary"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Find a Ride"
-                android:visibility="gone" />
-
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- ── GPS / Re-center FAB ── (BEHIND scrim) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabMyLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/bg_my_location_icon"
+        android:contentDescription="My location"
+        android:visibility="visible"
+        app:tint="#53B88A"
+        app:backgroundTint="#FF1E1E2E"
+        app:fabSize="mini"
+        app:elevation="8dp"/>
+
+    <!-- ── Speed Dial Scrim (tap to close) ── -->
+    <View
+        android:id="@+id/fabScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"/>
+
+    <!-- ── Speed Dial: Profile mini FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/ic_person"
+        android:contentDescription="Profile"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="mini"
+        app:elevation="8dp"
+        android:visibility="invisible"
+        android:scaleX="0"
+        android:scaleY="0"
+        android:alpha="0"/>
+
+    <!-- ── Speed Dial: Trip Details mini FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabTripDetails"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="0dp"
+        android:src="@drawable/ic_details"
+        android:contentDescription="Trip Details"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="mini"
+        app:elevation="8dp"
+        android:visibility="invisible"
+        android:scaleX="0"
+        android:scaleY="0"
+        android:alpha="0"/>
+
+    <!-- ── Speed Dial: Main FAB ── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabSpeedDial"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="15dp"
+        android:src="@drawable/ic_apps"
+        android:contentDescription="More options"
+        app:backgroundTint="#FF1E1E2E"
+        app:tint="@color/white"
+        app:fabSize="normal"
+        app:elevation="10dp"/>
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
