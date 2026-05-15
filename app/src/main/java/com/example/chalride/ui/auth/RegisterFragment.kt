@@ -134,7 +134,7 @@ class RegisterFragment : Fragment() {
                                 )
                             } else {
                                 findNavController().navigate(
-                                    R.id.action_register_to_rider_home
+                                    R.id.action_register_to_rider_phone_verify
                                 )
                             }
 

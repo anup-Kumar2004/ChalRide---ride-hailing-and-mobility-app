@@ -34,7 +34,20 @@ class AuthRepository {
 
             // Store in role-specific collection — riders or drivers separately
             val collection = if (role == "rider") "riders" else "drivers"
-            firestore.collection(collection).document(uid).set(user).await()
+            if (role == "rider") {
+                // Store user data + phoneVerified flag together in one write
+                val riderData = mapOf(
+                    "uid" to uid,
+                    "name" to name,
+                    "email" to email,
+                    "role" to role,
+                    "profileStep" to 0,
+                    "phoneVerified" to false
+                )
+                firestore.collection(collection).document(uid).set(riderData).await()
+            } else {
+                firestore.collection(collection).document(uid).set(user).await()
+            }
 
             Result.success(user)
         } catch (e: Exception) {
@@ -95,6 +108,15 @@ class AuthRepository {
             (doc.getLong("profileStep") ?: 0).toInt()
         } catch (e: Exception) {
             0
+        }
+    }
+
+    suspend fun getRiderPhoneVerified(uid: String): Boolean {
+        return try {
+            val doc = firestore.collection("riders").document(uid).get().await()
+            doc.getBoolean("phoneVerified") ?: false
+        } catch (e: Exception) {
+            false
         }
     }
 

@@ -19,7 +19,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import androidx.core.net.toUri
 
 /**
  * DriverArrivedPickupFragment
@@ -202,17 +201,72 @@ class DriverArrivedPickupFragment : Fragment() {
 
     private fun setupContactButtons() {
         binding.btnCall.setOnClickListener {
-            if (riderPhone.isBlank()) {
-                android.widget.Toast.makeText(requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            if (riderPhone.isNotBlank()) {
+                // Phone was passed in bundle — use it directly
+                dialNumber(riderPhone)
+            } else {
+                // Phone not in bundle — fetch from Firestore via rideRequests → riderId → riders
+                fetchRiderPhoneAndDial()
             }
-            val intent = Intent(Intent.ACTION_DIAL, "tel:$riderPhone".toUri())
-            startActivity(intent)
         }
 
         binding.btnMessage.setOnClickListener {
-            android.widget.Toast.makeText(requireContext(), "Coming soon...", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(
+                requireContext(), "Coming soon...", android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
+    }
+
+    private fun dialNumber(phone: String) {
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+        startActivity(intent)
+    }
+
+    private fun fetchRiderPhoneAndDial() {
+        if (rideRequestId.isEmpty()) {
+            android.widget.Toast.makeText(
+                requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .get()
+            .addOnSuccessListener { rideDoc ->
+                val riderId = rideDoc.getString("riderId") ?: run {
+                    android.widget.Toast.makeText(
+                        requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    return@addOnSuccessListener
+                }
+
+                FirebaseFirestore.getInstance()
+                    .collection("riders")
+                    .document(riderId)
+                    .get()
+                    .addOnSuccessListener { riderDoc ->
+                        val phone = riderDoc.getString("phone") ?: ""
+                        if (phone.isBlank()) {
+                            android.widget.Toast.makeText(
+                                requireContext(), "Rider's phone not available", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            dialNumber(phone)
+                        }
+                    }
+                    .addOnFailureListener {
+                        android.widget.Toast.makeText(
+                            requireContext(), "Could not fetch rider's number", android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            }
+            .addOnFailureListener {
+                android.widget.Toast.makeText(
+                    requireContext(), "Could not fetch rider's number", android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

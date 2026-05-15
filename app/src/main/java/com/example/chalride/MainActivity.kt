@@ -116,7 +116,11 @@ class MainActivity : AppCompatActivity() {
             val role = authRepository.getUserRole(currentUser.uid)
 
             when (role) {
-                "rider" -> R.id.riderHomeFragment
+                "rider" -> {
+                    val phoneVerified = authRepository.getRiderPhoneVerified(currentUser.uid)
+                    if (phoneVerified) R.id.riderHomeFragment
+                    else R.id.riderPhoneVerifyFragment
+                }
 
                 "driver" -> {
                     // Fetch profileStep to know how far setup got
