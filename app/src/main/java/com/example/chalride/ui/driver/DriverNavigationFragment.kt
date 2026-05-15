@@ -135,35 +135,21 @@ class DriverNavigationFragment : Fragment() {
             findNavController().popBackStack()
         }
 
-        @Suppress("ClickableViewAccessibility")
-        binding.btnArrivedAction.setOnTouchListener { _, event ->
-            if (event.action == android.view.MotionEvent.ACTION_UP && !binding.btnArrivedAction.isEnabled) {
+        binding.btnArrivedAction.setOnClickListener {
+            android.util.Log.d("BtnArrivedAction", "CLICKED — arrivedDetected=$arrivedDetected isHeadingToPickup=$isHeadingToPickup")
+            if (!arrivedDetected) {
                 val message = if (isHeadingToPickup)
                     "You have not reached the pickup spot yet"
                 else
                     "You have not reached the destination spot yet"
                 android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            false
+            if (isHeadingToPickup) navigateToArrivedScreen() else completeTrip()
         }
+        // Apply initial disabled visual state — button stays clickable, only colors change
+        setActionButtonState(false)
 
-        // Show recenter FAB when user pans the map
-        @Suppress("ClickableViewAccessibility")
-        binding.mapView.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                android.view.MotionEvent.ACTION_DOWN,
-                android.view.MotionEvent.ACTION_POINTER_DOWN -> {
-                    userIsInteracting = true
-                    binding.btnRecenter.visibility = View.VISIBLE
-                    recenterHandler.removeCallbacksAndMessages(null)
-                }
-                android.view.MotionEvent.ACTION_UP,
-                android.view.MotionEvent.ACTION_POINTER_UP -> {
-                    v.performClick()
-                }
-            }
-            false // pass touch through to map
-        }
 
         binding.btnRecenter.setOnClickListener {
             userIsInteracting = false
@@ -370,7 +356,8 @@ class DriverNavigationFragment : Fragment() {
     }
 
     private fun setActionButtonState(enabled: Boolean) {
-        binding.btnArrivedAction.isEnabled = enabled
+        binding.btnArrivedAction.isEnabled = true   // always clickable — state checked in click handler
+        binding.btnArrivedAction.isClickable = true
 
         // Force Material to respect our colors regardless of enabled state
         val bgColor = if (enabled) "#24196B" else "#1A1A2E"
@@ -470,9 +457,6 @@ class DriverNavigationFragment : Fragment() {
 
         setActionButtonState(true)   // ← replaces all the manual color lines
 
-        binding.btnArrivedAction.setOnClickListener {
-            if (isHeadingToPickup) navigateToArrivedScreen() else completeTrip()
-        }
 
         binding.btnArrivedAction.scaleX = 0.8f
         binding.btnArrivedAction.scaleY = 0.8f
