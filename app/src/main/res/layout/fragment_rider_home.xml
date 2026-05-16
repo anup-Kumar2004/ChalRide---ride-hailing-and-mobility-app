@@ -32,7 +32,9 @@
         android:layout_marginTop="16dp"
         app:cardBackgroundColor="#F21A1A2E"
         app:cardCornerRadius="20dp"
-        app:cardElevation="16dp">
+        app:cardElevation="16dp"
+        android:clickable="true"
+        android:focusable="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -57,7 +59,7 @@
                     android:layout_height="wrap_content"
                     android:text="PICKUP"
                     android:textColor="@color/brand_primary"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:letterSpacing="0.12"
                     android:fontFamily="sans-serif-medium"
                     android:background="@drawable/bg_pickup_pill"
@@ -65,13 +67,6 @@
                     android:paddingVertical="3dp"
                     android:layout_marginEnd="8dp"/>
 
-                <!-- Progress spinner — shown while fetching -->
-                <ProgressBar
-                    android:id="@+id/progressLocation"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:indeterminateTint="@color/brand_primary"
-                    android:visibility="gone" />
 
             </LinearLayout>
 
@@ -83,7 +78,7 @@
                 android:gravity="center_vertical"
                 android:paddingStart="16dp"
                 android:paddingEnd="14dp"
-                android:paddingBottom="14dp"
+                android:paddingBottom="20dp"
                 android:paddingTop="2dp">
 
                 <!-- Animated location dot -->
@@ -109,14 +104,28 @@
                     android:imeOptions="actionSearch"
                     android:textColorHint="@color/text_hint" />
 
-                <!-- Search icon — shown in normal state -->
-                <ImageView
-                    android:id="@+id/ivSearchIcon"
+                <FrameLayout
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_search"
-                    android:alpha="0.35"
-                    android:layout_marginStart="8dp"/>
+                    android:layout_marginStart="8dp">
+
+                    <ImageView
+                        android:id="@+id/ivSearchIcon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_search"
+                        android:alpha="0.35"
+                        android:layout_gravity="center"/>
+
+                    <ProgressBar
+                        android:id="@+id/progressLocation"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:indeterminateTint="@color/brand_primary"
+                        android:visibility="gone"
+                        android:layout_gravity="center"/>
+
+                </FrameLayout>
 
             </LinearLayout>
 
