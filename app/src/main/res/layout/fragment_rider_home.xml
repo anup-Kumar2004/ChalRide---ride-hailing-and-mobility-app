@@ -20,7 +20,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- TOP PICKUP SEARCH CARD -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--  TOP PICKUP SEARCH CARD  —  Modern 2026 redesign               -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardPickupSearch"
         android:layout_width="match_parent"
@@ -28,38 +30,77 @@
         android:layout_gravity="top"
         android:layout_marginHorizontal="12dp"
         android:layout_marginTop="16dp"
-        app:cardBackgroundColor="#EE1A1A2E"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="12dp">
+        app:cardBackgroundColor="#F21A1A2E"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Search row -->
+            <!-- ── Label row ── -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingHorizontal="14dp"
-                android:paddingVertical="12dp">
+                android:paddingStart="30dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="10dp"
+                android:paddingTop="15dp"
+                android:paddingBottom="4dp">
 
+                <!-- Pill badge: "PICKUP" -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PICKUP"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.12"
+                    android:fontFamily="sans-serif-medium"
+                    android:background="@drawable/bg_pickup_pill"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:layout_marginEnd="8dp"/>
+
+                <!-- Progress spinner — shown while fetching -->
+                <ProgressBar
+                    android:id="@+id/progressLocation"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:indeterminateTint="@color/brand_primary"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- ── Search input row ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp"
+                android:paddingTop="2dp">
+
+                <!-- Animated location dot -->
                 <View
                     android:layout_width="10dp"
                     android:layout_height="10dp"
                     android:background="@drawable/bg_status_dot_online"
-                    android:layout_marginEnd="10dp" />
+                    android:layout_marginEnd="12dp" />
 
                 <EditText
                     android:id="@+id/etPickupSearch"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Fetching location..."
+                    android:hint="Search pickup location..."
                     android:textColor="@color/text_primary"
-                    android:textSize="14sp"
+                    android:textSize="15sp"
                     android:maxLines="1"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
@@ -68,16 +109,18 @@
                     android:imeOptions="actionSearch"
                     android:textColorHint="@color/text_hint" />
 
-                <ProgressBar
-                    android:id="@+id/progressLocation"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:indeterminateTint="@color/brand_primary"
-                    android:layout_marginStart="8dp" />
+                <!-- Search icon — shown in normal state -->
+                <ImageView
+                    android:id="@+id/ivSearchIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/ic_menu_search"
+                    android:alpha="0.35"
+                    android:layout_marginStart="8dp"/>
 
             </LinearLayout>
 
-            <!-- ADD this divider right before lvPickupResults -->
+            <!-- Divider before dropdown -->
             <View
                 android:id="@+id/dividerPickupDropdown"
                 android:layout_width="match_parent"
@@ -96,7 +139,7 @@
                 android:dividerHeight="1dp"
                 android:visibility="gone" />
 
-            <!-- ADD THIS directly after lvPickupResults, inside the same LinearLayout -->
+            <!-- No results state -->
             <LinearLayout
                 android:id="@+id/cardNoResults"
                 android:layout_width="match_parent"
@@ -187,6 +230,114 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <!--  PERMISSION DENIED OVERLAY  — full-screen, shown when          -->
+    <!--  location permission is not granted                            -->
+    <!-- ════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/layoutPermissionDenied"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@color/bg_dark"
+        android:paddingHorizontal="32dp"
+        android:visibility="gone">
+
+        <!-- Icon container with glow ring -->
+        <FrameLayout
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_marginBottom="28dp">
+
+            <!-- Glow ring behind icon -->
+            <View
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:background="@drawable/bg_permission_glow"
+                android:layout_gravity="center" />
+
+            <!-- Icon circle -->
+            <FrameLayout
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_permission_icon_circle">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="center"
+                    android:src="@android:drawable/ic_menu_mylocation"
+                    android:alpha="0.9"
+                    app:tint="@color/brand_primary" />
+
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Location Access Needed"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Body text -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ChalRide needs your location to detect your pickup point and connect you with nearby drivers."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.5"
+            android:gravity="center"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Step instruction -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap the button below → open App Settings → tap Permissions → allow Location."
+            android:textColor="@color/text_hint"
+            android:textSize="13sp"
+            android:lineSpacingMultiplier="1.4"
+            android:gravity="center"
+            android:layout_marginBottom="36dp" />
+
+        <!-- Open Settings button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenSettings"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Open App Settings"
+            android:textSize="15sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.02"
+            app:backgroundTint="@color/brand_primary"
+            app:cornerRadius="16dp"
+            android:layout_marginBottom="14dp"/>
+
+        <!-- Retry button — user taps after returning from settings -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRetryPermission"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="I've allowed it — Continue"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            app:backgroundTint="@color/input_bg"
+            app:strokeColor="@color/divider_color"
+            app:strokeWidth="1dp"
+            app:cornerRadius="16dp"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:textColor="@color/text_secondary"/>
+
+    </LinearLayout>
+
     <!-- BOTTOM SHEET -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottomSheet"
@@ -255,7 +406,7 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ── GPS / Re-center FAB ── (BEHIND scrim) -->
+    <!-- ── GPS / Re-center FAB ── -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabMyLocation"
         android:layout_width="wrap_content"
@@ -271,7 +422,7 @@
         app:fabSize="mini"
         app:elevation="8dp"/>
 
-    <!-- ── Speed Dial Scrim (tap to close) ── -->
+    <!-- ── Speed Dial Scrim ── -->
     <View
         android:id="@+id/fabScrim"
         android:layout_width="match_parent"
@@ -333,6 +484,5 @@
         app:tint="@color/white"
         app:fabSize="normal"
         app:elevation="10dp"/>
-
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

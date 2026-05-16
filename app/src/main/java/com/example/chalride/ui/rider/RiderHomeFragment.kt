@@ -86,6 +86,7 @@ class RiderHomeFragment : Fragment() {
     private var searchJob: Job? = null
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
 
+
     // ── Ride booking state ──────────────────────────────────────────────
     private var userIsInteracting = false
     private var isSpeedDialOpen = false
@@ -110,9 +111,8 @@ class RiderHomeFragment : Fragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) startLocationUpdates()
         else {
-            // User cancelled the GPS enable dialog — stop fetching, show snackbar
             stopFetchingState()
-            showPermissionDeniedUX("Please enable location to use ChalRide") // repurpose this to say "Enable location to use ChalRide"
+            showPermissionDeniedUX()   // shows the full-screen overlay
         }
     }
 
@@ -182,12 +182,19 @@ class RiderHomeFragment : Fragment() {
         // Start location only if we don't already have a confirmed pickup
         // (handles returning from destination fragment)
         if (confirmedPickupLabel.isEmpty()) {
-            binding.progressLocation.visibility = View.VISIBLE
             isLocationBeingFetched = true
             setPickupSearchEnabled(false)
-            checkAndRequestPermission()
-            // ADD THIS LINE:
-            startFetchingMessages()
+            // Set the initial fetching text + color BEFORE showing the progress bar
+            // so the EditText is correctly styled from frame one (no flash of white text)
+            isProgrammaticTextChange = true
+            binding.etPickupSearch.setText("Fetching location...")
+            binding.etPickupSearch.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.text_secondary)
+            )
+            isProgrammaticTextChange = false
+            binding.progressLocation.visibility = View.VISIBLE
+            startFetchingMessages()       // starts the cycling (first message at 0ms delay)
+            checkAndRequestPermission()   // requests permission — if denied, overlay is shown
         } else {
             // We already have a pickup — just restore the UI, no GPS needed
             restoreConfirmedPickupUI()
@@ -221,6 +228,9 @@ class RiderHomeFragment : Fragment() {
         // Update UI — suppress TextWatcher
         isProgrammaticTextChange = true
         binding.etPickupSearch.setText(label)
+        binding.etPickupSearch.setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.text_primary)
+        )
         binding.etPickupSearch.clearFocus()
         isProgrammaticTextChange = false
 
@@ -240,6 +250,9 @@ class RiderHomeFragment : Fragment() {
     private fun restoreConfirmedPickupUI() {
         isProgrammaticTextChange = true
         binding.etPickupSearch.setText(confirmedPickupLabel)
+        binding.etPickupSearch.setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.text_primary)
+        )
         binding.etPickupSearch.clearFocus()
         isProgrammaticTextChange = false
         binding.progressLocation.visibility = View.GONE
@@ -395,6 +408,15 @@ class RiderHomeFragment : Fragment() {
         }
     }
 
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun checkLocationSettings() {
         val req = LocationSettingsRequest.Builder()
             .addLocationRequest(locationRequest).setAlwaysShow(true).build()
@@ -427,20 +449,60 @@ class RiderHomeFragment : Fragment() {
         }
     }
 
-    private fun showPermissionDeniedUX(
-        message: String = "Location access needed to set your pickup"
-    ) {
-        com.google.android.material.snackbar.Snackbar.make(
-            binding.root,
-            message,
-            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-        ).setAction("Open Settings") {
+    private fun showPermissionDeniedUX(message: String = "") {
+        // Hide all normal-state UI elements
+        binding.cardPickupSearch.visibility = View.GONE
+        binding.bottomSheet.visibility = View.GONE
+        binding.fabMyLocation.visibility = View.GONE
+        binding.fabSpeedDial.visibility = View.GONE
+
+        // Show the full-screen overlay
+        binding.layoutPermissionDenied.visibility = View.VISIBLE
+
+        // "Open App Settings" button
+        binding.btnOpenSettings.setOnClickListener {
             val intent = android.content.Intent(
                 android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 android.net.Uri.fromParts("package", requireContext().packageName, null)
             )
             startActivity(intent)
-        }.show()
+        }
+
+        // "I've allowed it — Continue" button
+        // Re-check permission; if now granted, hide overlay and restart the flow
+        binding.btnRetryPermission.setOnClickListener {
+            if (hasLocationPermission()) {
+                hidePermissionDeniedUX()
+                // Restart the full location fetch flow
+                gpsHasBeenFetched = false
+                locationUpdatesStarted = false
+                isLocationBeingFetched = true
+                setPickupSearchEnabled(false)
+                isProgrammaticTextChange = true
+                binding.etPickupSearch.setText("Fetching location...")
+                binding.etPickupSearch.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.text_secondary)
+                )
+                isProgrammaticTextChange = false
+                binding.progressLocation.visibility = View.VISIBLE
+                startFetchingMessages()
+                checkLocationSettings()
+            } else {
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "Permission still not granted. Please allow location in Settings.",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun hidePermissionDeniedUX() {
+        binding.layoutPermissionDenied.visibility = View.GONE
+        binding.cardPickupSearch.visibility = View.VISIBLE
+        binding.bottomSheet.visibility = View.VISIBLE
+        binding.fabMyLocation.visibility = View.VISIBLE
+        binding.fabSpeedDial.visibility = View.VISIBLE
     }
 
     private fun setPickupSearchEnabled(enabled: Boolean) {
@@ -747,22 +809,24 @@ class RiderHomeFragment : Fragment() {
     private fun startFetchingMessages() {
         fetchingMessageJob?.cancel()
         fetchingMessageJob = lifecycleScope.launch {
+            // Delays are RELATIVE (time to wait before showing THIS message),
+            // not absolute. So: show immediately, then after 4s, then 2s, then 4s.
             val messages = listOf(
                 0L    to "Fetching location...",
                 4000L to "Just a sec, hold on tight...",
-                6000L to "Almost there, bear with us...",
-                10000L to "Taking longer than usual..."
+                2000L to "Almost there, bear with us...",
+                4000L to "Taking longer than usual..."
             )
             for ((delayMs, message) in messages) {
-                delay(delayMs)
-                // Only update if we're still fetching (not yet confirmed)
-                if (isLocationBeingFetched) {
-                    isProgrammaticTextChange = true
-                    binding.etPickupSearch.setText(message)
-                    isProgrammaticTextChange = false
-                } else {
-                    break
-                }
+                if (delayMs > 0) delay(delayMs)
+                if (!isLocationBeingFetched) break
+                isProgrammaticTextChange = true
+                binding.etPickupSearch.setText(message)
+                // Always use text_secondary color for fetching messages — consistent
+                binding.etPickupSearch.setTextColor(
+                    ContextCompat.getColor(requireContext(), R.color.text_secondary)
+                )
+                isProgrammaticTextChange = false
             }
         }
     }
@@ -989,10 +1053,13 @@ class RiderHomeFragment : Fragment() {
                 startPulse(binding.pulseView)
             }
         }
-        // If GPS was still fetching when user backgrounded, restart it on resume
-        if (isLocationBeingFetched && !locationUpdatesStarted) {
+        // If GPS was still fetching when user backgrounded AND the permission
+        // dialog is NOT currently showing, restart the location flow on resume.
+        // We guard with locationUpdatesStarted to avoid relaunching the system
+        // permission dialog (which is already open on first-ever launch).
+        if (isLocationBeingFetched && !locationUpdatesStarted && hasLocationPermission()) {
             startFetchingMessages()
-            checkAndRequestPermission()
+            checkLocationSettings()
         }
     }
 
