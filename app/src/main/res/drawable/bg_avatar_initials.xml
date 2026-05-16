@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bg_avatar_initials.xml
+     The filled circle for the initials avatar.
+     Uses a diagonal gradient of brand_primary shades.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="linear"
+        android:startColor="#8B7FF5"
+        android:endColor="#5248CC"
+        android:angle="135" />
+</shape>

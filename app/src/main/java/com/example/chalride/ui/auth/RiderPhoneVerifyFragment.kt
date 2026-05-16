@@ -347,7 +347,8 @@ class RiderPhoneVerifyFragment : Fragment() {
             .update(
                 mapOf(
                     "phone" to fullPhone,
-                    "phoneVerified" to true
+                    "phoneVerified" to true,
+                    "profileStep" to 2
                 )
             )
             .addOnSuccessListener {

@@ -115,20 +115,21 @@ class LoginFragment : Fragment() {
                             binding.progressBar.visibility = View.GONE
                             binding.btnLogin.isEnabled = true
                             if (state.user.role == "rider") {
-                                // Check if phone is already verified in Firestore
                                 val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@collect
                                 FirebaseFirestore.getInstance()
-                                    .collection("users").document(uid).get()
+                                    .collection("riders").document(uid).get()   // ← correct collection
                                     .addOnSuccessListener { doc ->
-                                        val phoneVerified = doc.getBoolean("phoneVerified") ?: false
-                                        if (phoneVerified) {
+                                        val profileStep = (doc.getLong("profileStep") ?: 0).toInt()
+                                        if (profileStep >= 2) {
+                                            // Fully verified — go straight to home
                                             findNavController().navigate(R.id.action_login_to_rider_home)
                                         } else {
+                                            // profileStep 0 or 1 — phone not yet verified
                                             findNavController().navigate(R.id.action_login_to_rider_phone_verify)
                                         }
                                     }
                                     .addOnFailureListener {
-                                        // On failure, send to verify to be safe
+                                        // Can't read Firestore — send to verify to be safe
                                         findNavController().navigate(R.id.action_login_to_rider_phone_verify)
                                     }
                             } else {

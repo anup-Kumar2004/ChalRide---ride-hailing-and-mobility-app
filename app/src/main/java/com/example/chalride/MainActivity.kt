@@ -117,11 +117,10 @@ class MainActivity : AppCompatActivity() {
 
             when (role) {
                 "rider" -> {
-                    val phoneVerified = authRepository.getRiderPhoneVerified(currentUser.uid)
-                    if (phoneVerified) R.id.riderHomeFragment
+                    val profileStep = authRepository.getRiderProfileStep(currentUser.uid)
+                    if (profileStep >= 2) R.id.riderHomeFragment
                     else R.id.riderPhoneVerifyFragment
                 }
-
                 "driver" -> {
                     // Fetch profileStep to know how far setup got
                     val profileStep = authRepository.getDriverProfileStep(currentUser.uid)

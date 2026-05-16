@@ -72,7 +72,6 @@
         <item name="cornerSize">50%</item>
     </style>
 
-
     <style name="DriverWarningDialogTheme" parent="Theme.AppCompat.Dialog">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
@@ -89,6 +88,76 @@
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.85</item>
         <item name="android:windowIsFloating">true</item>
+    </style>
+
+    <style name="ChalRide.LogoutDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+
+        <!-- dim behind dialog -->
+        <item name="android:backgroundDimAmount">0.65</item>
+
+        <!-- THIS is what MaterialAlertDialog actually uses for panel colour -->
+        <item name="colorSurface">#1E1E35</item>
+
+        <!-- Shape: 20 dp rounded corners -->
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.ChalRide.DialogShape</item>
+
+        <!-- Title text: white, slightly larger -->
+        <item name="materialAlertDialogTitleTextStyle">
+            @style/ChalRide.LogoutDialog.TitleText
+        </item>
+
+        <!-- Body/message text: muted secondary -->
+        <item name="materialAlertDialogBodyTextStyle">
+            @style/ChalRide.LogoutDialog.BodyText
+        </item>
+
+        <!-- "Log out" button: red accent so it reads as destructive -->
+        <item name="buttonBarPositiveButtonStyle">
+            @style/ChalRide.LogoutDialog.Button.Positive
+        </item>
+
+        <!-- "Cancel" button: subtle/muted -->
+        <item name="buttonBarNegativeButtonStyle">
+            @style/ChalRide.LogoutDialog.Button.Negative
+        </item>
+
+    </style>
+
+    <style name="ShapeAppearance.ChalRide.DialogShape" parent="">
+        <item name="cornerRadius">20dp</item>
+    </style>
+
+    <!-- Dialog title: bold white -->
+    <style name="ChalRide.LogoutDialog.TitleText"
+        parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- Dialog body: soft secondary text -->
+    <style name="ChalRide.LogoutDialog.BodyText"
+        parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="android:textColor">#B0B0C3</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+
+    <!-- "Log out" = red/destructive text button -->
+    <style name="ChalRide.LogoutDialog.Button.Positive"
+        parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">#FF4757</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="rippleColor">#33FF4757</item>
+    </style>
+
+    <!-- "Cancel" = muted/secondary text button -->
+    <style name="ChalRide.LogoutDialog.Button.Negative"
+        parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">#B0B0C3</item>
+        <item name="android:textSize">15sp</item>
+        <item name="rippleColor">#22FFFFFF</item>
     </style>
 
 </resources>

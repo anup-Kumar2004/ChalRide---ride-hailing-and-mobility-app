@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bg_edit_profile_btn.xml
+     A lightly bordered pill for the edit profile button in the hero.
+     Translucent so the hero gradient bleeds through slightly.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="20dp" />
+    <solid android:color="#1A6C63FF" />
+    <stroke android:color="#446C63FF" android:width="1dp" />
+</shape>

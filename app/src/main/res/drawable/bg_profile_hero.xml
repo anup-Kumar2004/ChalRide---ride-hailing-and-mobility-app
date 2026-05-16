@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bg_profile_hero.xml
+     Rich layered diagonal gradient for the profile hero.
+     Different from the vertical bg_app_gradient used in login/register.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base: deep navy -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0F0F1A" />
+        </shape>
+    </item>
+
+    <!-- Purple bleed, top-right sweep -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:startColor="#3A6C63FF"
+                android:endColor="#00000000"
+                android:angle="315" />
+        </shape>
+    </item>
+
+    <!-- Soft teal accent, bottom-left radial -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="180%p"
+                android:startColor="#1A4ECDC4"
+                android:endColor="#00000000"
+                android:centerX="0.1"
+                android:centerY="1.0" />
+        </shape>
+    </item>
+
+</layer-list>

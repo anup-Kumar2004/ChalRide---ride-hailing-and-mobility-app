@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bg_profile_hero_arc.xml
+     A subtle dark vignette overlay to darken the bottom of the hero
+     so the floating card overlapping it has better contrast.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:startColor="#00000000"
+        android:endColor="#CC0F0F1A"
+        android:angle="270" />
+</shape>

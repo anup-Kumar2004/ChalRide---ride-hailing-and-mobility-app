@@ -157,6 +157,15 @@
             app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_left"
             app:exitAnim="@anim/slide_out_right"/>
+
+        <!-- ADD THIS -->
+        <action
+            android:id="@+id/action_riderProfile_to_riderTripDetails"
+            app:destination="@id/riderTripDetailsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
     </fragment>
 
     <fragment

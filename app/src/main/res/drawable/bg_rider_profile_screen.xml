@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base: slightly lighter than bg_dark so it reads as different -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#12111F" />
+        </shape>
+    </item>
+
+    <!-- Strong purple sweep from top — diagonal, clearly visible -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:startColor="#3A6C63FF"
+                android:endColor="#00000000"
+                android:angle="135" />
+        </shape>
+    </item>
+
+    <!-- Teal radial glow from bottom-left — punchy enough to see -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="70%p"
+                android:startColor="#2A4ECDC4"
+                android:endColor="#00000000"
+                android:centerX="0.0"
+                android:centerY="1.0" />
+        </shape>
+    </item>
+
+    <!-- Subtle dark vignette in the centre so cards stay readable -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="60%p"
+                android:startColor="#00000000"
+                android:endColor="#1A0F0F1A"
+                android:centerX="0.5"
+                android:centerY="0.5" />
+        </shape>
+    </item>
+
+</layer-list>

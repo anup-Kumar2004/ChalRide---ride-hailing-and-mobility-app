@@ -41,7 +41,7 @@ class AuthRepository {
                     "name" to name,
                     "email" to email,
                     "role" to role,
-                    "profileStep" to 0,
+                    "profileStep" to 1,
                     "phoneVerified" to false
                 )
                 firestore.collection(collection).document(uid).set(riderData).await()
@@ -97,7 +97,7 @@ class AuthRepository {
             // Not found in either — sign out
             auth.signOut()
             null
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -106,17 +106,18 @@ class AuthRepository {
         return try {
             val doc = firestore.collection("drivers").document(uid).get().await()
             (doc.getLong("profileStep") ?: 0).toInt()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0
         }
     }
 
-    suspend fun getRiderPhoneVerified(uid: String): Boolean {
+
+    suspend fun getRiderProfileStep(uid: String): Int {
         return try {
             val doc = firestore.collection("riders").document(uid).get().await()
-            doc.getBoolean("phoneVerified") ?: false
-        } catch (e: Exception) {
-            false
+            (doc.getLong("profileStep") ?: 0).toInt()
+        } catch (_: Exception) {
+            0
         }
     }
 
