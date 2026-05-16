@@ -221,6 +221,14 @@
             app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_left"
             app:exitAnim="@anim/slide_out_right"/>
+
+        <action
+            android:id="@+id/action_driverProfile_to_driverEarnings"
+            app:destination="@id/driverEarningsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
     </fragment>
 
 
@@ -373,11 +381,14 @@
             app:destination="@id/driverArrivedPickupFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
+
         <action
-            android:id="@+id/action_driverNavigation_to_driverHome"
-            app:destination="@id/driverHomeFragment"
+            android:id="@+id/action_driverNavigation_to_driverRideCompleted"
+            app:destination="@id/driverRideCompletedFragment"
             app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"/>
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
         <action
             android:id="@+id/action_driverNavigation_to_driverRideCancelled"
             app:destination="@id/driverRideCancelledFragment"
@@ -386,6 +397,19 @@
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
 
+    </fragment>
+
+    <fragment
+        android:id="@+id/driverRideCompletedFragment"
+        android:name="com.example.chalride.ui.driver.DriverRideCompletedFragment"
+        android:label="DriverRideCompletedFragment">
+        <action
+            android:id="@+id/action_driverRideCompleted_to_driverHome"
+            app:destination="@id/driverHomeFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
     </fragment>
 
     <fragment

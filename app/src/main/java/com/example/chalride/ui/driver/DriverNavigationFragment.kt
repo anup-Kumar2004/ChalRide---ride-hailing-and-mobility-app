@@ -498,10 +498,11 @@ class DriverNavigationFragment : Fragment() {
 
     private fun completeTrip() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
         FirebaseFirestore.getInstance()
             .collection("rideRequests").document(rideRequestId)
             .update(mapOf("status" to "completed", "completedAt" to System.currentTimeMillis()))
-        // Build the state map first, then add earnings fields on top
+
         val completionUpdate = DriverState.ONLINE_AVAILABLE.toFirestoreMap().toMutableMap()
         completionUpdate["earnings"]   = com.google.firebase.firestore.FieldValue.increment(estimatedFare.toLong())
         completionUpdate["totalTrips"] = com.google.firebase.firestore.FieldValue.increment(1L)
@@ -509,12 +510,24 @@ class DriverNavigationFragment : Fragment() {
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
             .update(completionUpdate)
+
+        // Build args for the completion screen
+        val bundle = Bundle().apply {
+            putString("rideRequestId", rideRequestId)
+            putString("riderName",     riderName)
+            putString("pickupAddress", pickupAddress)
+            putString("destAddress",   destAddress)
+            putInt("estimatedFare",    estimatedFare)
+            putString("vehicleType",   vehicleType)
+            putDouble("pickupLat",     pickupLat)
+            putDouble("pickupLng",     pickupLng)
+            putDouble("destLat",       destLat)
+            putDouble("destLng",       destLng)
+        }
+
         findNavController().navigate(
-            R.id.action_driverNavigation_to_driverHome,
-            null,
-            androidx.navigation.NavOptions.Builder()
-                .setPopUpTo(R.id.nav_graph, true)
-                .build()
+            R.id.action_driverNavigation_to_driverRideCompleted,
+            bundle
         )
     }
 

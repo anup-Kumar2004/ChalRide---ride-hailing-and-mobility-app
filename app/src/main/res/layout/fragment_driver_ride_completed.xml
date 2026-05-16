@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark">
+
+    <!-- ── Ambient celebration glow — top-centre warm gold ── -->
+    <View
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="-80dp"
+        android:background="@drawable/bg_driver_completion_glow"
+        android:importantForAccessibility="no"/>
+
+    <!-- ── Full scrollable body ── -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="40dp">
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 1 — HERO: money icon + "Trip Completed" + earned
+            ══════════════════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="60dp"
+                android:paddingBottom="28dp">
+
+                <!-- Animated money/check ring stack -->
+                <FrameLayout
+                    android:layout_width="108dp"
+                    android:layout_height="108dp"
+                    android:layout_marginBottom="22dp">
+
+                    <!-- Outer pulsing ring -->
+                    <View
+                        android:id="@+id/viewMoneyRingOuter"
+                        android:layout_width="108dp"
+                        android:layout_height="108dp"
+                        android:background="@drawable/bg_money_ring_outer"
+                        android:alpha="0"/>
+
+                    <!-- Inner ring -->
+                    <View
+                        android:id="@+id/viewMoneyRingInner"
+                        android:layout_width="82dp"
+                        android:layout_height="82dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_money_ring_inner"
+                        android:scaleX="0"
+                        android:scaleY="0"/>
+
+                    <!-- Money emoji / icon -->
+                    <TextView
+                        android:id="@+id/tvMoneyIcon"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="💰"
+                        android:textSize="38sp"
+                        android:scaleX="0"
+                        android:scaleY="0"/>
+
+                </FrameLayout>
+
+                <!-- Trip completed headline -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Trip Completed!"
+                    android:textColor="@color/text_primary"
+                    android:textSize="26sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.01"
+                    android:layout_marginBottom="5dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Great job — payment received"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="28dp"/>
+
+                <!-- ── Earnings card — warm gold tint ── -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="#00000000"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_earnings_card"
+                        android:paddingHorizontal="44dp"
+                        android:paddingVertical="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="YOU EARNED"
+                            android:textColor="#FFB300"
+                            android:textSize="10sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.16"
+                            android:layout_marginBottom="4dp"/>
+
+                        <TextView
+                            android:id="@+id/tvEarnedAmount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="₹--"
+                            android:textColor="#FFB300"
+                            android:textSize="52sp"
+                            android:fontFamily="sans-serif-black"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cash — collected from rider"
+                            android:textColor="@color/text_hint"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 2 — QUICK STATS ROW: distance · duration · vehicle
+            ══════════════════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="14dp">
+
+                <!-- Distance -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_driver_stat_pill"
+                    android:padding="14dp"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/tvTripDistance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-- km"
+                        android:textColor="@color/brand_accent"
+                        android:textSize="20sp"
+                        android:fontFamily="sans-serif-bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Distance"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="3dp"/>
+
+                </LinearLayout>
+
+                <!-- Duration -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_driver_stat_pill"
+                    android:padding="14dp"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/tvTripDuration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-- min"
+                        android:textColor="@color/brand_accent"
+                        android:textSize="20sp"
+                        android:fontFamily="sans-serif-bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Duration"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="3dp"/>
+
+                </LinearLayout>
+
+                <!-- Vehicle -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_driver_stat_pill"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/tvVehicleType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textColor="@color/brand_accent"
+                        android:textSize="20sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Vehicle"
+                        android:textColor="@color/text_hint"
+                        android:textSize="11sp"
+                        android:layout_marginTop="3dp"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 3 — RIDER DETAILS
+            ══════════════════════════════════════════════════════════ -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="@color/bg_card"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="YOUR RIDER"
+                        android:textColor="@color/text_hint"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.12"
+                        android:layout_marginBottom="16dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <!-- Avatar -->
+                        <TextView
+                            android:id="@+id/tvRiderAvatar"
+                            android:layout_width="50dp"
+                            android:layout_height="50dp"
+                            android:background="@drawable/bg_avatar_circle"
+                            android:gravity="center"
+                            android:text="R"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:layout_marginEnd="14dp"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvRiderName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:fontFamily="sans-serif-medium"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Passenger"
+                                android:textColor="@color/text_hint"
+                                android:textSize="12sp"
+                                android:layout_marginTop="2dp"/>
+
+                        </LinearLayout>
+
+                        <!-- Completed badge -->
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:cardBackgroundColor="#1A4ECDC4"
+                            app:cardCornerRadius="10dp"
+                            app:cardElevation="0dp">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="10dp"
+                                android:paddingVertical="6dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="✓"
+                                    android:textColor="@color/brand_accent"
+                                    android:textSize="11sp"
+                                    android:layout_marginEnd="4dp"/>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Dropped off"
+                                    android:textColor="@color/brand_accent"
+                                    android:textSize="10sp"
+                                    android:fontFamily="sans-serif-medium"/>
+
+                            </LinearLayout>
+                        </androidx.cardview.widget.CardView>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 4 — TRIP ROUTE CARD
+            ══════════════════════════════════════════════════════════ -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="@color/bg_card"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TRIP ROUTE"
+                        android:textColor="@color/text_hint"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.12"
+                        android:layout_marginBottom="18dp"/>
+
+                    <!-- Pickup row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top"
+                        android:layout_marginBottom="14dp">
+
+                        <!-- Timeline dot + line -->
+                        <LinearLayout
+                            android:layout_width="24dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal"
+                            android:paddingTop="2dp">
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="10dp"
+                                android:background="@drawable/bg_timeline_dot_primary"/>
+
+                            <View
+                                android:layout_width="2dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_timeline_line"/>
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Picked up from"
+                                android:textColor="@color/text_hint"
+                                android:textSize="11sp"
+                                android:layout_marginBottom="2dp"/>
+
+                            <TextView
+                                android:id="@+id/tvPickupAddress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Destination row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top">
+
+                        <FrameLayout
+                            android:layout_width="24dp"
+                            android:layout_height="wrap_content">
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="10dp"
+                                android:layout_gravity="top|center_horizontal"
+                                android:layout_marginTop="2dp"
+                                android:background="@drawable/bg_timeline_dot_success"/>
+
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Dropped off at"
+                                android:textColor="@color/brand_accent"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"/>
+
+                            <TextView
+                                android:id="@+id/tvDestAddress"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:layout_marginTop="2dp"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 5 — TRIP TIMELINE (timestamps)
+            ══════════════════════════════════════════════════════════ -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="@color/bg_card"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TRIP TIMELINE"
+                        android:textColor="@color/text_hint"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.12"
+                        android:layout_marginBottom="18dp"/>
+
+                    <!-- Ride Assigned -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top"
+                        android:layout_marginBottom="0dp">
+
+                        <LinearLayout
+                            android:layout_width="24dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal"
+                            android:paddingTop="2dp">
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="10dp"
+                                android:background="@drawable/bg_timeline_dot_primary"/>
+
+                            <View
+                                android:layout_width="2dp"
+                                android:layout_height="44dp"
+                                android:background="@drawable/bg_timeline_line"/>
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp"
+                            android:paddingBottom="24dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Ride Assigned"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11.5sp"/>
+
+                            <TextView
+                                android:id="@+id/tvTimeAssigned"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--:--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:layout_marginTop="2dp"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Trip Started -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top">
+
+                        <LinearLayout
+                            android:layout_width="24dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal"
+                            android:paddingTop="2dp">
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="10dp"
+                                android:background="@drawable/bg_timeline_dot_accent"/>
+
+                            <View
+                                android:layout_width="2dp"
+                                android:layout_height="44dp"
+                                android:background="@drawable/bg_timeline_line"/>
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp"
+                            android:paddingBottom="24dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Trip Started"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11.5sp"/>
+
+                            <TextView
+                                android:id="@+id/tvTimeStarted"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--:--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:layout_marginTop="2dp"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Trip Completed -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="top">
+
+                        <FrameLayout
+                            android:layout_width="24dp"
+                            android:layout_height="wrap_content">
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="10dp"
+                                android:layout_gravity="top|center_horizontal"
+                                android:layout_marginTop="2dp"
+                                android:background="@drawable/bg_timeline_dot_success"/>
+
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Trip Completed"
+                                android:textColor="@color/brand_accent"
+                                android:textSize="11.5sp"
+                                android:fontFamily="sans-serif-medium"/>
+
+                            <TextView
+                                android:id="@+id/tvTimeCompleted"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--:--"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:layout_marginTop="2dp"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 6 — CUMULATIVE EARNINGS SNAPSHOT
+            ══════════════════════════════════════════════════════════ -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="@color/bg_card"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TODAY'S EARNINGS"
+                        android:textColor="@color/text_hint"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.12"
+                        android:layout_marginBottom="16dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <!-- Total earned today -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal">
+
+                            <TextView
+                                android:id="@+id/tvTotalEarningsToday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="₹--"
+                                android:textColor="#FFB300"
+                                android:textSize="24sp"
+                                android:fontFamily="sans-serif-bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Total Today"
+                                android:textColor="@color/text_hint"
+                                android:textSize="11sp"
+                                android:layout_marginTop="3dp"/>
+
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@color/divider_color"/>
+
+                        <!-- Trips today -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center_horizontal">
+
+                            <TextView
+                                android:id="@+id/tvTotalTripsToday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="24sp"
+                                android:fontFamily="sans-serif-bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Trips Today"
+                                android:textColor="@color/text_hint"
+                                android:textSize="11sp"
+                                android:layout_marginTop="3dp"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 SECTION 7 — ACTION BUTTONS
+            ══════════════════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="8dp">
+
+                <!-- Primary: Go Home -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGoOnline"
+                    style="@style/ChalRide.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Find Next Ride"
+                    android:layout_marginBottom="10dp"/>
+
+                <!-- Secondary: Go Offline and then Go Home -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGoOffline"
+                    android:text="Go Offline"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:textColor="@color/text_secondary"
+                    app:strokeColor="@color/divider_color"
+                    app:cornerRadius="14dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

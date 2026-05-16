@@ -44,7 +44,7 @@ class DriverEarningsFragment : Fragment() {
 
         binding.btnBack.setOnClickListener {
             android.util.Log.d("EarningsBack", "Back button tapped!")
-            findNavController().navigate(R.id.action_driverEarnings_to_driverHome)
+            findNavController().popBackStack()
         }
     }
 

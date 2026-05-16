@@ -136,20 +136,61 @@ class DriverHomeFragment : Fragment() {
     }
 
     private fun restoreOnlineStateIfNeeded() {
-        if (rideRequestListener != null) return
+
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
         FirebaseFirestore.getInstance()
             .collection("drivers")
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
-                val state = DriverState.fromString(doc.getString("driverState"))
-                if (state != DriverState.OFFLINE && !isOnline) {
+
+                if (_binding == null) return@addOnSuccessListener
+
+                val firestoreOnline =
+                    doc.getBoolean("isOnline") ?: false
+
+                val driverState =
+                    DriverState.fromString(
+                        doc.getString("driverState")
+                    )
+
+                android.util.Log.d(
+                    "DriverHome",
+                    "restoreOnlineStateIfNeeded() → " +
+                            "isOnline=$firestoreOnline | " +
+                            "driverState=$driverState"
+                )
+
+                if (firestoreOnline) {
+
+                    // Restore memory state
                     isOnline = true
+
+                    // Restore UI
                     updateOnlineUI()
+
+                    // Restart timer
                     startOnlineTimer()
-                    listenForRideRequests()
+
+                    // Reattach ride listener safely
+                    if (rideRequestListener == null) {
+                        listenForRideRequests()
+                    }
+
+                } else {
+
+                    isOnline = false
+
+                    updateOnlineUI()
                 }
+            }
+            .addOnFailureListener { e ->
+
+                android.util.Log.e(
+                    "DriverHome",
+                    "Failed to restore online state: ${e.message}"
+                )
             }
     }
 
@@ -236,16 +277,79 @@ class DriverHomeFragment : Fragment() {
     }
 
     private fun loadLiveStatsFromFirestore() {
+
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseFirestore.getInstance()
-            .collection("drivers")
-            .document(uid)
+        val db = FirebaseFirestore.getInstance()
+
+        // Start of today
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+        val startOfToday = calendar.timeInMillis
+
+        db.collection("rideRequests")
+            .whereEqualTo("driverId", uid)
+            .whereEqualTo("status", "completed")
             .get()
-            .addOnSuccessListener { doc ->
-                val earnings = doc.getLong("earnings") ?: 0L
-                val trips = doc.getLong("totalTrips") ?: 0L
-                binding.tvEarnings.text = "₹$earnings"
-                binding.tvTripsCount.text = trips.toString()
+            .addOnSuccessListener { snapshot ->
+
+                var todayEarnings = 0L
+                var todayTrips = 0
+
+                var totalRating = 0.0
+                var ratedTripsCount = 0
+
+                for (doc in snapshot.documents) {
+
+                    // ─────────────────────────────────────
+                    // TODAY EARNINGS + TODAY TRIPS
+                    // ─────────────────────────────────────
+
+                    val completedAt = doc.getLong("completedAt") ?: 0L
+
+                    if (completedAt >= startOfToday) {
+
+                        val fare = doc.getLong("estimatedFare") ?: 0L
+
+                        todayEarnings += fare
+                        todayTrips++
+                    }
+
+                    // ─────────────────────────────────────
+                    // DRIVER RATING
+                    // ─────────────────────────────────────
+
+                    val rating = doc.getDouble("riderFeedback.rating")
+                        ?: doc.getLong("riderFeedback.rating")?.toDouble()
+
+                    if (rating != null) {
+                        totalRating += rating
+                        ratedTripsCount++
+                    }
+                }
+
+                // ─────────────────────────────────────
+                // UPDATE UI
+                // ─────────────────────────────────────
+
+                binding.tvEarnings.text = "₹$todayEarnings"
+
+                binding.tvTripsCount.text = todayTrips.toString()
+
+                if (ratedTripsCount > 0) {
+
+                    val averageRating = totalRating / ratedTripsCount
+
+                    binding.tvRating.text =
+                        String.format("%.1f", averageRating)
+
+                } else {
+
+                    binding.tvRating.text = "—"
+                }
             }
     }
 
