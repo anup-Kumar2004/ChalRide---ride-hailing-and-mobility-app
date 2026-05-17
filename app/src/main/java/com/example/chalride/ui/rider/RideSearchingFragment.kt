@@ -22,6 +22,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class RideSearchingFragment : Fragment() {
 
@@ -60,10 +64,21 @@ class RideSearchingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Block back press — rider must cancel explicitly
         requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { }
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+
+                override fun handleOnBackPressed() {
+
+                    androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setTitle("Cancel Ride Search?")
+                        .setMessage("Are you sure you want to stop searching for nearby drivers?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            cancelRideRequest(navigateHome = true)
+                        }
+                        .setNegativeButton("No", null)
+                        .show()
+                }
             }
         )
 
@@ -416,10 +431,10 @@ class RideSearchingFragment : Fragment() {
         val R = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLng = Math.toRadians(lng2 - lng1)
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2)
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLng / 2) * sin(dLng / 2)
+        return R * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────

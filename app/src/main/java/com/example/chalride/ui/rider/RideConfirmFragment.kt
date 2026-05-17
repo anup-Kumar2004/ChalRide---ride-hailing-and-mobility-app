@@ -30,6 +30,10 @@ import androidx.core.graphics.toColorInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlin.math.pow
 import androidx.core.view.isGone
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class RideConfirmFragment : Fragment() {
 
@@ -599,7 +603,7 @@ class RideConfirmFragment : Fragment() {
         for (i in 1 until points.size) {
             val dx = (points[i].longitude - points[i - 1].longitude).toFloat()
             val dy = (points[i].latitude  - points[i - 1].latitude).toFloat()
-            cumDist[i] = cumDist[i - 1] + Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            cumDist[i] = cumDist[i - 1] + sqrt((dx * dx + dy * dy).toDouble()).toFloat()
         }
         val totalDist = cumDist.last()
         val density = resources.displayMetrics.density
@@ -750,7 +754,7 @@ class RideConfirmFragment : Fragment() {
         dialog.setContentView(dialogView)
         dialog.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.88).toInt(),
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
         dialog.setCanceledOnTouchOutside(false)
 
@@ -784,7 +788,6 @@ class RideConfirmFragment : Fragment() {
     // ── Click listeners ───────────────────────────────────────────────────
 
     private fun setupClickListeners() {
-        binding.btnBack.setOnClickListener { findNavController().popBackStack() }
         binding.btnFindRide.setOnClickListener { findRide() }
     }
 
@@ -838,10 +841,10 @@ class RideConfirmFragment : Fragment() {
         val R = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLng = Math.toRadians(lng2 - lng1)
-        val a = Math.sin(dLat / 2).pow(2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng / 2).pow(2)
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        val a = sin(dLat / 2).pow(2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLng / 2).pow(2)
+        return R * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
     /**

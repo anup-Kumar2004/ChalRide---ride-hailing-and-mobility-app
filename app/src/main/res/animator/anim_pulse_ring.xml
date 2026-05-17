@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    anim_pulse_ring.xml
+    Place in: res/animator/anim_pulse_ring.xml
+    Used on the pulse ring View behind the envelope icon.
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="together">
+
+    <objectAnimator
+        android:propertyName="scaleX"
+        android:valueFrom="0.8"
+        android:valueTo="1.5"
+        android:duration="1800"
+        android:repeatCount="infinite"
+        android:repeatMode="restart"
+        android:interpolator="@android:interpolator/decelerate_quint"/>
+
+    <objectAnimator
+        android:propertyName="scaleY"
+        android:valueFrom="0.8"
+        android:valueTo="1.5"
+        android:duration="1800"
+        android:repeatCount="infinite"
+        android:repeatMode="restart"
+        android:interpolator="@android:interpolator/decelerate_quint"/>
+
+    <objectAnimator
+        android:propertyName="alpha"
+        android:valueFrom="0.6"
+        android:valueTo="0.0"
+        android:duration="1800"
+        android:repeatCount="infinite"
+        android:repeatMode="restart"
+        android:interpolator="@android:interpolator/decelerate_quint"/>
+
+</set>

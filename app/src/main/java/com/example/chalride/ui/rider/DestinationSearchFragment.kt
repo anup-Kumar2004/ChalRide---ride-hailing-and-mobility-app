@@ -735,9 +735,6 @@ class DestinationSearchFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        binding.btnBack.setOnClickListener {
-            findNavController().popBackStack()
-        }
 
         binding.btnClearSearch.setOnClickListener {
             cancelChangeDestinationHint()  // handles chip + timer cancellation

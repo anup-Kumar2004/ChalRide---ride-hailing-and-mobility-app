@@ -111,9 +111,7 @@ class RiderPhoneVerifyFragment : Fragment() {
                         if (index < otpFields.size - 1) {
                             otpFields[index + 1].requestFocus()
                         } else {
-                            // Last box filled — try auto-verify
                             hideKeyboard()
-                            attemptVerifyOtp()
                         }
                     } else {
                         editText.background = ContextCompat.getDrawable(
@@ -326,7 +324,7 @@ class RiderPhoneVerifyFragment : Fragment() {
                 // Mark phone as verified in Firestore
                 markPhoneVerifiedInFirestore(currentUser.uid, "+91$enteredPhone")
             }
-            .addOnFailureListener { e ->
+            .addOnFailureListener { _ ->
                 // If already linked with a phone number, use updatePhoneNumber instead
                 // This handles the case where the user re-verifies
                 currentUser.updatePhoneNumber(credential)
@@ -396,7 +394,7 @@ class RiderPhoneVerifyFragment : Fragment() {
             binding.layoutOtpStep.animate().alpha(1f).setDuration(200).start()
 
             // Reposition the shared progress bar to appear below btnVerifyOtp
-            val params = binding.progressBar.layoutParams
+            binding.progressBar.layoutParams
                     as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
             // Progress bar is now below btnVerifyOtp inside the OTP layout
             binding.progressBar.visibility = View.GONE

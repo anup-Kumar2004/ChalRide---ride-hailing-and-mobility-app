@@ -14,6 +14,8 @@ import com.example.chalride.R
 import com.example.chalride.databinding.FragmentDriverVehicleSetupBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.activity.OnBackPressedCallback
+import com.example.chalride.utils.BackPressHandler
 
 class DriverVehicleSetupFragment : Fragment() {
 
@@ -32,6 +34,7 @@ class DriverVehicleSetupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        BackPressHandler.enableDoubleBackToExit(this)
 
         setupVehicleCards()
 

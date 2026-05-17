@@ -20,8 +20,8 @@ class DriverRideCancelledFragment : Fragment() {
 
     private val cancelReason by lazy {
         val raw = arguments?.getString("cancelReason") ?: "RIDER_CANCELLED"
-        try { com.example.chalride.ui.rider.CancelReason.valueOf(raw) }
-        catch (_: Exception) { com.example.chalride.ui.rider.CancelReason.RIDER_CANCELLED }
+        try { CancelReason.valueOf(raw) }
+        catch (_: Exception) { CancelReason.RIDER_CANCELLED }
     }
 
     override fun onCreateView(
@@ -35,10 +35,16 @@ class DriverRideCancelledFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Block back navigation — driver must use the button
         requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { }
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+
+                override fun handleOnBackPressed() {
+
+                    findNavController().navigate(
+                        R.id.action_driverRideCancelled_to_driverHome
+                    )
+                }
             }
         )
 

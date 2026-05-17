@@ -14,26 +14,9 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-import com.example.chalride.R
 import com.example.chalride.databinding.FragmentRideSummaryBinding
 import com.google.firebase.firestore.FirebaseFirestore
 
-/**
- * RideDetailsFragment
- *
- * Shows a premium, full-screen breakdown of the current ongoing ride.
- * Navigated to from RideLiveFragment when the rider taps the "Ride Details" chip.
- *
- * Arguments (Bundle) — all passed from RideLiveFragment:
- *   rideRequestId  String
- *   driverId       String
- *   driverName     String
- *   vehicleType    String
- *   pickupAddress  String
- *   destAddress    String
- *   estimatedFare  Int
- *   currentStatus  String   — latest ride status (accepted / arrived_at_pickup / in_progress)
- */
 class RideSummaryFragment : Fragment() {
 
     private var _binding: FragmentRideSummaryBinding? = null

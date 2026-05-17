@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_icon_container.xml
+    Place in: res/drawable/bg_icon_container.xml
+    Glassy dark circle with brand purple border — wraps the email signal icon.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#1E1A2E"/>
+    <stroke
+        android:width="1.5dp"
+        android:color="#446C63FF"/>
+    <size
+        android:width="140dp"
+        android:height="140dp"/>
+</shape>

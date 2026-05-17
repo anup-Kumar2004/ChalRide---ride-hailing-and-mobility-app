@@ -31,10 +31,16 @@ class RideCancelledFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Block back — rider must tap the button
         requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { }
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+
+                override fun handleOnBackPressed() {
+
+                    findNavController().navigate(
+                        R.id.action_rideCancelled_to_riderHome
+                    )
+                }
             }
         )
 

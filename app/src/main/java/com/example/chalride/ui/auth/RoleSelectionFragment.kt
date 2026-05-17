@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentRoleSelectionBinding
@@ -14,8 +13,6 @@ class RoleSelectionFragment : Fragment() {
 
     private var _binding: FragmentRoleSelectionBinding? = null
     private val binding get() = _binding!!
-
-    private val viewModel: AuthViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,

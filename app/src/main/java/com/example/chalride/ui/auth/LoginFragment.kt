@@ -68,7 +68,7 @@ class LoginFragment : Fragment() {
         }
 
         binding.tvForgotPassword.setOnClickListener {
-            // Phase 3 — password reset
+            findNavController().navigate(R.id.action_login_to_password_recovery)
         }
     }
 

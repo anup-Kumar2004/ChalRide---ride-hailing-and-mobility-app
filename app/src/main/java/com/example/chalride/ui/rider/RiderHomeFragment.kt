@@ -54,9 +54,11 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isVisible
 import androidx.core.content.edit
+import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 class RiderHomeFragment : Fragment() {
 
@@ -108,7 +110,7 @@ class RiderHomeFragment : Fragment() {
             checkLocationSettings()
         } else {
             stopFetchingState()
-            showPermissionDeniedUX("Location permission needed to set your pickup")
+            showPermissionDeniedUX()
         }
     }
 
@@ -149,12 +151,34 @@ class RiderHomeFragment : Fragment() {
 
         // Back button: if in search mode → exit search mode. Otherwise do nothing.
         requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+
+                private var doubleBackPressed = false
+
                 override fun handleOnBackPressed() {
+
                     if (isInSearchMode) {
                         exitSearchMode(restoreLabel = true)
+                        return
                     }
-                    // Home screen — do not navigate back
+
+                    if (doubleBackPressed) {
+                        requireActivity().finish()
+                        return
+                    }
+
+                    doubleBackPressed = true
+
+                    Toast.makeText(
+                        requireContext(),
+                        "Press back again to exit",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    view.postDelayed({
+                        doubleBackPressed = false
+                    }, 2000)
                 }
             }
         )
@@ -460,7 +484,7 @@ class RiderHomeFragment : Fragment() {
         }
     }
 
-    private fun showPermissionDeniedUX(message: String = "") {
+    private fun showPermissionDeniedUX() {
         // Hide all normal-state UI elements
         binding.cardPickupSearch.visibility = View.GONE
         binding.bottomSheet.visibility = View.GONE
@@ -499,10 +523,10 @@ class RiderHomeFragment : Fragment() {
                 startFetchingMessages()
                 checkLocationSettings()
             } else {
-                android.widget.Toast.makeText(
+                Toast.makeText(
                     requireContext(),
                     "Permission still not granted. Please allow location in Settings.",
-                    android.widget.Toast.LENGTH_SHORT
+                    Toast.LENGTH_SHORT
                 ).show()
             }
         }
@@ -608,7 +632,7 @@ class RiderHomeFragment : Fragment() {
                     json.optString("display_name", "Current Location")
                         .split(",").take(2).joinToString(", ")
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 "Current Location"
             }
         }
@@ -819,7 +843,7 @@ class RiderHomeFragment : Fragment() {
                 "&dedupe=1" +
                 "&viewbox=$minLon,$maxLat,$maxLon,$minLat"
 
-        val conn = java.net.URL(url).openConnection()
+        val conn = URL(url).openConnection()
         conn.setRequestProperty("User-Agent", "ChalRide/1.0")
         conn.setRequestProperty("Accept-Language", "en")
         conn.connectTimeout = 5000
@@ -898,7 +922,7 @@ class RiderHomeFragment : Fragment() {
         val a = sin(dLat / 2).pow(2) +
                 cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
                 sin(dLon / 2).pow(2)
-        return R * 2 * Math.asin(Math.sqrt(a))
+        return R * 2 * asin(sqrt(a))
     }
 
     private fun showPickupDropdown(items: List<String>) {

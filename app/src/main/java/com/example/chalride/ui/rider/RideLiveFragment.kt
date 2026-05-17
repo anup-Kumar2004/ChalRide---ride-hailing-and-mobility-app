@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
@@ -41,6 +40,7 @@ import android.os.Build
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
 import androidx.core.content.edit
+import com.example.chalride.utils.BackPressHandler
 
 class RideLiveFragment : Fragment() {
 
@@ -187,6 +187,7 @@ class RideLiveFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        BackPressHandler.enableDoubleBackToExit(this)
 
         savedInstanceState?.let {
             currentRideStatus = it.getString("currentRideStatus", "")
@@ -196,11 +197,6 @@ class RideLiveFragment : Fragment() {
             isPhase2          = it.getBoolean("isPhase2", false)
         }
 
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { }
-            }
-        )
 
         val dm = resources.displayMetrics
         mapPadTop    = (dm.heightPixels * 0.18).toInt()
@@ -1426,12 +1422,7 @@ class RideLiveFragment : Fragment() {
                 }
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            cm.registerDefaultNetworkCallback(networkCallback!!)
-        } else {
-            val req = android.net.NetworkRequest.Builder().build()
-            cm.registerNetworkCallback(req, networkCallback!!)
-        }
+        cm.registerDefaultNetworkCallback(networkCallback!!)
     }
 
     private fun unregisterNetworkCallback() {
@@ -1454,19 +1445,19 @@ class RideLiveFragment : Fragment() {
 
         when (state) {
             "offline" -> {
-                card.setCardBackgroundColor(android.graphics.Color.parseColor("#E61A0808"))
-                card.strokeColor = android.graphics.Color.parseColor("#40FF4757")
+                card.setCardBackgroundColor("#E61A0808".toColorInt())
+                card.strokeColor = "#40FF4757".toColorInt()
                 dot.backgroundTintList  = android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#FF4757"))
-                text.setTextColor(android.graphics.Color.parseColor("#FF4757"))
+                    "#FF4757".toColorInt())
+                text.setTextColor("#FF4757".toColorInt())
                 text.text = "No internet connection"
             }
             "unstable" -> {
-                card.setCardBackgroundColor(android.graphics.Color.parseColor("#E61A1000"))
-                card.strokeColor = android.graphics.Color.parseColor("#40FFC107")
+                card.setCardBackgroundColor("#E61A1000".toColorInt())
+                card.strokeColor = "#40FFC107".toColorInt()
                 dot.backgroundTintList  = android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#FFC107"))
-                text.setTextColor(android.graphics.Color.parseColor("#FFC107"))
+                    "#FFC107".toColorInt())
+                text.setTextColor("#FFC107".toColorInt())
                 text.text = "Network unstable"
                 // Auto-hide unstable after 6 s — next successful fetch will also hide it
                 networkBannerJob = viewLifecycleOwner.lifecycleScope.launch {
@@ -1475,11 +1466,11 @@ class RideLiveFragment : Fragment() {
                 }
             }
             "online" -> {
-                card.setCardBackgroundColor(android.graphics.Color.parseColor("#E6001A18"))
-                card.strokeColor = android.graphics.Color.parseColor("#404ECDC4")
+                card.setCardBackgroundColor("#E6001A18".toColorInt())
+                card.strokeColor = "#404ECDC4".toColorInt()
                 dot.backgroundTintList  = android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#4ECDC4"))
-                text.setTextColor(android.graphics.Color.parseColor("#4ECDC4"))
+                    "#4ECDC4".toColorInt())
+                text.setTextColor("#4ECDC4".toColorInt())
                 text.text = "Back online"
                 // Auto-hide after 3 s
                 networkBannerJob = viewLifecycleOwner.lifecycleScope.launch {

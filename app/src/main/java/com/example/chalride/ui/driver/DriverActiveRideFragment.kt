@@ -25,24 +25,8 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import androidx.core.graphics.toColorInt
 import java.net.URL
+import com.example.chalride.utils.BackPressHandler
 
-/**
- * DriverActiveRideFragment — Overview screen.
- *
- * Shows:
- *  • A locked, non-interactive mini-map with the route drawn between
- *    pickup and destination (same pattern as RideConfirmFragment).
- *  • Ride details card (fare, rider name, pickup/destination addresses).
- *  • A "▲ Navigate" button that opens the turn-by-turn DriverNavigationFragment.
- *
- * Trip phases managed here:
- *   HEADING_TO_PICKUP  → navigate button opens nav to pickup
- *   ARRIVED_AT_PICKUP  → arrived screen is shown (handled by DriverArrivedPickupFragment)
- *   IN_PROGRESS        → navigate button opens nav to destination
- *
- * This fragment does NOT do GPS tracking itself — it just stores ride context
- * and lets DriverNavigationFragment do all the driving work.
- */
 class DriverActiveRideFragment : Fragment() {
 
     private var _binding: FragmentDriverActiveRideBinding? = null
@@ -79,10 +63,7 @@ class DriverActiveRideFragment : Fragment() {
 
 
     // ─────────────────────────────────────────────────────────────────────────
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentDriverActiveRideBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -90,11 +71,7 @@ class DriverActiveRideFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { /* block during ride */ }
-            }
-        )
+        BackPressHandler.enableDoubleBackToExit(this)
 
         initMap()
 

@@ -33,19 +33,11 @@
         android:paddingBottom="14dp"
         android:layout_gravity="top">
 
-        <ImageView
-            android:id="@+id/btnBack"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:alpha="0.85"
-            android:layout_marginEnd="14dp"
-            android:padding="4dp" />
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Confirm Ride"
+            android:layout_marginStart="10dp"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:fontFamily="sans-serif-medium"

@@ -19,27 +19,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.example.chalride.utils.BackPressHandler
 
-/**
- * DriverArrivedPickupFragment
- *
- * Shown when the driver reaches the pickup location.
- *
- * Features:
- *  1. 2.5-minute (150s) countdown timer — how long to wait for rider.
- *  2. Call button — opens dialler with rider's phone number.
- *  3. Message button — opens SMS with rider's number.
- *  4. Four-digit OTP entry — driver enters OTP given by rider.
- *     OTP is generated here, stored in Firestore on the rideRequests doc
- *     (field: "riderOtp"), and the rider sees it on their RideLiveFragment.
- *  5. On OTP match → start trip → navigate back to DriverActiveRideFragment
- *     with tripPhase = IN_PROGRESS.
- *
- * OTP timing rationale:
- *   OTP is generated and saved when this fragment opens (i.e. when driver
- *   marks arrived). The rider sees it in their live-tracking screen.
- *   This prevents drivers from starting a trip without the rider on board.
- */
+
 class DriverArrivedPickupFragment : Fragment() {
 
     private var _binding: FragmentDriverArrivedPickupBinding? = null
@@ -73,12 +55,7 @@ class DriverArrivedPickupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { /* block back during OTP step */ }
-            }
-        )
+        BackPressHandler.enableDoubleBackToExit(this)
 
         binding.tvRiderName.text = riderName
 

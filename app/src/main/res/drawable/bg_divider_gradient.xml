@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    bg_divider_gradient.xml
+    Place in: res/drawable/bg_divider_gradient.xml
+    A horizontal gradient line used as a visual separator in the forgot password screen.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="0"
+        android:startColor="#006C63FF"
+        android:centerColor="#996C63FF"
+        android:endColor="#006C63FF"/>
+    <size android:height="1dp"/>
+</shape>

@@ -9,7 +9,6 @@ import androidx.navigation.fragment.NavHostFragment
 import com.example.chalride.data.repository.AuthRepository
 import com.example.chalride.databinding.ActivityMainBinding
 import kotlinx.coroutines.runBlocking
-import android.content.Context
 import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
@@ -44,13 +43,13 @@ class MainActivity : AppCompatActivity() {
         if (intent?.getBooleanExtra("openRideLive", false) == true) {
             val prefs = getSharedPreferences(
                 com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
-                Context.MODE_PRIVATE
+                MODE_PRIVATE
             )
             val savedRideId = prefs.getString(
                 com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
             ) ?: ""
             if (savedRideId.isNotEmpty()) {
-                val bundle = android.os.Bundle().apply {
+                val bundle = Bundle().apply {
                     putString("rideRequestId", savedRideId)
                     putString("driverId",      prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_ID, ""))
                     putString("driverName",    prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
@@ -78,14 +77,14 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra("openRideLive", false)) {
             val prefs = getSharedPreferences(
                 com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
-                Context.MODE_PRIVATE
+                MODE_PRIVATE
             )
             val savedRideId = prefs.getString(
                 com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
             ) ?: ""
             if (savedRideId.isNotEmpty()) {
                 val navHostFragment = supportFragmentManager
-                    .findFragmentById(R.id.nav_host_fragment) as? androidx.navigation.fragment.NavHostFragment
+                    .findFragmentById(R.id.nav_host_fragment) as? NavHostFragment
                 val navController = navHostFragment?.navController ?: return
                 val bundle = Bundle().apply {
                     putString("rideRequestId", savedRideId)

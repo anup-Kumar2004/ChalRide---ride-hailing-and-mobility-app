@@ -252,7 +252,7 @@ class TripAdapter(private val trips: List<TripRecord>) :
 
     private val dateFormat = SimpleDateFormat("d MMM, h:mm a", Locale.getDefault())
 
-    inner class TripViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    class TripViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvVehicleEmoji: TextView  = itemView.findViewById(R.id.tvVehicleEmoji)
         val tvVehicleType: TextView   = itemView.findViewById(R.id.tvVehicleType)
         val tvDate: TextView          = itemView.findViewById(R.id.tvDate)

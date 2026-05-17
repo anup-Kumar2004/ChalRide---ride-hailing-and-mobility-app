@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_email_signal.xml
+    Place in: res/drawable/ic_email_signal.xml
+
+    A stylised envelope with a "signal ring" arc above it —
+    conveys "your reset link is being transmitted".
+    Uses your brand_primary (#6C63FF) and text_secondary tones.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- ── Outer soft glow disc (semi-transparent brand purple) ── -->
+    <path
+        android:pathData="M60,60 m-46,0 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0"
+        android:fillColor="#1A6C63FF"/>
+
+    <!-- ── Signal arc 3 (outermost, most transparent) ── -->
+    <path
+        android:pathData="M34,38 Q60,14 86,38"
+        android:strokeColor="#4D6C63FF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- ── Signal arc 2 ── -->
+    <path
+        android:pathData="M40,44 Q60,24 80,44"
+        android:strokeColor="#806C63FF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- ── Signal arc 1 (innermost, most opaque) ── -->
+    <path
+        android:pathData="M46,50 Q60,36 74,50"
+        android:strokeColor="#B36C63FF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- ── Envelope body ── -->
+    <path
+        android:pathData="M22,56 L22,88 Q22,92 26,92 L94,92 Q98,92 98,88 L98,56 Q98,52 94,52 L26,52 Q22,52 22,56 Z"
+        android:fillColor="#6C63FF"/>
+
+    <!-- ── Envelope flap (darker shade) ── -->
+    <path
+        android:pathData="M22,56 L60,76 L98,56"
+        android:strokeColor="#9B94FF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#5A52E0"/>
+
+    <!-- ── Envelope fold lines (bottom V) ── -->
+    <path
+        android:pathData="M22,88 L50,70 M98,88 L70,70"
+        android:strokeColor="#9B94FF"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- ── Central dot (signal origin) ── -->
+    <path
+        android:pathData="M60,56 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:fillColor="#FFFFFF"/>
+
+</vector>

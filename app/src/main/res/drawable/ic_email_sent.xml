@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_email_sent.xml
+    Place in: res/drawable/ic_email_sent.xml
+
+    Envelope with a checkmark overlay — shown after the reset email is sent.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Soft success glow disc -->
+    <path
+        android:pathData="M60,60 m-46,0 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0"
+        android:fillColor="#1A4ECDC4"/>
+
+    <!-- Envelope body (teal success tint) -->
+    <path
+        android:pathData="M22,56 L22,88 Q22,92 26,92 L94,92 Q98,92 98,88 L98,56 Q98,52 94,52 L26,52 Q22,52 22,56 Z"
+        android:fillColor="#4ECDC4"/>
+
+    <!-- Envelope flap -->
+    <path
+        android:pathData="M22,56 L60,76 L98,56"
+        android:strokeColor="#7DDDD8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#3DB8B0"/>
+
+    <!-- Envelope fold lines -->
+    <path
+        android:pathData="M22,88 L50,70 M98,88 L70,70"
+        android:strokeColor="#7DDDD8"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- Checkmark circle background -->
+    <path
+        android:pathData="M60,28 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0"
+        android:fillColor="#1A1A2E"/>
+
+    <!-- Checkmark circle ring -->
+    <path
+        android:pathData="M60,28 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0"
+        android:strokeColor="#4ECDC4"
+        android:strokeWidth="2"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- Checkmark tick -->
+    <path
+        android:pathData="M52,28 L57.5,33.5 L68,23"
+        android:strokeColor="#4ECDC4"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"/>
+
+</vector>

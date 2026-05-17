@@ -17,21 +17,6 @@ import androidx.fragment.app.DialogFragment
 import com.example.chalride.R
 import com.google.android.material.button.MaterialButton
 
-/**
- * DriverWarningDialog
- *
- * A single reusable custom dialog that handles all three driver warning states:
- *
- *   STAGE_1  — offlineCancelCount 1–3 — informational, amber
- *   STAGE_2  — offlineCancelCount 4–5 — firm warning, orange-red
- *   SUSPENDED — count 6+ or isAccountFlagged — blocked, deep red
- *
- * Usage:
- *   DriverWarningDialog.newInstance(
- *       stage = DriverWarningDialog.Stage.STAGE_1,
- *       count = 2
- *   ).show(parentFragmentManager, "warning")
- */
 class DriverWarningDialog : DialogFragment() {
 
     enum class Stage { STAGE_1, STAGE_2, SUSPENDED }

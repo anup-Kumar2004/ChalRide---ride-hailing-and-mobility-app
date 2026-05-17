@@ -55,7 +55,7 @@ class DriverProfileSetupFragment : Fragment() {
         // ✅ If coming from midway login → skip to vehicle setup
         val goToVehicleStep = arguments?.getBoolean("goToVehicleStep") ?: false
 
-        if (goToVehicleStep) {
+        if (savedInstanceState == null && goToVehicleStep) {
             findNavController().navigate(
                 R.id.action_driverProfileSetup_to_driverVehicleSetup
             )

@@ -33,6 +33,13 @@
             app:destination="@id/riderHomeFragment"
             app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_login_to_password_recovery"
+            app:destination="@id/passwordRecoveryFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"/>
 
         <action
             android:id="@+id/action_login_to_rider_phone_verify"
@@ -54,6 +61,14 @@
             app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
+    </fragment>
+
+
+    <fragment
+        android:id="@+id/passwordRecoveryFragment"
+        android:name="com.example.chalride.ui.auth.PasswordRecoveryFragment"
+        android:label="PasswordRecoveryFragment">
+
     </fragment>
 
     <fragment
@@ -95,6 +110,8 @@
         <action
             android:id="@+id/action_driverProfileSetup_to_driverVehicleSetup"
             app:destination="@id/driverVehicleSetupFragment"
+            app:popUpTo="@id/driverProfileSetupFragment"
+            app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -128,7 +145,7 @@
         <action
             android:id="@+id/action_rider_home_to_ride_live"
             app:destination="@id/rideLiveFragment"
-            app:popUpTo="@id/riderHomeFragment"
+            app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"/>
         <action
             android:id="@+id/action_riderHome_to_riderProfile"
@@ -150,15 +167,7 @@
         android:id="@+id/riderProfileFragment"
         android:name="com.example.chalride.ui.rider.RiderProfileFragment"
         android:label="RiderProfileFragment">
-        <action
-            android:id="@+id/action_riderProfile_to_riderHome"
-            app:destination="@id/riderHomeFragment"
-            app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"/>
 
-        <!-- ADD THIS -->
         <action
             android:id="@+id/action_riderProfile_to_riderTripDetails"
             app:destination="@id/riderTripDetailsFragment"
@@ -172,13 +181,6 @@
         android:id="@+id/riderTripDetailsFragment"
         android:name="com.example.chalride.ui.rider.RiderTripDetailsFragment"
         android:label="RiderTripDetailsFragment">
-        <action
-            android:id="@+id/action_riderTripDetails_to_riderHome"
-            app:destination="@id/riderHomeFragment"
-            app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"/>
     </fragment>
 
     <fragment
@@ -188,6 +190,8 @@
         <action
             android:id="@+id/action_driverHome_to_driverActiveRide"
             app:destination="@id/driverActiveRideFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
 
@@ -214,13 +218,6 @@
         android:id="@+id/driverProfileFragment"
         android:name="com.example.chalride.ui.driver.DriverProfileFragment"
         android:label="DriverProfileFragment">
-        <action
-            android:id="@+id/action_driverProfile_to_driverHome"
-            app:destination="@id/driverHomeFragment"
-            app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"/>
 
         <action
             android:id="@+id/action_driverProfile_to_driverEarnings"
@@ -317,13 +314,6 @@
         android:id="@+id/rideSummaryFragment"
         android:name="com.example.chalride.ui.rider.RideSummaryFragment"
         android:label="RideSummaryFragment">
-        <action
-            android:id="@+id/action_rideSummary_to_rideLive"
-            app:destination="@id/rideLiveFragment"
-            app:popUpTo="@id/rideLiveFragment"
-            app:popUpToInclusive="false"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"/>
     </fragment>
 
     <fragment
@@ -333,8 +323,6 @@
         <action
             android:id="@+id/action_driverActiveRide_to_driverNavigation"
             app:destination="@id/driverNavigationFragment"
-            app:popUpTo="@id/driverNavigationFragment"
-            app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -347,6 +335,8 @@
         <action
             android:id="@+id/action_driverActiveRide_to_driverArrivedPickup"
             app:destination="@id/driverArrivedPickupFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
         <action
@@ -379,6 +369,8 @@
         <action
             android:id="@+id/action_driverNavigation_to_driverArrivedPickup"
             app:destination="@id/driverArrivedPickupFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
 
@@ -419,7 +411,7 @@
         <action
             android:id="@+id/action_driverArrivedPickup_to_driverActiveRide"
             app:destination="@id/driverActiveRideFragment"
-            app:popUpTo="@id/driverActiveRideFragment"
+            app:popUpTo="@id/nav_graph"
             app:popUpToInclusive="true"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"/>
@@ -474,13 +466,6 @@
         android:name="com.example.chalride.ui.driver.DriverEarningsFragment"
         android:label="DriverEarningsFragment">
 
-        <action
-            android:id="@+id/action_driverEarnings_to_driverHome"
-            app:destination="@id/driverHomeFragment"
-            app:popUpTo="@id/nav_graph"
-            app:popUpToInclusive="true"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right" />
 
     </fragment>
 

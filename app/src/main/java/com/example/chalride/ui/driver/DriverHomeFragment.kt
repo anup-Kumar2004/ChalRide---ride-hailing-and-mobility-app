@@ -12,7 +12,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -50,6 +49,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.example.chalride.utils.BackPressHandler
 
 class DriverHomeFragment : Fragment() {
 
@@ -105,11 +105,7 @@ class DriverHomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() { /* Home screen — block back */ }
-            }
-        )
+        BackPressHandler.enableDoubleBackToExit(this)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         settingsClient = LocationServices.getSettingsClient(requireActivity())
