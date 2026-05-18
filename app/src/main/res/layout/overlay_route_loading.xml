@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/routeLoadingOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Dark translucent scrim over the map -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC0F0F1A"/>
+
+    <!-- Centered content card -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        app:cardBackgroundColor="#1A1A2E"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="24dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="28dp"
+            android:paddingBottom="24dp"
+            android:paddingHorizontal="20dp"
+            android:gravity="center">
+
+            <!-- ── Road + Car animation container ─────────────────────── -->
+            <!--
+                The FrameLayout clips the car so it enters/exits cleanly.
+                Height is exactly enough for the car SVG (32dp) + wheel
+                overflow (7dp each side) = 46dp visible, we use 56dp for
+                breathing room.
+            -->
+            <FrameLayout
+                android:id="@+id/carAnimContainer"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:clipChildren="true"
+                android:clipToPadding="true">
+
+                <!-- Dashed road line — drawn by custom DashedRoadView -->
+                <com.example.chalride.ui.rider.DashedRoadView
+                    android:id="@+id/dashedRoadView"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_gravity="center_vertical"/>
+
+                <!-- The car image — animated horizontally by Kotlin -->
+                <ImageView
+                    android:id="@+id/ivAnimatedCar"
+                    android:layout_width="72dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/ic_car_side"
+                    android:scaleType="fitCenter"/>
+
+            </FrameLayout>
+
+            <!-- ── Primary label ──────────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvRouteLoadingPrimary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Plotting your route..."
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.01"
+                android:gravity="center"/>
+
+            <!-- ── Secondary label ────────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tvRouteLoadingSecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Finding the fastest path for you"
+                android:textColor="#B0B0C3"
+                android:textSize="12sp"
+                android:gravity="center"/>
+
+            <!-- ── Animated dot row ───────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/dotRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <View
+                    android:id="@+id/dot1"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/bg_loading_dot"/>
+
+                <View
+                    android:id="@+id/dot2"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/bg_loading_dot"/>
+
+                <View
+                    android:id="@+id/dot3"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@drawable/bg_loading_dot"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</FrameLayout>

@@ -368,7 +368,7 @@
                     <ImageView
                         android:layout_width="36dp"
                         android:layout_height="36dp"
-                        android:src="@drawable/ic_profile_trips"
+                        android:src="@drawable/ic_car_tag_second"
                         android:background="@drawable/bg_profile_info_icon_purple"
                         android:padding="9dp"
                         android:contentDescription="Vehicle" />

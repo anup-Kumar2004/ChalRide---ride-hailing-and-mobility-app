@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FILE: res/drawable/ic_car_side.xml
+    A clean side-view car vector used in the route loading overlay.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="32dp"
+    android:viewportWidth="64"
+    android:viewportHeight="32">
+
+    <!-- Car body (main hull) -->
+    <path
+        android:fillColor="#6C63FF"
+        android:pathData="M6,20 L6,14 Q6,12 8,12 L18,12 L24,6 Q25,5 27,5 L40,5 Q42,5 43,6 L50,12 L56,12 Q58,12 58,14 L58,20 Z"/>
+
+    <!-- Windshield + windows area (darker tint) -->
+    <path
+        android:fillColor="#3D3690"
+        android:pathData="M27,7 L24,12 L46,12 L43,7 Z"/>
+
+    <!-- Side window split -->
+    <path
+        android:fillColor="#3D3690"
+        android:pathData="M34,7 L34,12 L35,12 L35,7 Z"/>
+
+    <!-- Car underbody / chassis -->
+    <path
+        android:fillColor="#4A4080"
+        android:pathData="M8,20 L56,20 L56,22 Q56,23 55,23 L9,23 Q8,23 8,22 Z"/>
+
+    <!-- Front bumper -->
+    <path
+        android:fillColor="#5550BB"
+        android:pathData="M54,18 L58,18 L58,21 Q60,21 60,22 L60,23 L54,23 Z"/>
+
+    <!-- Rear bumper -->
+    <path
+        android:fillColor="#5550BB"
+        android:pathData="M4,18 L8,18 L8,23 L4,23 Q4,22 6,22 Z"/>
+
+    <!-- Headlight -->
+    <path
+        android:fillColor="#FFE57F"
+        android:pathData="M55,14 L59,14 Q60,14 60,15 L60,17 L55,17 Z"/>
+
+    <!-- Tail light -->
+    <path
+        android:fillColor="#FF6B6B"
+        android:pathData="M4,15 L8,15 L8,17 L4,17 Q4,16 4,15 Z"/>
+
+    <!-- Front wheel -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M46,23 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0"/>
+    <path
+        android:fillColor="#B0B0C3"
+        android:pathData="M46,23 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+    <path
+        android:fillColor="#6C63FF"
+        android:pathData="M46,23 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+
+    <!-- Rear wheel -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M18,23 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0"/>
+    <path
+        android:fillColor="#B0B0C3"
+        android:pathData="M18,23 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+    <path
+        android:fillColor="#6C63FF"
+        android:pathData="M18,23 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+
+</vector>

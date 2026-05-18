@@ -1,3 +1,5 @@
+//Hello i am gian
+
 package com.example.chalride.ui.rider
 
 import android.content.Context
@@ -41,6 +43,9 @@ class DestinationSearchFragment : Fragment() {
 
     private var searchJob: Job? = null
     private var destinationMarker: Marker? = null
+
+    private lateinit var routeLoadingController: RouteLoadingOverlayController
+
     private var selectedGeoPoint: GeoPoint? = null
     private var selectedAddress: String = ""
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
@@ -70,13 +75,20 @@ class DestinationSearchFragment : Fragment() {
         initMap()
         setupSearch()
         setupClickListeners()
-    }
 
-    /**
-     * When user accidentally taps the map while route is locked,
-     * briefly pulse the "Change Destination" button to guide them.
-     * Professional pattern used by Uber/Ola.
-     */
+        val overlayBinding = binding.routeLoadingOverlay
+        routeLoadingController = RouteLoadingOverlayController(
+            overlay        = overlayBinding.root,
+            car            = overlayBinding.ivAnimatedCar,
+            container      = overlayBinding.carAnimContainer,
+            primaryLabel   = overlayBinding.tvRouteLoadingPrimary,
+            secondaryLabel = overlayBinding.tvRouteLoadingSecondary,
+            dot1           = overlayBinding.dot1,
+            dot2           = overlayBinding.dot2,
+            dot3           = overlayBinding.dot3,
+            lifecycleScope = viewLifecycleOwner.lifecycleScope
+        )
+    }
 
 
     private fun initMap() {
@@ -170,9 +182,6 @@ class DestinationSearchFragment : Fragment() {
         routePolyline?.let { binding.mapFullView.overlays.remove(it) }
         routePolyline = null
 
-        // Show loading on confirm button
-        binding.btnConfirmLocation.text = "Calculating route..."
-        binding.btnConfirmLocation.isEnabled = false
 
         lifecycleScope.launch {
             try {
@@ -213,8 +222,10 @@ class DestinationSearchFragment : Fragment() {
                 // Parse route geometry
                 val features = result.getJSONArray("features")
                 if (features.length() == 0) {
-                    binding.btnConfirmLocation.text = "Confirm Destination"
+                    routeLoadingController.cancel()
+                    binding.btnConfirmLocation.visibility = View.VISIBLE
                     binding.btnConfirmLocation.isEnabled = true
+                    binding.fabGps.visibility = View.VISIBLE
                     return@launch
                 }
 
@@ -274,23 +285,35 @@ class DestinationSearchFragment : Fragment() {
 
                 binding.tvRouteInfo.visibility = View.VISIBLE
                 binding.tvRouteInfo.text = "$distanceText · ⏱ $etaText"
-                binding.btnConfirmLocation.text = "Confirm Destination"
-                binding.btnConfirmLocation.isEnabled = true
+                hideWarning()
 
-                hideWarning()   // ✅ ADD EXACTLY HERE
-
-                // Zoom AFTER UI is updated so we can accurately measure occluded heights
-                zoomToFitRouteInSafeArea(routePoints)
-
-                // Lock map against accidental taps now that route is drawn
-                isRouteConfirmed = true
+                routeLoadingController.hide {
+                    binding.btnConfirmLocation.visibility = View.VISIBLE
+                    binding.btnConfirmLocation.text = "Confirm Destination"
+                    binding.btnConfirmLocation.isEnabled = true
+                    binding.fabGps.visibility = View.VISIBLE
+                    // make search card visible again
+                    binding.cardSearchBar.visibility = View.VISIBLE
+                    // Restore markers and pulses
+                    restoreMarkersAndPulses()
+                    zoomToFitRouteInSafeArea(routePoints)
+                    isRouteConfirmed = true
+                }
 
 
             } catch (e: Exception) {
                 android.util.Log.e("RouteDebug", "Route fetch failed: ${e.message}", e)
 
+                // Cancel overlay immediately on error — no minimum time needed
+                routeLoadingController.cancel()
+                binding.btnConfirmLocation.visibility = View.VISIBLE
                 binding.btnConfirmLocation.text = "Confirm Destination"
                 binding.btnConfirmLocation.isEnabled = true
+                binding.fabGps.visibility = View.VISIBLE
+                // make search card visible again
+                binding.cardSearchBar.visibility = View.VISIBLE
+                // Restore markers and pulses
+                restoreMarkersAndPulses()
                 isRouteConfirmed = false
                 binding.btnChangeDestination.visibility = View.GONE
 
@@ -726,9 +749,17 @@ class DestinationSearchFragment : Fragment() {
                 selectedAddress = "Selected Location"
             }
 
-            // ← ADD THE NEW CODE HERE, outside the try-catch but inside launch{}
             selectedGeoPoint?.let { dest ->
                 val pickup = GeoPoint(pickupLat, pickupLng)
+                binding.btnConfirmLocation.visibility = View.INVISIBLE
+                binding.fabGps.visibility = View.INVISIBLE
+                binding.tvRouteInfo.visibility = View.GONE
+                // hide search card view
+                binding.cardSearchBar.visibility = View.GONE
+                // Hide both markers and stop pulses
+                hideMarkersAndPulses()
+                routeLoadingController.show()
+                delay(3500)
                 fetchAndDrawRoute(pickup, dest)
             }
         }
@@ -737,7 +768,12 @@ class DestinationSearchFragment : Fragment() {
     private fun setupClickListeners() {
 
         binding.btnClearSearch.setOnClickListener {
-            cancelChangeDestinationHint()  // handles chip + timer cancellation
+            routeLoadingController.cancel()
+            binding.cardSearchBar.visibility = View.VISIBLE
+            restoreMarkersAndPulses()
+            binding.btnConfirmLocation.visibility = View.VISIBLE
+            binding.fabGps.visibility = View.VISIBLE
+            cancelChangeDestinationHint()
             isRouteConfirmed = false
 
             binding.etDestinationSearch.setText("")
@@ -791,7 +827,17 @@ class DestinationSearchFragment : Fragment() {
             binding.mapFullView.controller.setZoom(15.0)
 
             val pickup = GeoPoint(pickupLat, pickupLng)
-            fetchAndDrawRoute(pickup, geoPoint)
+            binding.btnConfirmLocation.visibility = View.INVISIBLE
+            binding.fabGps.visibility = View.INVISIBLE
+            binding.tvRouteInfo.visibility = View.GONE
+            binding.cardSearchBar.visibility = View.GONE
+            // Hide both markers and stop pulses
+            hideMarkersAndPulses()
+            routeLoadingController.show()
+            lifecycleScope.launch {
+                delay(3500)
+                fetchAndDrawRoute(pickup, geoPoint)
+            }
 
             hideKeyboard()
 
@@ -826,8 +872,12 @@ class DestinationSearchFragment : Fragment() {
         }
 
         binding.btnChangeDestination.setOnClickListener {
-            // Cancel any pending hide animation
-            cancelChangeDestinationHint()  // ← replaces the 4 manual lines
+            routeLoadingController.cancel()
+            binding.cardSearchBar.visibility = View.VISIBLE
+            restoreMarkersAndPulses()
+            binding.btnConfirmLocation.visibility = View.VISIBLE
+            binding.fabGps.visibility = View.VISIBLE
+            cancelChangeDestinationHint()
             isRouteConfirmed = false
 
             // Remove current route and reset state
@@ -859,6 +909,56 @@ class DestinationSearchFragment : Fragment() {
         }
     }
 
+    private fun hideMarkersAndPulses() {
+        // Stop and hide destination pulse
+        binding.pulseView.animate().cancel()
+        binding.pulseView.clearAnimation()
+        binding.pulseView.visibility = View.GONE
+
+        // Stop and hide pickup pulse
+        binding.pickupPulseView.animate().cancel()
+        binding.pickupPulseView.clearAnimation()
+        binding.pickupPulseView.visibility = View.GONE
+
+        // Hide destination marker
+        destinationMarker?.let {
+            binding.mapFullView.overlays.remove(it)
+        }
+
+        // Hide pickup marker
+        pickupMarker?.let {
+            binding.mapFullView.overlays.remove(it)
+        }
+
+        binding.mapFullView.invalidate()
+    }
+
+    private fun restoreMarkersAndPulses() {
+        // Restore pickup marker and pulse
+        pickupMarker?.let {
+            if (!binding.mapFullView.overlays.contains(it)) {
+                binding.mapFullView.overlays.add(it)
+            }
+            binding.pickupPulseView.visibility = View.VISIBLE
+            binding.pickupPulseView.bringToFront()
+            startPulse(binding.pickupPulseView)
+        }
+
+        // Restore destination marker and pulse — only if one was placed
+        destinationMarker?.let {
+            if (!binding.mapFullView.overlays.contains(it)) {
+                binding.mapFullView.overlays.add(it)
+            }
+            binding.pulseView.visibility = View.VISIBLE
+            binding.pulseView.bringToFront()
+            startPulse(binding.pulseView)
+        }
+
+        binding.mapFullView.invalidate()
+        // Reposition pulses to their correct screen coordinates
+        updatePulsePosition()
+    }
+
     private fun hideKeyboard() {
         val imm = requireContext()
             .getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -882,6 +982,7 @@ class DestinationSearchFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        routeLoadingController.cancel()   // stop all animators before view is torn down
         super.onDestroyView()
         _binding = null
     }

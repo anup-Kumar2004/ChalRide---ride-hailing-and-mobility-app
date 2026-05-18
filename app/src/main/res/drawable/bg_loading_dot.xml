@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FILE: res/drawable/bg_loading_dot.xml
+    A simple filled circle used for the pulsing dot row
+    in the route loading overlay.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#6C63FF"/>
+</shape>
