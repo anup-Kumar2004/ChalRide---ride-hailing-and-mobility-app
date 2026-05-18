@@ -595,7 +595,14 @@ class DriverActiveRideFragment : Fragment() {
                     // State transition happens inside DriverRideCancelledFragment.onViewCreated()
                     // so we don't need to write Firestore here
                     rideStatusListener?.remove()
-                    findNavController().navigate(R.id.action_driverActiveRide_to_driverRideCancelled)
+                    findNavController().navigate(
+                        R.id.action_driverActiveRide_to_driverRideCancelled,
+                        Bundle().apply {
+                            putString("cancelReason",   "RIDER_CANCELLED")
+                            putString("riderName",      riderName)
+                            putString("rideRequestId",  rideRequestId)
+                        }
+                    )
                 }
             }
     }

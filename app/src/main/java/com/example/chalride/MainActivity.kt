@@ -10,6 +10,7 @@ import com.example.chalride.data.repository.AuthRepository
 import com.example.chalride.databinding.ActivityMainBinding
 import kotlinx.coroutines.runBlocking
 import android.content.Intent
+import com.example.chalride.ui.driver.DriverNotificationManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -66,7 +67,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        handleDriverNotificationTap(intent)
+
     }
+
 
 
 
@@ -105,7 +109,90 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        handleDriverNotificationTap(intent)
     }
+
+
+    /**
+     * Handles taps on DriverNotificationManager notifications.
+     * Routes the driver to the correct fragment based on EXTRA_NOTIF_TYPE.
+     */
+    private fun handleDriverNotificationTap(intent: Intent?) {
+        val type = intent?.getStringExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE) ?: return
+
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as? NavHostFragment ?: return
+        val navController = navHostFragment.navController
+
+        when (type) {
+
+            DriverNotificationManager.TYPE_RIDE_REQUEST -> {
+                // Navigate to DriverHome — the Firestore listener there
+                // will re-show the sheet if the request is still pending.
+                if (navController.currentDestination?.id != R.id.driverHomeFragment) {
+                    navController.navigate(
+                        R.id.driverHomeFragment,
+                        null,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.nav_graph, true)
+                            .build()
+                    )
+                }
+                // Clear the extra so screen rotation doesn't re-trigger
+                intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+            }
+
+            DriverNotificationManager.TYPE_CANCELLED -> {
+                // Guard: if driver is already on DriverHome, the ride was already handled.
+                // Do not navigate back to CancelledFragment over the top of DriverHome.
+                val currentDest = navController.currentDestination?.id
+                if (currentDest == R.id.driverHomeFragment) {
+                    // Driver already handled it — just clear the extra and do nothing
+                    intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+                    return
+                }
+                val bundle = Bundle().apply {
+                    putString("cancelReason",  intent.getStringExtra(DriverNotificationManager.EXTRA_CANCEL_REASON) ?: "RIDER_CANCELLED")
+                    putString("riderName",     intent.getStringExtra(DriverNotificationManager.EXTRA_RIDER_NAME) ?: "")
+                    putString("rideRequestId", intent.getStringExtra(DriverNotificationManager.EXTRA_RIDE_REQUEST_ID) ?: "")
+                }
+                if (currentDest != R.id.driverRideCancelledFragment) {
+                    navController.navigate(
+                        R.id.driverRideCancelledFragment, bundle,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.nav_graph, true)
+                            .build()
+                    )
+                }
+                intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+            }
+
+            DriverNotificationManager.TYPE_COMPLETED -> {
+                // Guard: if driver is already on DriverHome, the ride was already handled.
+                val currentDest = navController.currentDestination?.id
+                if (currentDest == R.id.driverHomeFragment) {
+                    intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+                    return
+                }
+                val bundle = Bundle().apply {
+                    putString("riderName",     intent.getStringExtra(DriverNotificationManager.EXTRA_RIDER_NAME) ?: "")
+                    putInt("estimatedFare",    intent.getIntExtra(DriverNotificationManager.EXTRA_ESTIMATED_FARE, 0))
+                    putString("rideRequestId", intent.getStringExtra(DriverNotificationManager.EXTRA_RIDE_REQUEST_ID) ?: "")
+                }
+                if (currentDest != R.id.driverRideCompletedFragment) {
+                    navController.navigate(
+                        R.id.driverRideCompletedFragment, bundle,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.nav_graph, true)
+                            .build()
+                    )
+                }
+                intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+            }
+        }
+    }
+
 
     private fun getStartDestination(): Int {
         val currentUser = authRepository.currentUser

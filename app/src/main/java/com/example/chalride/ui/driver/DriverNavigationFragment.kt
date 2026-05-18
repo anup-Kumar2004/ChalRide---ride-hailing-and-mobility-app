@@ -525,6 +525,13 @@ class DriverNavigationFragment : Fragment() {
             putDouble("destLng",       destLng)
         }
 
+        DriverNotificationManager.notifyTripCompleted(
+            context        = requireContext(),
+            riderName      = riderName,
+            estimatedFare  = estimatedFare,
+            rideRequestId  = rideRequestId
+        )
+
         findNavController().navigate(
             R.id.action_driverNavigation_to_driverRideCompleted,
             bundle
@@ -630,7 +637,13 @@ class DriverNavigationFragment : Fragment() {
                         "Rider cancelled — navigating to DriverRideCancelled")
                     riderCancelListener?.remove()
                     findNavController().navigate(
-                        R.id.action_driverNavigation_to_driverRideCancelled)
+                        R.id.action_driverNavigation_to_driverRideCancelled,
+                        Bundle().apply {
+                            putString("cancelReason",  "RIDER_CANCELLED")
+                            putString("riderName",     riderName)
+                            putString("rideRequestId", rideRequestId)
+                        }
+                    )
                 }
             }
     }

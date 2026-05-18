@@ -27,34 +27,15 @@ class DriverLocationService : Service() {
     // Guards against the presenceRef listener firing with a stale RTDB value on startup.
     private var serviceHasWrittenOnline = false
 
-    companion object {
-        const val CHANNEL_ID      = "driver_location_channel"
-        const val NOTIFICATION_ID = 1001
-    }
-
     override fun onCreate() {
         super.onCreate()
+        DriverNotificationManager.createChannels(this)   // ← MUST be first, before startForeground
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        startForeground(DriverNotificationManager.NOTIF_ID, buildNotification())
         setupFirebasePresence()
         startLocationUpdates()
     }
 
-    // ── Firebase Realtime Database presence ───────────────────────────────────
-    //
-    // DESIGN:
-    // RTDB only tracks `isOnline` (is the app running).
-    // It does NOT touch `isAvailable` on reconnect — the driver might have
-    // been mid-ride when they crashed. Setting isAvailable=true here would
-    // incorrectly open them up for new rides while still on one.
-    //
-    // CRASH path:  onDisconnect fires → RTDB isOnline=false
-    //              → listener mirrors isOnline=false to Firestore only
-    //              → isAvailable in Firestore stays as ride-logic last set it
-    //              → driver reopens app → DriverHomeFragment checks activeRideId → resumes
-    //
-    // NORMAL STOP: onDestroy() sets isOnline=false AND isAvailable=false in Firestore
 
     private fun setupFirebasePresence() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -167,15 +148,8 @@ class DriverLocationService : Service() {
     }
 
     private fun updateNotificationMidRide() {
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ChalRide — Ride In Progress")
-            .setContentText("You have an active ride. Tap to return to the app.")
-            .setSmallIcon(R.drawable.ic_driver_marker)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setOngoing(true)
-            .build()
-        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
-        android.util.Log.d("DriverService", "Mid-ride notification shown — service kept alive")
+        DriverNotificationManager.notifyTripOngoing(this)
+        android.util.Log.d("DriverService", "Mid-ride notification updated via DriverNotificationManager")
     }
 
 
@@ -300,22 +274,8 @@ class DriverLocationService : Service() {
             }
     }
 
-    // ── Notification ──────────────────────────────────────────────────────────
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID, "Driver Location", NotificationManager.IMPORTANCE_LOW
-        ).apply { description = "Keeps your location active while you're online" }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-    }
-
-    private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("ChalRide — You're Online")
-        .setContentText("Waiting for ride requests nearby...")
-        .setSmallIcon(R.drawable.ic_driver_marker)
-        .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setOngoing(true)
-        .build()
+    private fun buildNotification() =
+        DriverNotificationManager.buildOnlineNotification(this)
 
     override fun onBind(intent: Intent?): IBinder? = null
 

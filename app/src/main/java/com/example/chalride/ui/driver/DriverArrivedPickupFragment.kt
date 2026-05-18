@@ -165,7 +165,13 @@ class DriverArrivedPickupFragment : Fragment() {
                     timerJob?.cancel()
                     riderCancelListener?.remove()
                     findNavController().navigate(
-                        R.id.action_driverArrivedPickup_to_driverRideCancelled)
+                        R.id.action_driverArrivedPickup_to_driverRideCancelled,
+                        Bundle().apply {
+                            putString("cancelReason",  "RIDER_CANCELLED")
+                            putString("riderName",     riderName)
+                            putString("rideRequestId", rideRequestId)
+                        }
+                    )
                 }
             }
     }
@@ -420,7 +426,9 @@ class DriverArrivedPickupFragment : Fragment() {
             .update(DriverState.ONLINE_AVAILABLE.toFirestoreMap())
 
         val bundle = Bundle().apply {
-            putString("cancelReason", com.example.chalride.ui.rider.CancelReason.RIDER_NO_SHOW.name)
+            putString("cancelReason",  com.example.chalride.ui.rider.CancelReason.RIDER_NO_SHOW.name)
+            putString("riderName",     riderName)       // ← add this
+            putString("rideRequestId", rideRequestId)   // ← add this
         }
         findNavController().navigate(
             R.id.action_driverArrivedPickup_to_driverRideCancelled, bundle

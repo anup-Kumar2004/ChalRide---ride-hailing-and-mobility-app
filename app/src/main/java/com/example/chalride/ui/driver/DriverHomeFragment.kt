@@ -69,6 +69,7 @@ class DriverHomeFragment : Fragment() {
     private var isOnline = false
     private var onlineStartTimeMs = 0L
     private var timerJob: Job? = null
+    private var pendingAfterNotificationPermission: (() -> Unit)? = null
 
     private var currentMarker: Marker? = null
     private var currentLocation: GeoPoint? = null
@@ -77,6 +78,8 @@ class DriverHomeFragment : Fragment() {
     private var mapInitialized = false
 
     // ── Permission launchers ────────────────────────────────────────────────
+
+
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -90,6 +93,21 @@ class DriverHomeFragment : Fragment() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) startLocationUpdates()
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            android.widget.Toast.makeText(
+                requireContext(),
+                "Enable notifications to get ride request alerts",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+        // Whether granted or denied, always proceed to location permission next
+        pendingAfterNotificationPermission?.invoke()
+        pendingAfterNotificationPermission = null
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -110,16 +128,22 @@ class DriverHomeFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         settingsClient = LocationServices.getSettingsClient(requireActivity())
 
+
+        DriverNotificationManager.createChannels(requireContext())
         initMap()
         buildLocationRequest()
         setupLocationCallback()
-        checkAndRequestPermission()
         setupClickListeners()
         loadDriverProfileIfNeeded()
         loadLiveStatsFromFirestore()
         restoreOnlineStateIfNeeded()
         checkForActiveRideOnLaunch()
         checkDriverAccountStatus()
+
+        // Ask notification permission first, then location permission in sequence
+        requestNotificationPermissionIfNeeded {
+            checkAndRequestPermission()  // location permission — runs after notification dialog is done
+        }
 
 
         // Reset after map init causes false interaction events
@@ -128,6 +152,9 @@ class DriverHomeFragment : Fragment() {
         }
 
         setupBottomSheet()
+
+        // Handle tap from DriverNotificationManager
+        handleDriverNotificationIntent(requireActivity().intent)
 
     }
 
@@ -239,6 +266,25 @@ class DriverHomeFragment : Fragment() {
         DriverWarningDialog.newInstance(DriverWarningDialog.Stage.SUSPENDED)
             .show(parentFragmentManager, "warning_suspended")
     }
+
+
+    private fun handleDriverNotificationIntent(intent: Intent?) {
+        val type = intent?.getStringExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE) ?: return
+        if (type != DriverNotificationManager.TYPE_RIDE_REQUEST) return
+
+        // Clear the extra so rotating the screen doesn't re-trigger this
+        intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+
+        // The ride request listener (listenForRideRequests) is already running
+        // if the driver is online. It will re-show the sheet if the document
+        // is still "pending". No extra work needed here — we just ensure
+        // the driver is online so the listener is active.
+        if (isOnline && rideRequestListener == null) {
+            listenForRideRequests()
+        }
+    }
+
+
 
     // ── Driver info from Firestore ──────────────────────────────────────────
     private fun loadDriverProfileIfNeeded() {
@@ -467,6 +513,27 @@ class DriverHomeFragment : Fragment() {
             .setDuration(1200)
             .withEndAction { if (view.isVisible) startPulse(view) }
             .start()
+    }
+
+    private fun requestNotificationPermissionIfNeeded(onComplete: () -> Unit) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            // Below Android 13 — no runtime notification permission needed, proceed immediately
+            onComplete()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            // Already granted — proceed immediately
+            onComplete()
+            return
+        }
+
+        // Need to ask — store the callback, launch the dialog
+        pendingAfterNotificationPermission = onComplete
+        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun setupBottomSheet() {
@@ -748,12 +815,36 @@ class DriverHomeFragment : Fragment() {
                         isOnline = !isOnline
                         updateOnlineUI()
                         if (isOnline) {
-                            startDriverLocationService()
+                            // Guard: only start location service if permission is already granted.
+                            // checkAndRequestPermission() will call startLocationUpdates() if granted,
+                            // and the service needs that permission before startForeground() with type=location.
+                            if (ContextCompat.checkSelfPermission(
+                                    requireContext(),
+                                    Manifest.permission.ACCESS_FINE_LOCATION
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                startDriverLocationService()
+                            } else {
+                                // Permission not granted yet — request it.
+                                // After user grants, they will need to tap GO ONLINE again.
+                                // Reset the toggle state since we can't go online without location.
+                                isOnline = false
+                                updateOnlineUI()
+                                checkAndRequestPermission()
+                                android.widget.Toast.makeText(
+                                    requireContext(),
+                                    "Location permission is required to go online",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                                return@addOnSuccessListener
+                            }
+                            DriverNotificationManager.notifyOnline(requireContext())
                             transitionDriverState(DriverState.ONLINE_AVAILABLE)
                             startOnlineTimer()
                             listenForRideRequests()
                         } else {
                             stopDriverLocationService()
+                            DriverNotificationManager.dismiss(requireContext())  // ← ADD THIS
                             transitionDriverState(DriverState.OFFLINE)
                             timerJob?.cancel()
                             rideRequestListener?.remove()
@@ -1013,6 +1104,15 @@ class DriverHomeFragment : Fragment() {
         estimatedFare: Int,
         distanceKm: Double
     ) {
+
+        DriverNotificationManager.notifyNewRideRequest(
+            context       = requireContext(),
+            rideRequestId = rideRequestId,
+            estimatedFare = estimatedFare,
+            pickupAddress = pickupAddress,
+            destAddress   = destAddress
+        )
+
         val sheet = RideRequestSheet().apply {
             this.rideRequestId = rideRequestId
             this.riderName     = riderName
@@ -1023,15 +1123,18 @@ class DriverHomeFragment : Fragment() {
             this.distanceKm    = distanceKm
 
             onAccepted = {
+                DriverNotificationManager.notifyTripOngoing(requireContext())  // ← replaces dismiss()
                 acceptRide(rideRequestId)
             }
 
             onRejected = {
+                DriverNotificationManager.notifyOnline(requireContext())
                 markRideAsRejected(rideRequestId)
                 currentRideRequestId = null
             }
 
             onTimeout = {
+                DriverNotificationManager.notifyOnline(requireContext())
                 markRideAsRejected(rideRequestId)
                 currentRideRequestId = null
             }

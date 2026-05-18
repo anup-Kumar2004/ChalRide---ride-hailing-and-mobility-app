@@ -69,7 +69,15 @@ class DriverRideCancelledFragment : Fragment() {
             }
         }
 
-        // Transition driver back to ONLINE_AVAILABLE the moment this screen opens
+        DriverNotificationManager.notifyRideCancelled(
+            context       = requireContext(),
+            cancelReason  = cancelReason,
+            riderName     = arguments?.getString("riderName") ?: "",
+            rideRequestId = arguments?.getString("rideRequestId") ?: ""
+        )
+        // ─────────────────────────────────────────────────────────────────────
+
+        // Transition driver back to ONLINE_AVAILABLE (existing line below, untouched)
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
             android.util.Log.d("DriverRideCancelled",
