@@ -13,40 +13,9 @@ import com.example.chalride.R
 import com.example.chalride.databinding.FragmentPasswordRecoveryBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import android.os.CountDownTimer
 
-/**
- * PasswordRecoveryFragment
- * ─────────────────────────────────────────────────────────────────────────
- * Two-state screen:
- *
- *   STATE 1 — Input state  (layoutInput visible)
- *     • User types their email
- *     • Taps "Send Reset Link"
- *     • We first verify the email exists in Firestore (riders OR drivers)
- *     • Only then does Firebase Auth send the password-reset email
- *
- *   STATE 2 — Success state  (layoutSuccess visible)
- *     • Confirmation that the email was dispatched
- *     • "Back to Login" → popBackStack
- *     • "Resend" → silently re-sends and shows a brief feedback
- *
- * ── Why we check Firestore first ─────────────────────────────────────────
- *   Firebase Auth's sendPasswordResetEmail() always reports success,
- *   even for unregistered addresses — by design, to prevent enumeration
- *   attacks. That means we can't rely on Firebase Auth alone to tell us
- *   "this email isn't registered."
- *
- *   Our workaround: query the `riders` and `drivers` Firestore collections
- *   by the `email` field. If neither collection has a document with that
- *   email, the user is not registered in ChalRide — show an error.
- *   If found, proceed to send the reset email normally.
- *
- * ── How Firebase password reset works ────────────────────────────────────
- *   sendPasswordResetEmail(email) dispatches an email from your Firebase
- *   project containing a one-time secure link. Clicking it opens a hosted
- *   Firebase page where the user sets a new password. You never touch or
- *   store the new password — Firebase handles everything.
- */
+
 class PasswordRecoveryFragment : Fragment() {
 
     private var _binding: FragmentPasswordRecoveryBinding? = null
@@ -55,11 +24,9 @@ class PasswordRecoveryFragment : Fragment() {
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
-    /** Keeps track of which email the link was sent to — used in the success state. */
     private var sentToEmail: String = ""
-
-    /** Pulse animator stored so we can cancel it on destroy */
     private var pulseAnimator: AnimatorSet? = null
+    private var resendCooldownTimer: CountDownTimer? = null  // ← ADD THIS LINE
 
     // ─────────────────────────────────────────────────────────────────────
     override fun onCreateView(
@@ -208,6 +175,7 @@ class PasswordRecoveryFragment : Fragment() {
     /**
      * STEP 2 — Send the reset email via Firebase Auth.
      * Only called after Firestore confirms the email is registered.
+     * Sends exactly ONE email (the double-send bug is fixed here).
      */
     private fun sendPasswordReset(email: String) {
         // Loading state already active from checkEmailThenSendReset — keep it on
@@ -218,46 +186,8 @@ class PasswordRecoveryFragment : Fragment() {
                 setLoadingState(false)
 
                 if (task.isSuccessful) {
-                    auth.sendPasswordResetEmail(email)
-                        .addOnCompleteListener { task ->
-
-                            if (_binding == null) return@addOnCompleteListener
-
-                            setLoadingState(false)
-
-                            android.util.Log.d(
-                                "PasswordRecovery",
-                                "Reset task success = ${task.isSuccessful}"
-                            )
-
-                            android.util.Log.e(
-                                "PasswordRecovery",
-                                "Firebase exception = ${task.exception}"
-                            )
-
-                            if (task.isSuccessful) {
-
-                                android.util.Log.d(
-                                    "PasswordRecovery",
-                                    "Reset email successfully sent to $email"
-                                )
-
-                                sentToEmail = email
-                                transitionToSuccessState(email)
-
-                            } else {
-
-                                val errorMessage = task.exception?.localizedMessage
-                                    ?: "Unknown Firebase error"
-
-                                android.util.Log.e(
-                                    "PasswordRecovery",
-                                    "Detailed error = $errorMessage"
-                                )
-
-                                showError(errorMessage)
-                            }
-                        }
+                    sentToEmail = email
+                    transitionToSuccessState(email)
                 } else {
                     val message = when {
                         task.exception?.message?.contains("network", ignoreCase = true) == true ->
@@ -270,24 +200,76 @@ class PasswordRecoveryFragment : Fragment() {
             }
     }
 
+
     /**
-     * Silently re-sends from the success state.
-     * No loading overlay — just swap the resend link text for brief feedback.
+     * Re-sends the reset email from the success state.
+     * After sending, starts a fresh 30-second cooldown before the
+     * resend link is shown again.
      */
     private fun resendResetEmail(email: String) {
-        binding.tvResendLink.isEnabled = false
-        binding.tvResendLink.text = "Sending…"
+        // Hide resend link immediately to prevent double-taps
+        binding.tvResendLink.visibility = View.GONE
+        binding.tvResendCooldown.text = "Sending…"
+        binding.tvResendCooldown.setTextColor(
+            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.brand_primary)
+        )
+        binding.tvResendCooldown.visibility = View.VISIBLE
 
         auth.sendPasswordResetEmail(email)
             .addOnCompleteListener { task ->
                 if (_binding == null) return@addOnCompleteListener
-                binding.tvResendLink.isEnabled = true
-                binding.tvResendLink.text = if (task.isSuccessful) {
-                    "Sent! Check your inbox again"
+                if (task.isSuccessful) {
+                    // Start a fresh 30-second cooldown after resend
+                    startResendCooldown()
                 } else {
-                    "Didn't receive it? Resend"
+                    // Resend failed — show the link again immediately so user can retry
+                    binding.tvResendCooldown.visibility = View.GONE
+                    binding.tvResendLink.visibility = View.VISIBLE
+                    binding.tvResendLink.text = "Didn't receive it? Resend"
                 }
             }
+    }
+
+    /**
+     * Starts a 30-second countdown during which the resend link is hidden.
+     * The countdown text ticks down every second in @color/text_hint.
+     * When it expires, the text_hint countdown is replaced by the
+     * brand_primary coloured resend link.
+     */
+    private fun startResendCooldown() {
+        // Cancel any existing timer (e.g. user navigated away and came back)
+        resendCooldownTimer?.cancel()
+
+        // Show the countdown label, hide the resend link
+        binding.tvResendLink.visibility = View.GONE
+        binding.tvResendCooldown.setTextColor(
+            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_hint)
+        )
+        binding.tvResendCooldown.visibility = View.VISIBLE
+
+        resendCooldownTimer = object : CountDownTimer(30_000L, 1_000L) {
+
+            override fun onTick(millisUntilFinished: Long) {
+                if (_binding == null) return
+                val secondsLeft = (millisUntilFinished / 1_000L).toInt() + 1
+                binding.tvResendCooldown.text = "Resend available in ${secondsLeft}s"
+            }
+
+            override fun onFinish() {
+                if (_binding == null) return
+                // Cooldown over — swap countdown for the resend link
+                binding.tvResendCooldown.visibility = View.GONE
+                binding.tvResendLink.text = "Didn't receive it? Resend"
+                binding.tvResendLink.visibility = View.VISIBLE
+
+                // Gentle fade-in so it doesn't just snap into place
+                binding.tvResendLink.alpha = 0f
+                binding.tvResendLink.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .start()
+            }
+        }.start()
     }
 
     // ── Error display ─────────────────────────────────────────────────────
@@ -384,7 +366,7 @@ class PasswordRecoveryFragment : Fragment() {
                     binding.tvSuccessBody,
                     binding.dividerSuccess,
                     binding.btnReturnToLogin,
-                    binding.tvResendLink
+                    binding.resendArea          // ← animate the container, not individual views inside it
                 )
                 successElements.forEach { it.alpha = 0f; it.translationY = 20f }
 
@@ -401,6 +383,7 @@ class PasswordRecoveryFragment : Fragment() {
                         .setStartDelay((index * 55).toLong())
                         .start()
                 }
+                startResendCooldown()
             }
             .start()
     }
@@ -409,6 +392,8 @@ class PasswordRecoveryFragment : Fragment() {
 
     override fun onDestroyView() {
         stopPulseAnimation()
+        resendCooldownTimer?.cancel()   // ← ADD THIS LINE
+        resendCooldownTimer = null      // ← ADD THIS LINE
         super.onDestroyView()
         _binding = null
     }
