@@ -27,13 +27,13 @@ class RideRequestSheet : BottomSheetDialogFragment() {
     var onTimeout:  (() -> Unit)? = null
 
     // Data passed in
-    var rideRequestId = ""
-    var riderName     = ""
-    var pickupAddress = ""
-    var destAddress   = ""
-    var vehicleType   = ""
-    var estimatedFare = 0
-    var distanceKm    = 0.0
+    private val rideRequestId get() = arguments?.getString("rideRequestId") ?: ""
+    private val riderName     get() = arguments?.getString("riderName") ?: "Rider"
+    private val pickupAddress get() = arguments?.getString("pickupAddress") ?: ""
+    private val destAddress   get() = arguments?.getString("destAddress") ?: ""
+    private val vehicleType   get() = arguments?.getString("vehicleType") ?: ""
+    private val estimatedFare get() = arguments?.getInt("estimatedFare") ?: 0
+    private val distanceKm    get() = arguments?.getDouble("distanceKm") ?: 0.0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -125,6 +125,30 @@ class RideRequestSheet : BottomSheetDialogFragment() {
     }
 
     companion object {
+
         const val TAG = "RideRequestSheet"
+
+        fun newInstance(
+            rideRequestId: String,
+            riderName: String,
+            pickupAddress: String,
+            destAddress: String,
+            vehicleType: String,
+            estimatedFare: Int,
+            distanceKm: Double
+        ): RideRequestSheet {
+
+            return RideRequestSheet().apply {
+                arguments = Bundle().apply {
+                    putString("rideRequestId", rideRequestId)
+                    putString("riderName", riderName)
+                    putString("pickupAddress", pickupAddress)
+                    putString("destAddress", destAddress)
+                    putString("vehicleType", vehicleType)
+                    putInt("estimatedFare", estimatedFare)
+                    putDouble("distanceKm", distanceKm)
+                }
+            }
+        }
     }
 }

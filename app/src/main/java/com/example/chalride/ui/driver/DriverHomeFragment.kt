@@ -1113,17 +1113,18 @@ class DriverHomeFragment : Fragment() {
             destAddress   = destAddress
         )
 
-        val sheet = RideRequestSheet().apply {
-            this.rideRequestId = rideRequestId
-            this.riderName     = riderName
-            this.pickupAddress = pickupAddress
-            this.destAddress   = destAddress
-            this.vehicleType   = vehicleType
-            this.estimatedFare = estimatedFare
-            this.distanceKm    = distanceKm
+        val sheet = RideRequestSheet.newInstance(
+            rideRequestId = rideRequestId,
+            riderName = riderName,
+            pickupAddress = pickupAddress,
+            destAddress = destAddress,
+            vehicleType = vehicleType,
+            estimatedFare = estimatedFare,
+            distanceKm = distanceKm
+        ).apply {
 
             onAccepted = {
-                DriverNotificationManager.notifyTripOngoing(requireContext())  // ← replaces dismiss()
+                DriverNotificationManager.notifyTripOngoing(requireContext())
                 acceptRide(rideRequestId)
             }
 
