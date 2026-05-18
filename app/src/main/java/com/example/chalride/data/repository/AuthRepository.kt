@@ -121,7 +121,45 @@ class AuthRepository {
         }
     }
 
-    fun logout() {
-        auth.signOut()
+    /**
+     * Determines the correct start destination fragment ID for MainActivity.
+     * Runs both Firestore reads in parallel to minimise latency.
+     * Returns a data class so MainActivity doesn't need to import fragment IDs here.
+     */
+    data class StartDestinationResult(
+        val role: String?,          // "rider", "driver", or null
+        val profileStep: Int        // 0, 1, or 2+
+    )
+
+    suspend fun getStartDestinationInfo(uid: String): StartDestinationResult {
+        return try {
+            // Run riders and drivers reads in parallel
+            val riderTask  = firestore.collection("riders").document(uid).get()
+            val driverTask = firestore.collection("drivers").document(uid).get()
+
+            val riderDoc  = riderTask.await()
+            val driverDoc = driverTask.await()
+
+            when {
+                riderDoc.exists() -> {
+                    val step = (riderDoc.getLong("profileStep") ?: 0).toInt()
+                    StartDestinationResult(role = "rider", profileStep = step)
+                }
+                driverDoc.exists() -> {
+                    val step = (driverDoc.getLong("profileStep") ?: 0).toInt()
+                    StartDestinationResult(role = "driver", profileStep = step)
+                }
+                else -> {
+                    // UID exists in Auth but not in either collection — sign out
+                    auth.signOut()
+                    StartDestinationResult(role = null, profileStep = 0)
+                }
+            }
+        } catch (_: Exception) {
+            // Network failure — treat as logged out to be safe
+            StartDestinationResult(role = null, profileStep = 0)
+        }
     }
+
+
 }

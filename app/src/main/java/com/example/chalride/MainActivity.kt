@@ -8,7 +8,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
 import com.example.chalride.data.repository.AuthRepository
 import com.example.chalride.databinding.ActivityMainBinding
-import kotlinx.coroutines.runBlocking
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.content.Intent
 import com.example.chalride.ui.driver.DriverNotificationManager
 
@@ -16,9 +17,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val authRepository = AuthRepository()
+    private var isLoadingDestination = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        // Hold the splash screen open until our async Firestore check completes
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { isLoadingDestination }
+
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -32,43 +37,48 @@ class MainActivity : AppCompatActivity() {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
-        val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
 
-        // Determine start destination BEFORE graph is set
-        val startDestination = getStartDestination()
-        navGraph.setStartDestination(startDestination)
-        navController.graph = navGraph
+        // Start the async destination check immediately — splash screen stays visible
+        // until isLoadingDestination flips to false inside the coroutine.
+        lifecycleScope.launch {
+            val startDestination = resolveStartDestination()
 
+            val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
+            navGraph.setStartDestination(startDestination)
+            navController.graph = navGraph
 
-        // Handle tap from RideLive notification — route to active ride screen
-        if (intent?.getBooleanExtra("openRideLive", false) == true) {
-            val prefs = getSharedPreferences(
-                com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
-                MODE_PRIVATE
-            )
-            val savedRideId = prefs.getString(
-                com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
-            ) ?: ""
-            if (savedRideId.isNotEmpty()) {
-                val bundle = Bundle().apply {
-                    putString("rideRequestId", savedRideId)
-                    putString("driverId",      prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_ID, ""))
-                    putString("driverName",    prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
-                    putString("vehicleType",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_VEHICLE, ""))
-                    putDouble("pickupLat",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LAT, 0L)))
-                    putDouble("pickupLng",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LNG, 0L)))
-                    putDouble("destLat",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LAT, 0L)))
-                    putDouble("destLng",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LNG, 0L)))
-                    putString("pickupAddress", prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
-                    putString("destAddress",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_ADDR, ""))
-                    putInt("estimatedFare",    prefs.getInt(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_FARE, 0))
+            // Dismiss splash screen — nav graph is ready
+            isLoadingDestination = false
+
+            // Handle tap from RideLive notification — route to active ride screen
+            if (intent?.getBooleanExtra("openRideLive", false) == true) {
+                val prefs = getSharedPreferences(
+                    com.example.chalride.ui.rider.RideLiveService.PREFS_NAME,
+                    MODE_PRIVATE
+                )
+                val savedRideId = prefs.getString(
+                    com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_RIDE_ID, ""
+                ) ?: ""
+                if (savedRideId.isNotEmpty()) {
+                    val bundle = Bundle().apply {
+                        putString("rideRequestId", savedRideId)
+                        putString("driverId",      prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_ID, ""))
+                        putString("driverName",    prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DRIVER_NAME, "Driver"))
+                        putString("vehicleType",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_VEHICLE, ""))
+                        putDouble("pickupLat",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LAT, 0L)))
+                        putDouble("pickupLng",     Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_LNG, 0L)))
+                        putDouble("destLat",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LAT, 0L)))
+                        putDouble("destLng",       Double.fromBits(prefs.getLong(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_LNG, 0L)))
+                        putString("pickupAddress", prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_PICKUP_ADDR, ""))
+                        putString("destAddress",   prefs.getString(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_DEST_ADDR, ""))
+                        putInt("estimatedFare",    prefs.getInt(com.example.chalride.ui.rider.RideLiveService.PREFS_KEY_FARE, 0))
+                    }
+                    navController.navigate(R.id.rideLiveFragment, bundle)
                 }
-                navController.navigate(R.id.rideLiveFragment, bundle)
             }
+
+            handleDriverNotificationTap(intent)
         }
-
-        handleDriverNotificationTap(intent)
-
     }
 
 
@@ -193,32 +203,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    private fun getStartDestination(): Int {
+    private suspend fun resolveStartDestination(): Int {
         val currentUser = authRepository.currentUser
             ?: return R.id.roleSelectionFragment
 
-        return runBlocking {
-            val role = authRepository.getUserRole(currentUser.uid)
+        val info = authRepository.getStartDestinationInfo(currentUser.uid)
 
-            when (role) {
-                "rider" -> {
-                    val profileStep = authRepository.getRiderProfileStep(currentUser.uid)
-                    if (profileStep >= 2) R.id.riderHomeFragment
-                    else R.id.riderPhoneVerifyFragment
-                }
-                "driver" -> {
-                    // Fetch profileStep to know how far setup got
-                    val profileStep = authRepository.getDriverProfileStep(currentUser.uid)
-                    when (profileStep) {
-                        0 -> R.id.driverProfileSetupFragment    // just registered, no profile yet
-                        1 -> R.id.driverVehicleSetupFragment    // profile done, no vehicle yet
-                        else -> R.id.driverHomeFragment          // fully set up
-                    }
-                }
-
-                else -> R.id.roleSelectionFragment
+        return when (info.role) {
+            "rider" -> {
+                if (info.profileStep >= 2) R.id.riderHomeFragment
+                else R.id.riderPhoneVerifyFragment
             }
+            "driver" -> {
+                when (info.profileStep) {
+                    0    -> R.id.driverProfileSetupFragment
+                    1    -> R.id.driverVehicleSetupFragment
+                    else -> R.id.driverHomeFragment
+                }
+            }
+            else -> R.id.roleSelectionFragment
         }
     }
 }
