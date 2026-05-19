@@ -99,10 +99,10 @@ class DriverHomeFragment : Fragment() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            android.widget.Toast.makeText(
+            Toast.makeText(
                 requireContext(),
                 "Enable notifications to get ride request alerts",
-                android.widget.Toast.LENGTH_LONG
+                Toast.LENGTH_LONG
             ).show()
         }
         // Whether granted or denied, always proceed to location permission next
@@ -167,7 +167,6 @@ class DriverHomeFragment : Fragment() {
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
-
                 if (_binding == null) return@addOnSuccessListener
 
                 val firestoreOnline =
@@ -209,6 +208,7 @@ class DriverHomeFragment : Fragment() {
                 }
             }
             .addOnFailureListener { e ->
+                if (_binding == null) return@addOnFailureListener  // ← ADD THIS
 
                 android.util.Log.e(
                     "DriverHome",
@@ -234,6 +234,7 @@ class DriverHomeFragment : Fragment() {
             .collection("drivers").document(uid)
             .get()
             .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener  // ← ADD THIS
                 val isFlagged   = doc.getBoolean("isAccountFlagged") ?: false
                 val cancelCount = doc.getLong("offlineCancelCount")  ?: 0L
 
@@ -272,16 +273,52 @@ class DriverHomeFragment : Fragment() {
         val type = intent?.getStringExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE) ?: return
         if (type != DriverNotificationManager.TYPE_RIDE_REQUEST) return
 
-        // Clear the extra so rotating the screen doesn't re-trigger this
+        // Clear so screen rotation doesn't re-trigger
         intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
 
-        // The ride request listener (listenForRideRequests) is already running
-        // if the driver is online. It will re-show the sheet if the document
-        // is still "pending". No extra work needed here — we just ensure
-        // the driver is online so the listener is active.
-        if (isOnline && rideRequestListener == null) {
-            listenForRideRequests()
-        }
+        val rideRequestId = intent.getStringExtra(DriverNotificationManager.EXTRA_RIDE_REQUEST_ID)
+            ?: return
+
+        // Fetch the ride document to check if it's still valid and compute remaining time
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener
+
+                val status      = doc.getString("status") ?: ""
+                val createdAt   = doc.getLong("createdAt") ?: 0L
+                val elapsedMs   = System.currentTimeMillis() - createdAt
+                val remainingSec = ((15_000L - elapsedMs) / 1000L).toInt()
+
+                if (status != "pending" || remainingSec <= 0) {
+                    Toast.makeText(
+                        requireContext(),
+                        "You just missed a ride request",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    DriverNotificationManager.notifyOnline(requireContext())
+                    return@addOnSuccessListener
+                }
+
+                val pickupLat = doc.getDouble("pickupLat")  ?: 0.0
+                val pickupLng = doc.getDouble("pickupLng")  ?: 0.0
+                val driverLat = currentLocation?.latitude   ?: 0.0
+                val driverLng = currentLocation?.longitude  ?: 0.0
+
+                currentRideRequestId = doc.id  // prevent onResume from double-handling this
+                showRideRequestSheetInternal(
+                    rideRequestId = doc.id,
+                    riderName     = doc.getString("riderName")     ?: "Rider",
+                    pickupAddress = doc.getString("pickupAddress") ?: "",
+                    destAddress   = doc.getString("destAddress")   ?: "",
+                    vehicleType   = doc.getString("vehicleType")   ?: "",
+                    estimatedFare = (doc.getLong("estimatedFare")  ?: 0).toInt(),
+                    distanceKm    = haversineDistance(driverLat, driverLng, pickupLat, pickupLng),
+                    remainingSec  = remainingSec
+                )
+            }
     }
 
 
@@ -305,6 +342,7 @@ class DriverHomeFragment : Fragment() {
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener  // ← ADD THIS
 
                 val name = doc.getString("name") ?: "Driver"
                 val imageUrl = doc.getString("photoUrl")
@@ -337,6 +375,7 @@ class DriverHomeFragment : Fragment() {
             .whereEqualTo("status", "completed")
             .get()
             .addOnSuccessListener { snapshot ->
+                if (_binding == null) return@addOnSuccessListener  // ← ADD THIS
 
                 var todayEarnings = 0L
                 var todayTrips = 0
@@ -523,8 +562,8 @@ class DriverHomeFragment : Fragment() {
         }
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
-                android.Manifest.permission.POST_NOTIFICATIONS
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             // Already granted — proceed immediately
             onComplete()
@@ -533,7 +572,7 @@ class DriverHomeFragment : Fragment() {
 
         // Need to ask — store the callback, launch the dialog
         pendingAfterNotificationPermission = onComplete
-        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun setupBottomSheet() {
@@ -633,10 +672,18 @@ class DriverHomeFragment : Fragment() {
 
         // Also translate the sheet up slightly and back to hint it's draggable
         binding.bottomSheet.animate()
-            .translationY(-28f).setDuration(350).withEndAction {
+            .translationY(-28f)
+            .setDuration(350)
+            .withEndAction {
+
+                val binding = _binding ?: return@withEndAction
+
                 binding.bottomSheet.animate()
-                    .translationY(0f).setDuration(350).start()
-            }.start()
+                    .translationY(0f)
+                    .setDuration(350)
+                    .start()
+            }
+            .start()
     }
 
 
@@ -752,10 +799,10 @@ class DriverHomeFragment : Fragment() {
             val stepDelay = 1000L
 
             for (i in 1..steps) {
-                if (_binding == null) return@launch
+                val b = _binding ?: return@launch
                 val zoom = startZoom + (endZoom - startZoom) * (i.toDouble() / steps)
-                binding.mapView.controller.setZoom(zoom)
-                binding.mapView.controller.setCenter(geoPoint)
+                b.mapView.controller.setZoom(zoom)
+                b.mapView.controller.setCenter(geoPoint)
                 delay(stepDelay)
             }
         }
@@ -805,6 +852,7 @@ class DriverHomeFragment : Fragment() {
                     .collection("drivers").document(uid)
                     .get()
                     .addOnSuccessListener { doc ->
+                        if (_binding == null) return@addOnSuccessListener
                         val isFlagged = doc.getBoolean("isAccountFlagged") ?: false
                         val count     = doc.getLong("offlineCancelCount")  ?: 0L
                         if (isFlagged || count >= 6) {
@@ -831,10 +879,10 @@ class DriverHomeFragment : Fragment() {
                                 isOnline = false
                                 updateOnlineUI()
                                 checkAndRequestPermission()
-                                android.widget.Toast.makeText(
+                                Toast.makeText(
                                     requireContext(),
                                     "Location permission is required to go online",
-                                    android.widget.Toast.LENGTH_LONG
+                                    Toast.LENGTH_LONG
                                 ).show()
                                 return@addOnSuccessListener
                             }
@@ -891,6 +939,7 @@ class DriverHomeFragment : Fragment() {
             .document(uid)
             .get()
             .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener
                 val activeRideId = doc.getString("activeRideId")
 
                 if (!activeRideId.isNullOrEmpty()) {
@@ -902,36 +951,61 @@ class DriverHomeFragment : Fragment() {
                         .document(activeRideId)
                         .get()
                         .addOnSuccessListener { rideDoc ->
+                            if (_binding == null) return@addOnSuccessListener
 
-                            // Only resume if the ride is still in progress (not completed/cancelled)
                             val status = rideDoc.getString("status") ?: ""
-                            if (status !in listOf("completed", "cancelled")) {
-
-                                val bundle = Bundle().apply {
-                                    putString("rideRequestId", activeRideId)
-                                    putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
-                                    putDouble("pickupLat",     rideDoc.getDouble("pickupLat")     ?: 0.0)
-                                    putDouble("pickupLng",     rideDoc.getDouble("pickupLng")     ?: 0.0)
-                                    putDouble("destLat",       rideDoc.getDouble("destLat")       ?: 0.0)
-                                    putDouble("destLng",       rideDoc.getDouble("destLng")       ?: 0.0)
-                                    putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
-                                    putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
-                                    putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
-                                    putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
-                                }
-
-                                // Also restart the location service since app crashed
-                                startDriverLocationService()
-
-                                findNavController().navigate(
-                                    R.id.action_driverHome_to_driverActiveRide,
-                                    bundle
-                                )
-                            } else {
-                                // Ride ended while app was crashed — clean up stale activeRideId
+                            if (status in listOf("completed", "cancelled")) {
+                                // Ride ended while app was away — clean up stale activeRideId
                                 FirebaseFirestore.getInstance()
                                     .collection("drivers").document(uid)
                                     .update("activeRideId", null)
+                                return@addOnSuccessListener
+                            }
+
+                            // Read the real trip phase from the rideRequest document
+                            val firestorePhase = rideDoc.getString("tripPhase") ?: "HEADING_TO_PICKUP"
+
+                            // Also restart the location service since app was killed/minimized
+                            startDriverLocationService()
+
+                            val baseBundle = Bundle().apply {
+                                putString("rideRequestId", activeRideId)
+                                putString("riderName",     rideDoc.getString("riderName")     ?: "Rider")
+                                putDouble("pickupLat",     rideDoc.getDouble("pickupLat")     ?: 0.0)
+                                putDouble("pickupLng",     rideDoc.getDouble("pickupLng")     ?: 0.0)
+                                putDouble("destLat",       rideDoc.getDouble("destLat")       ?: 0.0)
+                                putDouble("destLng",       rideDoc.getDouble("destLng")       ?: 0.0)
+                                putString("pickupAddress", rideDoc.getString("pickupAddress") ?: "")
+                                putString("destAddress",   rideDoc.getString("destAddress")   ?: "")
+                                putInt("estimatedFare",    (rideDoc.getLong("estimatedFare")  ?: 0).toInt())
+                                putString("vehicleType",   rideDoc.getString("vehicleType")   ?: "")
+                                putString("riderPhone",    rideDoc.getString("riderPhone")    ?: "")
+                            }
+
+                            if (_binding == null) return@addOnSuccessListener
+
+                            when {
+                                // Driver was on the OTP screen — go directly to DriverArrivedPickupFragment
+                                status == "arrived_at_pickup" -> {
+                                    findNavController().navigate(
+                                        R.id.action_driverHome_to_driverActiveRide,
+                                        Bundle(baseBundle).apply { putString("tripPhase", "ARRIVED_AT_PICKUP") }
+                                    )
+                                }
+                                // Driver was in phase 2 (in_progress) — show phase 2 overview
+                                firestorePhase == "IN_PROGRESS" || status == "in_progress" -> {
+                                    findNavController().navigate(
+                                        R.id.action_driverHome_to_driverActiveRide,
+                                        Bundle(baseBundle).apply { putString("tripPhase", "IN_PROGRESS") }
+                                    )
+                                }
+                                // Default — phase 1, heading to pickup
+                                else -> {
+                                    findNavController().navigate(
+                                        R.id.action_driverHome_to_driverActiveRide,
+                                        Bundle(baseBundle).apply { putString("tripPhase", "HEADING_TO_PICKUP") }
+                                    )
+                                }
                             }
                         }
                 }
@@ -1062,23 +1136,62 @@ class DriverHomeFragment : Fragment() {
                         val doc = change.document
                         if (doc.id == currentRideRequestId) continue
 
+                        // ── Expiry check: field is "createdAt" from RideSearchingFragment ──
+                        val createdAt    = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                        val elapsedMs    = System.currentTimeMillis() - createdAt
+                        val remainingSec = ((15_000L - elapsedMs) / 1000L).toInt()
+
+                        val estimatedFare = (doc.getLong("estimatedFare") ?: 0).toInt()
+                        val riderName     = doc.getString("riderName")     ?: "Rider"
+                        val pickupAddress = doc.getString("pickupAddress") ?: ""
+                        val destAddress   = doc.getString("destAddress")   ?: ""
+                        val vehicleType   = doc.getString("vehicleType")   ?: ""
+                        val pickupLat     = doc.getDouble("pickupLat")     ?: 0.0
+                        val pickupLng     = doc.getDouble("pickupLng")     ?: 0.0
+                        val driverLat     = currentLocation?.latitude      ?: 0.0
+                        val driverLng     = currentLocation?.longitude     ?: 0.0
+                        val distanceKm    = haversineDistance(driverLat, driverLng, pickupLat, pickupLng)
+
+                        if (remainingSec <= 0) {
+                            // Driver opened app after 15s — request already expired
+                            android.util.Log.d("DriverHome", "Ride request ${doc.id} expired (${elapsedMs}ms old)")
+                            currentRideRequestId = doc.id
+                            markRideAsRejected(doc.id)
+                            DriverNotificationManager.notifyOnline(requireContext())
+                            if (_binding != null) {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "You just missed a ride request",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            break
+                        }
+
                         currentRideRequestId = doc.id
 
-                        val pickupLat  = doc.getDouble("pickupLat")  ?: 0.0
-                        val pickupLng  = doc.getDouble("pickupLng")  ?: 0.0
-                        val driverLat  = currentLocation?.latitude   ?: 0.0
-                        val driverLng  = currentLocation?.longitude  ?: 0.0
-                        val distanceKm = haversineDistance(driverLat, driverLng, pickupLat, pickupLng)
-
-                        showRideRequestSheet(
+                        // Always fire the alert notification — works even when app is backgrounded
+                        DriverNotificationManager.notifyNewRideRequest(
+                            context       = requireContext(),
                             rideRequestId = doc.id,
-                            riderName     = doc.getString("riderName")  ?: "Rider",
-                            pickupAddress = doc.getString("pickupAddress") ?: "",
-                            destAddress   = doc.getString("destAddress")   ?: "",
-                            vehicleType   = doc.getString("vehicleType")   ?: "",
-                            estimatedFare = (doc.getLong("estimatedFare")  ?: 0).toInt(),
-                            distanceKm    = distanceKm
+                            estimatedFare = estimatedFare,
+                            pickupAddress = pickupAddress,
+                            destAddress   = destAddress
                         )
+
+                        // Only show the bottom sheet when the fragment view is alive (app is foreground)
+                        if (_binding != null) {
+                            showRideRequestSheetInternal(
+                                rideRequestId = doc.id,
+                                riderName     = riderName,
+                                pickupAddress = pickupAddress,
+                                destAddress   = destAddress,
+                                vehicleType   = vehicleType,
+                                estimatedFare = estimatedFare,
+                                distanceKm    = distanceKm,
+                                remainingSec  = remainingSec
+                            )
+                        }
                         break
                     }
                 }
@@ -1095,53 +1208,60 @@ class DriverHomeFragment : Fragment() {
         return R * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
-    private fun showRideRequestSheet(
+    private fun showRideRequestSheetInternal(
         rideRequestId: String,
         riderName: String,
         pickupAddress: String,
         destAddress: String,
         vehicleType: String,
         estimatedFare: Int,
-        distanceKm: Double
+        distanceKm: Double,
+        remainingSec: Int
     ) {
-
-        DriverNotificationManager.notifyNewRideRequest(
-            context       = requireContext(),
-            rideRequestId = rideRequestId,
-            estimatedFare = estimatedFare,
-            pickupAddress = pickupAddress,
-            destAddress   = destAddress
-        )
-
         val sheet = RideRequestSheet.newInstance(
             rideRequestId = rideRequestId,
-            riderName = riderName,
+            riderName     = riderName,
             pickupAddress = pickupAddress,
-            destAddress = destAddress,
-            vehicleType = vehicleType,
+            destAddress   = destAddress,
+            vehicleType   = vehicleType,
             estimatedFare = estimatedFare,
-            distanceKm = distanceKm
+            distanceKm    = distanceKm,
+            remainingSec  = remainingSec
         ).apply {
-
             onAccepted = {
-                DriverNotificationManager.notifyTripOngoing(requireContext())
-                acceptRide(rideRequestId)
+                if (_binding != null) acceptRide(rideRequestId)
             }
-
             onRejected = {
                 DriverNotificationManager.notifyOnline(requireContext())
-                markRideAsRejected(rideRequestId)
-                currentRideRequestId = null
+                if (_binding != null) {
+                    markRideAsRejected(rideRequestId)
+                    currentRideRequestId = null
+                }
             }
-
             onTimeout = {
-                DriverNotificationManager.notifyOnline(requireContext())
+                // Only revert notification to "You're Online" if we're in the foreground.
+                // If backgrounded, the notification should stay as "New Ride Request"
+                // until the driver taps it — it will be evaluated and expired gracefully then.
+                if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                    DriverNotificationManager.notifyOnline(requireContext())
+                }
                 markRideAsRejected(rideRequestId)
                 currentRideRequestId = null
             }
         }
 
-        sheet.show(parentFragmentManager, RideRequestSheet.TAG)
+        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+            // Guard against double-show if both onResume and handleDriverNotificationIntent fire
+            val existing = parentFragmentManager.findFragmentByTag(RideRequestSheet.TAG)
+            if (existing == null) {
+                sheet.show(parentFragmentManager, RideRequestSheet.TAG)
+            } else {
+                android.util.Log.d("DriverHome", "RideRequestSheet already showing — skipped duplicate")
+            }
+        } else {
+            android.util.Log.d("DriverHome",
+                "Skipped showing RideRequestSheet — fragment not resumed (backgrounded)")
+        }
     }
 
     private fun acceptRide(rideRequestId: String) {
@@ -1178,6 +1298,8 @@ class DriverHomeFragment : Fragment() {
                     )
                 }
                     .addOnSuccessListener {
+                        // Transaction won — ride is confirmed, now safe to update notification
+                        DriverNotificationManager.notifyTripOngoing(requireContext())
                         // Transaction won — now fetch full ride details for navigation
                         rideRef.get().addOnSuccessListener { rideDoc ->
 
@@ -1215,6 +1337,7 @@ class DriverHomeFragment : Fragment() {
                         // Transaction lost — ride was taken by another driver or cancelled
                         currentRideRequestId = null
                         if (_binding != null) {
+                            DriverNotificationManager.notifyOnline(requireContext())
                             Toast.makeText(
                                 requireContext(),
                                 "Ride is no longer available",
@@ -1239,6 +1362,96 @@ class DriverHomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+
+        // When driver returns to the app (via icon or notification tap),
+        // check if there's a pending ride request that was skipped while backgrounded.
+        if (isOnline && currentRideRequestId != null) {
+            val pendingId = currentRideRequestId!!
+            FirebaseFirestore.getInstance()
+                .collection("rideRequests")
+                .document(pendingId)
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (_binding == null) return@addOnSuccessListener
+                    val status      = doc.getString("status") ?: ""
+                    val createdAt   = doc.getLong("createdAt") ?: 0L
+                    val elapsedMs   = System.currentTimeMillis() - createdAt
+                    val remainingSec = ((15_000L - elapsedMs) / 1000L).toInt()
+
+                    if (status == "pending" && remainingSec > 0) {
+                        // Still valid — show the sheet with remaining time
+                        android.util.Log.d("DriverHome",
+                            "onResume: showing pending sheet, remainingSec=$remainingSec")
+                        val pickupLat = doc.getDouble("pickupLat")  ?: 0.0
+                        val pickupLng = doc.getDouble("pickupLng")  ?: 0.0
+                        val driverLat = currentLocation?.latitude   ?: 0.0
+                        val driverLng = currentLocation?.longitude  ?: 0.0
+                        showRideRequestSheetInternal(
+                            rideRequestId = pendingId,
+                            riderName     = doc.getString("riderName")     ?: "Rider",
+                            pickupAddress = doc.getString("pickupAddress") ?: "",
+                            destAddress   = doc.getString("destAddress")   ?: "",
+                            vehicleType   = doc.getString("vehicleType")   ?: "",
+                            estimatedFare = (doc.getLong("estimatedFare")  ?: 0).toInt(),
+                            distanceKm    = haversineDistance(driverLat, driverLng, pickupLat, pickupLng),
+                            remainingSec  = remainingSec
+                        )
+                    } else {
+                        // Expired or already handled — clean up
+                        android.util.Log.d("DriverHome",
+                            "onResume: request expired or handled (status=$status, elapsed=${elapsedMs}ms)")
+                        if (status == "pending") markRideAsRejected(pendingId)
+                        currentRideRequestId = null
+                        DriverNotificationManager.notifyOnline(requireContext())
+                        val fare = (doc.getLong("estimatedFare") ?: 0).toInt()
+                        Toast.makeText(
+                            requireContext(),
+                            "You just missed a ₹$fare ride request",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                .addOnFailureListener {
+                    // Firestore fetch failed — safe fallback
+                    currentRideRequestId = null
+                    DriverNotificationManager.notifyOnline(requireContext())
+                }
+        } else if (isOnline) {
+            // currentRideRequestId is null — either no request came, or the app was
+            // killed and restarted (in-memory variable reset). Check Firestore for any
+            // recent pending request targeting this driver that may have just expired.
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid != null) {
+                val fifteenSecondsAgo = System.currentTimeMillis() - 15_000L
+                FirebaseFirestore.getInstance()
+                    .collection("rideRequests")
+                    .whereEqualTo("targetDriverId", uid)
+                    .whereEqualTo("status", "pending")
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        if (_binding == null) return@addOnSuccessListener
+                        val expiredDoc = snapshot.documents.firstOrNull { doc ->
+                            val createdAt = doc.getLong("createdAt") ?: 0L
+                            createdAt < fifteenSecondsAgo
+                        }
+                        if (expiredDoc != null) {
+                            val fare = (expiredDoc.getLong("estimatedFare") ?: 0).toInt()
+                            markRideAsRejected(expiredDoc.id)
+                            Toast.makeText(
+                                requireContext(),
+                                "You just missed a ₹$fare ride request",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        DriverNotificationManager.notifyOnline(requireContext())
+                    }
+                    .addOnFailureListener {
+                        DriverNotificationManager.notifyOnline(requireContext())
+                    }
+            } else {
+                DriverNotificationManager.notifyOnline(requireContext())
+            }
+        }
     }
 
     override fun onPause() {
@@ -1252,14 +1465,21 @@ class DriverHomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        timerJob?.cancel()
-        if (::locationCallback.isInitialized && !isOnline) {
+
+        // Always remove fragment-owned location updates
+        // to prevent callbacks after view destruction
+        if (::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
-        _binding = null
 
         rideRequestListener?.remove()
+        rideRequestListener = null
+
+        _binding?.bottomSheet?.animate()?.cancel()
+
+        _binding = null
+
+        super.onDestroyView()
     }
     
 }

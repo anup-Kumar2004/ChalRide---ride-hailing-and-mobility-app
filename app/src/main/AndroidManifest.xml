@@ -28,6 +28,7 @@
             android:exported="true"
             android:theme="@style/Theme.ChalRide.Splash"
             android:screenOrientation="portrait"
+            tools:ignore="LockedOrientationActivity"
             android:configChanges="orientation|screenSize|keyboardHidden">
 
             <intent-filter>

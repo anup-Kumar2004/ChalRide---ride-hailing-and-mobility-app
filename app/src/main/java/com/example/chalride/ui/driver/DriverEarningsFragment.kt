@@ -74,32 +74,39 @@ class DriverEarningsFragment : Fragment() {
         tripsListener = db.collection("rideRequests")
             .whereEqualTo("driverId", driverUid)
             .addSnapshotListener { snapshots, error ->
-                if (_binding == null) return@addSnapshotListener  // view already destroyed
-                showLoading(false)
+
+                val binding = _binding ?: return@addSnapshotListener
+
+                binding.progressBar.visibility = View.GONE
 
                 if (error != null) {
-                    android.util.Log.e("DriverEarnings", "Error loading trips: ${error.message}")
+                    android.util.Log.e(
+                        "DriverEarnings",
+                        "Error loading trips: ${error.message}"
+                    )
                     return@addSnapshotListener
                 }
 
                 if (snapshots == null || snapshots.isEmpty) {
-                    showEmptyState(true)
+                    binding.emptyState.visibility = View.VISIBLE
+                    binding.rvTrips.visibility = View.GONE
                     return@addSnapshotListener
                 }
 
-                showEmptyState(false)
+                binding.emptyState.visibility = View.GONE
+                binding.rvTrips.visibility = View.VISIBLE
 
                 val trips = snapshots.documents
                     .mapNotNull { doc ->
                         TripEarningsItem(
-                            rideId      = doc.id,
-                            status      = doc.getString("status") ?: "unknown",
-                            pickupAddr  = doc.getString("pickupAddress") ?: "—",
-                            destAddr    = doc.getString("destAddress") ?: "—",
-                            riderName   = doc.getString("riderName") ?: "Rider",
+                            rideId = doc.id,
+                            status = doc.getString("status") ?: "unknown",
+                            pickupAddr = doc.getString("pickupAddress") ?: "—",
+                            destAddr = doc.getString("destAddress") ?: "—",
+                            riderName = doc.getString("riderName") ?: "Rider",
                             vehicleType = doc.getString("vehicleType") ?: "bike",
-                            fare        = doc.getLong("estimatedFare") ?: 0L,
-                            startedAt   = doc.getLong("startedAt")
+                            fare = doc.getLong("estimatedFare") ?: 0L,
+                            startedAt = doc.getLong("startedAt")
                                 ?: doc.getLong("assignedAt")
                                 ?: doc.getLong("createdAt")
                                 ?: 0L,
@@ -110,11 +117,11 @@ class DriverEarningsFragment : Fragment() {
 
                 val completedCount = trips.count { it.status == "completed" }
                 val cancelledCount = trips.count { it.status == "cancelled" }
-                val totalCount     = trips.size
+                val totalCount = trips.size
 
                 binding.tvCompletedCount.text = completedCount.toString()
                 binding.tvCancelledCount.text = cancelledCount.toString()
-                binding.tvTotalTrips.text     = totalCount.toString()
+                binding.tvTotalTrips.text = totalCount.toString()
 
                 val listItems: List<EarningsListItem> =
                     listOf(EarningsListItem.Header(totalCount)) +
@@ -125,12 +132,16 @@ class DriverEarningsFragment : Fragment() {
     }
 
     private fun showLoading(show: Boolean) {
-        binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
+        _binding?.progressBar?.visibility =
+            if (show) View.VISIBLE else View.GONE
     }
 
     private fun showEmptyState(show: Boolean) {
-        binding.emptyState.visibility = if (show) View.VISIBLE else View.GONE
-        binding.rvTrips.visibility    = if (show) View.GONE else View.VISIBLE
+        _binding?.emptyState?.visibility =
+            if (show) View.VISIBLE else View.GONE
+
+        _binding?.rvTrips?.visibility =
+            if (show) View.GONE else View.VISIBLE
     }
 
     override fun onDestroyView() {

@@ -149,8 +149,10 @@ class MainActivity : AppCompatActivity() {
                             .build()
                     )
                 }
-                // Clear the extra so screen rotation doesn't re-trigger
-                intent.removeExtra(DriverNotificationManager.EXTRA_NOTIF_TYPE)
+                // NOTE: Do NOT clear the intent extra here.
+                // DriverHomeFragment.handleDriverNotificationIntent() needs to read it
+                // to check if the request expired and show the "You just missed it" toast.
+                // The fragment clears it itself after reading.
             }
 
             DriverNotificationManager.TYPE_CANCELLED -> {

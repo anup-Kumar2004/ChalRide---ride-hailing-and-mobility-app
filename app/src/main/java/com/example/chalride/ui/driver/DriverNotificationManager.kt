@@ -148,7 +148,7 @@ object DriverNotificationManager {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setContentIntent(pendingIntent)
-            .setOngoing(false)
+            .setOngoing(true)
             .setOnlyAlertOnce(false)
             .setAutoCancel(false)
             .build()

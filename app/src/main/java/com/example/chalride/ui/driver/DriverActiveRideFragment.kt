@@ -97,31 +97,44 @@ class DriverActiveRideFragment : Fragment() {
         when (restoredPhase) {
             "IN_PROGRESS"       -> tripPhase = TripPhase.IN_PROGRESS
             "ARRIVED_AT_PICKUP" -> tripPhase = TripPhase.ARRIVED_AT_PICKUP
-            null -> restorePhaseFromFirestore() // App crash recovery — fetch from Firestore
+            null -> restorePhaseFromFirestore()
         }
         updatePhaseUI()
-        if (restoredPhase != null) {
+
+        if (restoredPhase == "HEADING_TO_PICKUP") {
+            // Restore the fixed start location from Firestore before drawing —
+            // so the overview route never changes even after driver has moved
+            restoreStartLocationFromFirestore {
+                binding.mapView.post { fetchLastLocationAndDraw() }
+            }
+        } else if (restoredPhase != null) {
             binding.mapView.post { fetchLastLocationAndDraw() }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        binding.mapView.onResume()
+        val b = _binding ?: return   // ← ADD THIS guard
+        b.mapView.onResume()
         val restoredPhase = arguments?.getString("tripPhase")
         if (restoredPhase == "IN_PROGRESS" && tripPhase != TripPhase.IN_PROGRESS) {
             tripPhase = TripPhase.IN_PROGRESS
             updatePhaseUI()
         }
-        // Always redraw on resume — handles returning from DriverNavigationFragment
-        // cachedRoutePoints will prevent an ORS re-fetch if phase hasn't changed
-        binding.mapView.overlays.clear()
-        binding.mapView.post { fetchLastLocationAndDraw() }
+        b.mapView.overlays.clear()
+        if (tripPhase == TripPhase.HEADING_TO_PICKUP && savedStartLat == 0.0) {
+            // Start location lost (e.g. back-stack resume after process death) — restore before drawing
+            restoreStartLocationFromFirestore {
+                binding.mapView.post { fetchLastLocationAndDraw() }
+            }
+        } else {
+            b.mapView.post { fetchLastLocationAndDraw() }
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        binding.mapView.onPause()
+        _binding?.mapView?.onPause()
     }
 
     override fun onDestroyView() {
@@ -151,6 +164,8 @@ class DriverActiveRideFragment : Fragment() {
                         savedStartLng = location.longitude
                         android.util.Log.d("CHALRIDE_NAV",
                             "Saved driver start location: $savedStartLat, $savedStartLng")
+                        // Persist to Firestore so it survives app kill/minimize
+                        persistStartLocation(savedStartLat, savedStartLng)
                     }
 
                     drawOverviewRoute(location.latitude, location.longitude)
@@ -160,6 +175,7 @@ class DriverActiveRideFragment : Fragment() {
                     drawOverviewRoute()
                 }
             }.addOnFailureListener { e ->
+                if (_binding == null) return@addOnFailureListener  // ← ADD THIS
                 android.util.Log.e("CHALRIDE_NAV", "Failed to get location: ${e.message}")
                 drawOverviewRoute()
             }
@@ -167,6 +183,38 @@ class DriverActiveRideFragment : Fragment() {
             android.util.Log.e("CHALRIDE_NAV", "Location permission denied: ${e.message}")
             drawOverviewRoute()
         }
+    }
+
+    private fun persistStartLocation(lat: Double, lng: Double) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .update(mapOf(
+                "tripStartLat" to lat,
+                "tripStartLng" to lng
+            ))
+    }
+
+    private fun restoreStartLocationFromFirestore(onRestored: () -> Unit) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (_binding == null) return@addOnSuccessListener
+                val lat = doc.getDouble("tripStartLat") ?: 0.0
+                val lng = doc.getDouble("tripStartLng") ?: 0.0
+                if (lat != 0.0 && lng != 0.0) {
+                    savedStartLat = lat
+                    savedStartLng = lng
+                    android.util.Log.d("CHALRIDE_NAV",
+                        "Restored driver start location from Firestore: $lat, $lng")
+                }
+                onRestored()
+            }
+            .addOnFailureListener {
+                onRestored() // proceed even if read fails
+            }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -199,6 +247,7 @@ class DriverActiveRideFragment : Fragment() {
     }
 
     private fun drawOverviewRoute(driverLat: Double = 0.0, driverLng: Double = 0.0) {
+        if (_binding == null) return   // ← ADD THIS
         binding.btnNavigate.visibility = View.GONE
         routePolyline?.let { binding.mapView.overlays.remove(it) }
         routePolyline = null
@@ -330,14 +379,23 @@ class DriverActiveRideFragment : Fragment() {
             .get()
             .addOnSuccessListener { doc ->
                 if (_binding == null) return@addOnSuccessListener
-                val savedPhase = doc.getString("tripPhase") ?: "HEADING_TO_PICKUP"
-                tripPhase = when (savedPhase) {
-                    "IN_PROGRESS"       -> TripPhase.IN_PROGRESS
-                    "ARRIVED_AT_PICKUP" -> TripPhase.ARRIVED_AT_PICKUP
-                    else                -> TripPhase.HEADING_TO_PICKUP
+                val status = doc.getString("status") ?: ""
+                tripPhase = when {
+                    status == "arrived_at_pickup"           -> TripPhase.ARRIVED_AT_PICKUP
+                    status == "in_progress"                 -> TripPhase.IN_PROGRESS
+                    doc.getString("tripPhase") == "IN_PROGRESS" -> TripPhase.IN_PROGRESS
+                    else                                    -> TripPhase.HEADING_TO_PICKUP
                 }
                 updatePhaseUI()
-                binding.mapView.post { fetchLastLocationAndDraw() }
+                if (_binding != null && tripPhase != TripPhase.ARRIVED_AT_PICKUP) {
+                    if (tripPhase == TripPhase.HEADING_TO_PICKUP) {
+                        restoreStartLocationFromFirestore {
+                            binding.mapView.post { fetchLastLocationAndDraw() }
+                        }
+                    } else {
+                        binding.mapView.post { fetchLastLocationAndDraw() }
+                    }
+                }
             }
     }
 
@@ -502,9 +560,16 @@ class DriverActiveRideFragment : Fragment() {
                     putInt("estimatedFare",    estimatedFare)
                     putString("vehicleType",   vehicleType)
                 }
-                findNavController().navigate(
-                    R.id.action_driverActiveRide_to_driverArrivedPickup, bundle
-                )
+
+                view?.post {   // ← defer until after onViewCreated() completes
+                    if (_binding != null) {
+                        findNavController().navigate(
+                            R.id.action_driverActiveRide_to_driverArrivedPickup, bundle
+                        )
+                    }
+                }
+
+
             }
             TripPhase.IN_PROGRESS -> {
                 binding.tvPhaseLabel.text    = "TRIP IN PROGRESS"

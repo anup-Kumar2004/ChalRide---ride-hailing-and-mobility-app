@@ -15,13 +15,20 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.chalride.R
 import com.example.chalride.databinding.FragmentRiderPhoneVerifyBinding
-import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.PhoneAuthCredential
-import com.google.firebase.auth.PhoneAuthOptions
-import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
-import java.util.concurrent.TimeUnit
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import kotlin.random.Random
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 
 class RiderPhoneVerifyFragment : Fragment() {
 
@@ -31,14 +38,13 @@ class RiderPhoneVerifyFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
-    // Holds the verification ID returned by Firebase after SMS is sent
-    private var storedVerificationId: String? = null
-    private var resendToken: PhoneAuthProvider.ForceResendingToken? = null
-
     private var countDownTimer: CountDownTimer? = null
+    private var generatedOtp: String = ""
+    private val OTP_NOTIFICATION_ID = 1001
 
     // The phone number the user entered (without country code, raw 10 digits)
     private var enteredPhone: String = ""
+
 
     // ── Step tracking ────────────────────────────────────────────────────────
     private enum class Step { PHONE, OTP }
@@ -76,6 +82,9 @@ class RiderPhoneVerifyFragment : Fragment() {
 
         setupPhoneInputFocusBorder()
         setupOtpBoxes()
+        createNotificationChannel()
+        requestNotificationPermission()
+
         setupClickListeners()
     }
 
@@ -179,7 +188,36 @@ class RiderPhoneVerifyFragment : Fragment() {
 
         // Change number → go back to phone step
         binding.tvChangeNumber.setOnClickListener {
+            removeOtpNotification()
             switchToPhoneStep()
+        }
+
+        binding.btnOpenNotificationSettings.setOnClickListener {
+
+            val intent = Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", requireContext().packageName, null)
+            )
+
+            startActivity(intent)
+        }
+
+        binding.btnRecheckPermission.setOnClickListener {
+
+            if (isNotificationPermissionGranted()) {
+
+                restoreMainVerificationUi()
+
+            } else {
+
+                showNotificationPermissionLayout()
+
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    "Notification permission still not granted",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -205,137 +243,232 @@ class RiderPhoneVerifyFragment : Fragment() {
         }
     }
 
-    // ── Firebase: Send OTP ────────────────────────────────────────────────────
     private fun sendOtp(phone: String) {
+        binding.btnSendOtp.isEnabled = false
+
         showLoading(true)
+
         hidePhoneError()
 
-        val fullPhone = "+91$phone"
+        generatedOtp = Random.nextInt(100000, 999999).toString()
 
-        val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+        android.util.Log.d("LOCAL_OTP", generatedOtp)
 
-            override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                // Auto-retrieval or instant verification (emulator / whitelisted numbers)
-                showLoading(false)
-                signInWithCredential(credential)
-            }
+        showOtpNotification(generatedOtp)
 
-            override fun onVerificationFailed(e: FirebaseException) {
-                showLoading(false)
-                showPhoneError(parseFirebaseError(e))
-            }
+        showLoading(false)
 
-            override fun onCodeSent(
-                verificationId: String,
-                token: PhoneAuthProvider.ForceResendingToken
-            ) {
-                showLoading(false)
-                storedVerificationId = verificationId
-                resendToken = token
-                switchToOtpStep(phone)
-            }
-        }
-
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(fullPhone)
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(requireActivity())
-            .setCallbacks(callbacks)
-            .build()
-
-        PhoneAuthProvider.verifyPhoneNumber(options)
-    }
-
-    // ── Firebase: Re-send OTP ─────────────────────────────────────────────────
-    private fun resendOtp() {
-        val token = resendToken ?: run {
-            sendOtp(enteredPhone)
+        if (!isNotificationPermissionGranted()) {
+            showNotificationPermissionLayout()
             return
         }
-        showLoading(true)
 
-        val fullPhone = "+91$enteredPhone"
-
-        val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-            override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-                showLoading(false)
-                signInWithCredential(credential)
-            }
-
-            override fun onVerificationFailed(e: FirebaseException) {
-                showLoading(false)
-                showOtpError(parseFirebaseError(e))
-            }
-
-            override fun onCodeSent(
-                verificationId: String,
-                token: PhoneAuthProvider.ForceResendingToken
-            ) {
-                showLoading(false)
-                storedVerificationId = verificationId
-                resendToken = token
-                startResendTimer()
-                clearOtpFields()
-                otpFields[0].requestFocus()
-                showKeyboard(otpFields[0])
-            }
-        }
-
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(fullPhone)
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(requireActivity())
-            .setCallbacks(callbacks)
-            .setForceResendingToken(token)
-            .build()
-
-        PhoneAuthProvider.verifyPhoneNumber(options)
+        switchToOtpStep(phone)
     }
 
-    // ── Attempt verification with entered code ────────────────────────────────
+
+    private fun resendOtp() {
+
+        generatedOtp = Random.nextInt(100000, 999999).toString()
+
+        android.util.Log.d("LOCAL_OTP", generatedOtp)
+
+        showOtpNotification(generatedOtp)
+
+        startResendTimer()
+
+        clearOtpFields()
+
+        otpFields[0].requestFocus()
+
+        showKeyboard(otpFields[0])
+    }
+
     private fun attemptVerifyOtp() {
-        val code = otpFields.joinToString("") { it.text.toString() }
-        if (code.length < 6) {
+
+        val enteredCode = otpFields.joinToString("") {
+            it.text.toString()
+        }
+
+        if (enteredCode.length < 6) {
             showOtpError("Please enter the complete 6-digit code")
             return
         }
-        val vId = storedVerificationId ?: run {
-            showOtpError("Session expired. Please resend the OTP.")
-            return
-        }
+
         showLoading(true)
+
         hideOtpError()
-        val credential = PhoneAuthProvider.getCredential(vId, code)
-        signInWithCredential(credential)
+
+        if (enteredCode == generatedOtp) {
+            removeOtpNotification()
+            generatedOtp = ""
+
+            val currentUser = auth.currentUser
+
+            if (currentUser == null) {
+
+                showLoading(false)
+
+                showOtpError("Session lost. Please login again.")
+
+                return
+            }
+
+            markPhoneVerifiedInFirestore(
+                currentUser.uid,
+                "+91$enteredPhone"
+            )
+
+        } else {
+
+            showLoading(false)
+
+            showOtpError("Incorrect OTP. Please try again.")
+        }
     }
 
-    // ── Firebase sign-in with credential ─────────────────────────────────────
-    private fun signInWithCredential(credential: PhoneAuthCredential) {
-        // We link the phone credential to the existing Firebase user (email+password auth)
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            showLoading(false)
-            showOtpError("Session lost. Please log in again.")
+    private fun createNotificationChannel() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            val channel = NotificationChannel(
+                "chalride_otp_channel",
+                "ChalRide OTP",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+
+            val manager = requireContext().getSystemService(
+                NotificationManager::class.java
+            )
+
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun requestNotificationPermission() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            if (
+                ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    101
+                )
+
+            } else {
+
+                restoreMainVerificationUi()
+            }
+        }
+    }
+
+    private fun isNotificationPermissionGranted(): Boolean {
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+        } else {
+            true
+        }
+    }
+
+    private fun showNotificationPermissionLayout() {
+
+        binding.layoutNotificationPermission.visibility = View.VISIBLE
+
+        // Hide all main views
+        binding.layoutStepIndicator.visibility = View.GONE
+        binding.tvLockIcon.visibility = View.GONE
+        binding.tvPhoneTitle.visibility = View.GONE
+        binding.tvPhoneSubtitle.visibility = View.GONE
+        binding.layoutPhoneInput.visibility = View.GONE
+        binding.tvPhoneError.visibility = View.GONE
+        binding.btnSendOtp.visibility = View.GONE
+        binding.layoutOtpStep.visibility = View.GONE
+    }
+
+    private fun restoreMainVerificationUi() {
+
+        binding.layoutNotificationPermission.visibility = View.GONE
+
+        binding.layoutStepIndicator.visibility = View.VISIBLE
+        binding.tvLockIcon.visibility = View.VISIBLE
+        binding.tvPhoneTitle.visibility = View.VISIBLE
+        binding.tvPhoneSubtitle.visibility = View.VISIBLE
+        binding.layoutPhoneInput.visibility = View.VISIBLE
+        binding.btnSendOtp.visibility = View.VISIBLE
+    }
+
+    private fun showOtpNotification(otp: String) {
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
 
-        currentUser.linkWithCredential(credential)
-            .addOnSuccessListener {
-                // Mark phone as verified in Firestore
-                markPhoneVerifiedInFirestore(currentUser.uid, "+91$enteredPhone")
+        val notification = NotificationCompat.Builder(
+            requireContext(),
+            "chalride_otp_channel"
+        )
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("ChalRide Verification")
+            .setContentText("Your OTP is: $otp")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        NotificationManagerCompat.from(requireContext())
+            .notify(OTP_NOTIFICATION_ID, notification)
+    }
+
+    private fun removeOtpNotification() {
+
+        NotificationManagerCompat
+            .from(requireContext())
+            .cancel(OTP_NOTIFICATION_ID)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
+
+        if (requestCode == 101) {
+
+            if (
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+
+                restoreMainVerificationUi()
+
+            } else {
+
+                showNotificationPermissionLayout()
             }
-            .addOnFailureListener { _ ->
-                // If already linked with a phone number, use updatePhoneNumber instead
-                // This handles the case where the user re-verifies
-                currentUser.updatePhoneNumber(credential)
-                    .addOnSuccessListener {
-                        markPhoneVerifiedInFirestore(currentUser.uid, "+91$enteredPhone")
-                    }
-                    .addOnFailureListener { e2 ->
-                        showLoading(false)
-                        showOtpError(parseFirebaseError(e2 as? FirebaseException))
-                    }
-            }
+        }
     }
 
     // ── Write phoneVerified = true to Firestore ───────────────────────────────
@@ -357,7 +490,6 @@ class RiderPhoneVerifyFragment : Fragment() {
                 )
             }
             .addOnFailureListener {
-                // Firestore write failed — still navigate, phone is verified in Firebase Auth
                 showLoading(false)
                 findNavController().navigate(
                     R.id.action_riderPhoneVerify_to_riderHome
@@ -410,6 +542,7 @@ class RiderPhoneVerifyFragment : Fragment() {
     }
 
     private fun switchToPhoneStep() {
+        binding.btnSendOtp.isEnabled = true
         currentStep = Step.PHONE
         countDownTimer?.cancel()
 
@@ -512,29 +645,18 @@ class RiderPhoneVerifyFragment : Fragment() {
         imm.hideSoftInputFromWindow(binding.root.windowToken, 0)
     }
 
-    private fun parseFirebaseError(e: Exception?): String {
-        val msg = e?.message ?: return "Something went wrong. Try again."
-        return when {
-            msg.contains("TOO_SHORT") || msg.contains("INVALID_PHONE_NUMBER") ->
-                "Invalid phone number. Check and retry."
-            msg.contains("TOO_MANY_REQUESTS") || msg.contains("quota") ->
-                "Too many attempts. Please try again later."
-            msg.contains("INVALID_CODE") || msg.contains("invalid-verification-code") ->
-                "Incorrect code. Please check and retry."
-            msg.contains("CODE_EXPIRED") || msg.contains("session-expired") ->
-                "Code expired. Please request a new one."
-            msg.contains("CREDENTIAL_ALREADY_IN_USE") ->
-                "This number is linked to another account."
-            msg.contains("network") || msg.contains("NETWORK") ->
-                "No internet connection. Check and retry."
-            else -> "Verification failed. Please try again."
-        }
-    }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     override fun onDestroyView() {
+
         countDownTimer?.cancel()
+
+        removeOtpNotification()
+
+        generatedOtp = ""
+
         super.onDestroyView()
+
         _binding = null
     }
 }

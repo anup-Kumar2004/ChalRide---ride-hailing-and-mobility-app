@@ -36,21 +36,12 @@ import androidx.core.graphics.toColorInt
 import java.net.URL
 import kotlin.math.*
 
-/**
- * DriverNavigationFragment — Full-screen turn-by-turn navigation.
- *
- * Features:
- *  • Map rotates to match the driver's bearing (heading-up navigation).
- *  • Driver arrow icon animates smoothly between GPS fixes.
- *  • Route is re-fetched every ROUTE_UPDATE_THRESHOLD_METERS of movement.
- *  • "ARRIVED" detection within 80m → prompts action.
- *  • If heading to pickup → navigate to DriverArrivedPickupFragment on arrival.
- *  • If heading to destination → complete ride.
- *  • Back button returns to DriverActiveRideFragment.
- */
+
 class DriverNavigationFragment : Fragment() {
 
     private var _binding: FragmentDriverNavigationBinding? = null
+    private var blinkAnimator: android.animation.ObjectAnimator? = null
+
     private val binding get() = _binding!!
 
     // ── Arguments ─────────────────────────────────────────────────────────────
@@ -167,16 +158,18 @@ class DriverNavigationFragment : Fragment() {
         binding.mapView.post { mapInitialized = true }
     }
 
-    override fun onResume() { super.onResume(); binding.mapView.onResume() }
-    override fun onPause()  { super.onPause();  binding.mapView.onPause() }
+    override fun onResume() { super.onResume(); _binding?.mapView?.onResume() }
+    override fun onPause()  { super.onPause();  _binding?.mapView?.onPause() }
 
     override fun onDestroyView() {
         markerAnimator?.cancel()
         recenterHandler.removeCallbacksAndMessages(null)
-        // Cancel blink animation if running
-        (binding.tvArrivedBar.tag as? android.animation.ObjectAnimator)?.cancel()
+
+        blinkAnimator?.cancel()
+        blinkAnimator = null
+
         riderCancelListener?.remove()    // ADD THIS LINE
-        if (::locationCallback.isInitialized) {
+        if (::fusedLocationClient.isInitialized && ::locationCallback.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
         super.onDestroyView()
@@ -277,6 +270,7 @@ class DriverNavigationFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun rotateAndCenterMap(location: GeoPoint, bearing: Float) {
+        if (_binding == null) return
         binding.mapView.mapOrientation = -bearing
         binding.mapView.controller.setZoom(18.0)
         binding.mapView.controller.setCenter(location)
@@ -287,13 +281,14 @@ class DriverNavigationFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun drawRoute(from: GeoPoint) {
+        if (_binding == null) return
         if (routeFetchInProgress) return
         val apiKey = try { getString(R.string.ors_api_key).trim() } catch (_: Exception) { return }
 
         routeFetchInProgress = true
         val target = GeoPoint(targetLat, targetLng)
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val points = withContext(Dispatchers.IO) {
                     val url = "https://api.openrouteservice.org/v2/directions/driving-car" +
@@ -356,49 +351,48 @@ class DriverNavigationFragment : Fragment() {
     }
 
     private fun setActionButtonState(enabled: Boolean) {
-        binding.btnArrivedAction.isEnabled = true   // always clickable — state checked in click handler
-        binding.btnArrivedAction.isClickable = true
+        val b = _binding ?: return
+        b.btnArrivedAction.isEnabled = true
+        b.btnArrivedAction.isClickable = true
 
-        // Force Material to respect our colors regardless of enabled state
-        val bgColor = if (enabled) "#24196B" else "#1A1A2E"
-        val textColor = if (enabled) "#FFFFFF" else "#555570"
+        val bgColor    = if (enabled) "#24196B" else "#1A1A2E"
+        val textColor  = if (enabled) "#FFFFFF" else "#555570"
         val strokeColor = if (enabled) "#6C63FF" else "#2A2A45"
 
-        // This is the key — override the entire background tint list with
-        // a single-state list so Material can't substitute its disabled color
-        binding.btnArrivedAction.backgroundTintList =
+        b.btnArrivedAction.backgroundTintList =
             android.content.res.ColorStateList(
-                arrayOf(intArrayOf()),         // one rule: matches ALL states
+                arrayOf(intArrayOf()),
                 intArrayOf(bgColor.toColorInt())
             )
-        binding.btnArrivedAction.setTextColor(
+        b.btnArrivedAction.setTextColor(
             android.content.res.ColorStateList(
                 arrayOf(intArrayOf()),
                 intArrayOf(textColor.toColorInt())
             )
         )
-        binding.btnArrivedAction.strokeColor =
+        b.btnArrivedAction.strokeColor =
             android.content.res.ColorStateList(
                 arrayOf(intArrayOf()),
                 intArrayOf(strokeColor.toColorInt())
             )
-        binding.btnArrivedAction.strokeWidth =
+        b.btnArrivedAction.strokeWidth =
             (1 * resources.displayMetrics.density).toInt()
     }
 
     private fun updateDistanceEta(distKm: Double, durMin: Double) {
+        val b = _binding ?: return
         val distText = when {
             distKm < 0.1 -> "${(distKm * 1000).toInt()} m"
             distKm < 1.0 -> String.format("%.0f m", distKm * 1000)
             else         -> String.format("%.1f km", distKm)
         }
         val etaText = when {
-            durMin < 1   -> "< 1 min"
-            durMin < 60  -> "${durMin.toInt()} min"
-            else         -> String.format("%.0fh %02.0fm", durMin / 60, durMin % 60)
+            durMin < 1  -> "< 1 min"
+            durMin < 60 -> "${durMin.toInt()} min"
+            else        -> String.format("%.0fh %02.0fm", durMin / 60, durMin % 60)
         }
-        binding.tvEta.text     = etaText      // NEW: dedicated ETA chip TextView
-        binding.tvDistEta.text = distText     // now shows distance only
+        b.tvEta.text     = etaText
+        b.tvDistEta.text = distText
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -406,6 +400,7 @@ class DriverNavigationFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun checkArrival(location: GeoPoint) {
+        if (_binding == null) return
         val distMeters = location.distanceToAsDouble(GeoPoint(targetLat, targetLng))
 
         if (distMeters < 80.0) {
@@ -417,13 +412,9 @@ class DriverNavigationFragment : Fragment() {
         } else {
             // Moved away — hide everything and reset so it can trigger again if they return
             if (arrivedDetected) {
-                arrivedDetected = false
-
-                // Stop blink animation
-                (binding.tvArrivedBar.tag as? android.animation.ObjectAnimator)?.cancel()
+                blinkAnimator?.cancel()
+                blinkAnimator = null
                 binding.tvArrivedBar.alpha = 1f
-
-                // Hide banner
                 binding.tvArrivedBar.visibility = View.GONE
 
                 // Disable action button again
@@ -436,7 +427,8 @@ class DriverNavigationFragment : Fragment() {
     private fun showArrivalPrompt() {
         binding.tvArrivedBar.visibility = View.VISIBLE
 
-        val blink = android.animation.ObjectAnimator.ofFloat(
+        blinkAnimator?.cancel()
+        blinkAnimator = android.animation.ObjectAnimator.ofFloat(
             binding.tvArrivedBar, "alpha", 1f, 0.25f
         ).apply {
             duration = 600
@@ -444,8 +436,7 @@ class DriverNavigationFragment : Fragment() {
             repeatMode = android.animation.ValueAnimator.REVERSE
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
         }
-        blink.start()
-        binding.tvArrivedBar.tag = blink
+        blinkAnimator?.start()
 
         binding.tvArrivedBarText.text = if (isHeadingToPickup)
             "You're near the pickup spot"
@@ -511,6 +502,11 @@ class DriverNavigationFragment : Fragment() {
             .collection("drivers").document(uid)
             .update(completionUpdate)
 
+        // Clear persisted phase-1 start location
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .update(mapOf("tripStartLat" to null, "tripStartLng" to null))
+
         // Build args for the completion screen
         val bundle = Bundle().apply {
             putString("rideRequestId", rideRequestId)
@@ -554,49 +550,38 @@ class DriverNavigationFragment : Fragment() {
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                if (_binding == null) return
+                val b = _binding ?: return
                 val loc = result.lastLocation ?: return
                 val geoPoint = GeoPoint(loc.latitude, loc.longitude)
-                // Note: currentLocation still holds PREVIOUS position here — used for bearing calc below
 
-                // Bearing — use device bearing if available, else compute from last known
-                // Always compute bearing from movement — more reliable than loc.bearing
-                // especially on emulator and low-speed scenarios
                 val prevLat = currentLocation?.latitude ?: geoPoint.latitude
                 val prevLng = currentLocation?.longitude ?: geoPoint.longitude
                 val computedBearing = computeBearing(prevLat, prevLng, geoPoint.latitude, geoPoint.longitude)
 
                 currentBearing = when {
-                    loc.hasBearing() && loc.speed > 1.0f -> loc.bearing  // real device, moving fast
-                    computedBearing != 0f -> computedBearing               // computed from movement delta
-                    else -> currentBearing                                  // keep last known bearing
+                    loc.hasBearing() && loc.speed > 1.0f -> loc.bearing
+                    computedBearing != 0f -> computedBearing
+                    else -> currentBearing
                 }
 
-                currentLocation = geoPoint  // NOW update current location
+                currentLocation = geoPoint
 
-                // Animate the driver arrow
                 placeOrAnimateDriverMarker(geoPoint)
 
-                // Only auto-follow if user is not exploring the map
                 if (!userIsInteracting) {
                     isProgrammaticMapMove = true
                     rotateAndCenterMap(geoPoint, currentBearing)
-                    binding.mapView.postDelayed({ isProgrammaticMapMove = false }, 700)
+                    b.mapView.postDelayed({ isProgrammaticMapMove = false }, 700)  // ← b
                 }
 
-                // Zoom in on first fix
                 if (!hasFirstFix) {
                     hasFirstFix = true
-                    binding.mapView.controller.setZoom(17.5)
+                    b.mapView.controller.setZoom(17.5)  // ← b
                 }
 
-                // Update Firestore driver location
                 updateDriverLocationFirestore(loc.latitude, loc.longitude)
-
-                // Check arrival
                 checkArrival(geoPoint)
 
-                // Re-fetch route if moved enough
                 val movedEnough = haversineDistance(
                     geoPoint.latitude, geoPoint.longitude,
                     lastRouteUpdateLat, lastRouteUpdateLng

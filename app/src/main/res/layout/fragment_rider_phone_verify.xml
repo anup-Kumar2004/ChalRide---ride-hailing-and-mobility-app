@@ -236,7 +236,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -251,7 +251,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -266,7 +266,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -281,7 +281,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -296,7 +296,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -311,7 +311,7 @@
                     android:layout_marginHorizontal="4dp"
                     android:background="@drawable/bg_otp_box"
                     android:gravity="center"
-                    android:inputType="numberDecimal"
+                    android:inputType="number"
                     android:maxLength="1"
                     android:textColor="@color/text_primary"
                     android:textSize="22sp"
@@ -409,6 +409,79 @@
                 app:layout_constraintEnd_toEndOf="parent"/>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- ───────────────────────────────────────────── -->
+        <!-- Notification Permission Required Layout -->
+        <!-- ───────────────────────────────────────────── -->
+
+        <LinearLayout
+            android:id="@+id/layoutNotificationPermission"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="24dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Icon circle -->
+            <FrameLayout
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:background="@drawable/bg_permission_icon_circle_new"
+                android:foregroundGravity="center">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="🔔"
+                    android:textSize="38sp"/>
+            </FrameLayout>
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Permission Needed"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginTop="28dp"/>
+
+            <!-- Description -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ChalRide requires notification permission to securely send OTP verification codes and authenticate your phone number."
+                android:textColor="@color/text_secondary"
+                android:textSize="15sp"
+                android:gravity="center"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginTop="14dp"/>
+
+            <!-- Settings button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenNotificationSettings"
+                style="@style/ChalRide.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Go To Settings"
+                android:layout_marginTop="34dp"/>
+
+            <!-- Recheck button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRecheckPermission"
+                style="@style/ChalRide.Button.Outline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="I Have Allowed Permission"
+                android:layout_marginTop="14dp"/>
+
+        </LinearLayout>
 
         <!-- Shared progress bar -->
         <ProgressBar

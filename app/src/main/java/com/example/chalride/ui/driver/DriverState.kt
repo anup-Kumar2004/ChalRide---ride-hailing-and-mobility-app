@@ -38,7 +38,9 @@ fun DriverState.toFirestoreMap(activeRideId: String? = null): Map<String, Any?> 
         "isOnline"     to false,
         "isAvailable"  to false,
         "activeRideId" to null,
-        "tripPhase"    to null
+        "tripPhase"    to null,
+        "tripStartLat" to null,
+        "tripStartLng" to null
     )
 
     DriverState.ONLINE_AVAILABLE -> mapOf(
@@ -46,7 +48,9 @@ fun DriverState.toFirestoreMap(activeRideId: String? = null): Map<String, Any?> 
         "isOnline"     to true,
         "isAvailable"  to true,
         "activeRideId" to null,
-        "tripPhase"    to null
+        "tripPhase"    to null,
+        "tripStartLat" to null,
+        "tripStartLng" to null
     )
 
     DriverState.ON_TRIP_TO_PICKUP -> mapOf(

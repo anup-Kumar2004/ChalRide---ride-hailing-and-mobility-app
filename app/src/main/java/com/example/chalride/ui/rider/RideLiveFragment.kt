@@ -854,6 +854,8 @@ class RideLiveFragment : Fragment() {
                     "isAvailable"        to false,
                     "activeRideId"       to null,
                     "tripPhase"          to null,
+                    "tripStartLat"       to null,
+                    "tripStartLng"       to null,
                     // Warning system
                     "offlineCancelCount" to newCount,
                     "isAccountFlagged"   to shouldFlag

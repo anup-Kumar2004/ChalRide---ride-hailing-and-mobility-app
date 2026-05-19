@@ -59,11 +59,8 @@ class DriverArrivedPickupFragment : Fragment() {
 
         binding.tvRiderName.text = riderName
 
-        // Generate OTP and save to Firestore so rider can see it
-        generatedOtp = generateOtp()
-        saveOtpToFirestore(generatedOtp)
-
-        startWaitingTimer()
+        // Fetch existing OTP (resume) or generate a new one (fresh start)
+        fetchOrCreateOtpAndStartTimer()
         setupOtpInput()
         setupContactButtons()
         setupStartTripButton()
@@ -85,6 +82,63 @@ class DriverArrivedPickupFragment : Fragment() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun generateOtp(): String = (1000..9999).random().toString()
+
+    /**
+     * Professional OTP resume logic:
+     * - If Firestore already has an OTP and otpSentAt for this ride → reuse it
+     *   and start the timer from the remaining time (no new OTP sent to rider)
+     * - If no OTP exists yet → generate a fresh one, save it, start timer from 2:30
+     */
+    private fun fetchOrCreateOtpAndStartTimer() {
+        if (rideRequestId.isEmpty()) {
+            // Fallback: no ride ID — generate fresh
+            generatedOtp = generateOtp()
+            saveOtpToFirestore(generatedOtp)
+            startWaitingTimer(remainingSeconds = 150)
+            return
+        }
+
+        FirebaseFirestore.getInstance()
+            .collection("rideRequests")
+            .document(rideRequestId)
+            .get()
+            .addOnSuccessListener { doc ->
+                val existingOtp   = doc.getString("riderOtp")
+                val otpSentAt     = doc.getLong("otpSentAt") ?: 0L
+                val status        = doc.getString("status") ?: ""
+
+                val isResuming = !existingOtp.isNullOrEmpty()
+                        && otpSentAt > 0L
+                        && status == "arrived_at_pickup"
+
+                if (isResuming) {
+                    // ── RESUME PATH ──────────────────────────────────────────────
+                    generatedOtp = existingOtp!!
+
+                    val elapsedSeconds = ((System.currentTimeMillis() - otpSentAt) / 1000).toInt()
+                    val remaining      = (150 - elapsedSeconds).coerceAtLeast(0)
+
+                    android.util.Log.d("CHALRIDE_OTP",
+                        "Resuming OTP=$generatedOtp | elapsed=${elapsedSeconds}s | remaining=${remaining}s")
+
+                    startWaitingTimer(remainingSeconds = remaining)
+                } else {
+                    // ── FRESH START PATH ─────────────────────────────────────────
+                    generatedOtp = generateOtp()
+                    saveOtpToFirestore(generatedOtp)
+                    startWaitingTimer(remainingSeconds = 150)
+
+                    android.util.Log.d("CHALRIDE_OTP", "Fresh OTP generated: $generatedOtp")
+                }
+            }
+            .addOnFailureListener { e ->
+                // Network failure fallback — generate fresh so driver isn't stuck
+                android.util.Log.e("CHALRIDE_OTP", "Fetch failed, generating fresh OTP: ${e.message}")
+                generatedOtp = generateOtp()
+                saveOtpToFirestore(generatedOtp)
+                startWaitingTimer(remainingSeconds = 150)
+            }
+    }
 
     private fun saveOtpToFirestore(otp: String) {
         FirebaseFirestore.getInstance()
@@ -266,6 +320,12 @@ class DriverArrivedPickupFragment : Fragment() {
                 return@setOnClickListener
             }
             android.util.Log.d("CHALRIDE_OTP", "Entered: $entered | Expected: $generatedOtp")
+            if (generatedOtp.isEmpty()) {
+                // OTP not yet loaded from Firestore — guard against race condition
+                binding.tvOtpError.text = "Please wait a moment and try again"
+                binding.tvOtpError.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
             if (entered != generatedOtp) {
                 binding.tvOtpError.text = "Incorrect OTP. Ask the rider again."
                 binding.tvOtpError.visibility = View.VISIBLE
@@ -320,6 +380,12 @@ class DriverArrivedPickupFragment : Fragment() {
         FirebaseFirestore.getInstance()
             .collection("drivers").document(uid)
             .update(DriverState.IN_TRIP.toFirestoreMap())
+        // Clear the persisted phase-1 start location — no longer needed
+        FirebaseFirestore.getInstance()
+            .collection("drivers").document(uid)
+            .update(mapOf("tripStartLat" to null, "tripStartLng" to null))
+
+
         // Navigate back to DriverActiveRideFragment with IN_PROGRESS phase
         val bundle = Bundle().apply {
             putString("rideRequestId", rideRequestId)
@@ -342,10 +408,9 @@ class DriverArrivedPickupFragment : Fragment() {
     // 2.5 minute waiting timer
     // ─────────────────────────────────────────────────────────────────────────
 
-    private fun startWaitingTimer() {
-        val totalSeconds = 150 // 2 min 30 sec
+    private fun startWaitingTimer(remainingSeconds: Int = 150) {
         timerJob = viewLifecycleOwner.lifecycleScope.launch {
-            var remaining = totalSeconds
+            var remaining = remainingSeconds
             while (isActive && remaining >= 0) {
                 val min = remaining / 60
                 val sec = remaining % 60

@@ -27,7 +27,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
     var onTimeout:  (() -> Unit)? = null
 
     // Data passed in
-    private val rideRequestId get() = arguments?.getString("rideRequestId") ?: ""
+
     private val riderName     get() = arguments?.getString("riderName") ?: "Rider"
     private val pickupAddress get() = arguments?.getString("pickupAddress") ?: ""
     private val destAddress   get() = arguments?.getString("destAddress") ?: ""
@@ -56,7 +56,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
             hasResponded = true
             timerJob?.cancel()
             onAccepted?.invoke()
-            dismiss()
+            dismissAllowingStateLoss()
         }
 
         binding.btnReject.setOnClickListener {
@@ -64,7 +64,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
             hasResponded = true
             timerJob?.cancel()
             onRejected?.invoke()
-            dismiss()
+            dismissAllowingStateLoss()
         }
     }
 
@@ -84,9 +84,9 @@ class RideRequestSheet : BottomSheetDialogFragment() {
     }
 
     private fun startTimer() {
-        secondsLeft = 15
+        secondsLeft = (arguments?.getInt("remainingSec", 15) ?: 15).coerceIn(1, 15)
         binding.tvTimer.text = secondsLeft.toString()
-        binding.timerProgress.progress = 100
+        binding.timerProgress.progress = (secondsLeft / 15f * 100).toInt()
 
         timerJob = lifecycleScope.launch {
             while (isActive && secondsLeft > 0) {
@@ -113,7 +113,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
             if (isActive && !hasResponded) {
                 hasResponded = true
                 onTimeout?.invoke()
-                dismiss()
+                dismissAllowingStateLoss()
             }
         }
     }
@@ -135,7 +135,8 @@ class RideRequestSheet : BottomSheetDialogFragment() {
             destAddress: String,
             vehicleType: String,
             estimatedFare: Int,
-            distanceKm: Double
+            distanceKm: Double,
+            remainingSec: Int = 15
         ): RideRequestSheet {
 
             return RideRequestSheet().apply {
@@ -147,6 +148,7 @@ class RideRequestSheet : BottomSheetDialogFragment() {
                     putString("vehicleType", vehicleType)
                     putInt("estimatedFare", estimatedFare)
                     putDouble("distanceKm", distanceKm)
+                    putInt("remainingSec", remainingSec)
                 }
             }
         }
