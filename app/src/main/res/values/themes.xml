@@ -14,7 +14,7 @@
 
     <style name="Theme.ChalRide.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/bg_dark</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/bg_dark</item>
         <item name="postSplashScreenTheme">@style/Theme.ChalRide</item>
     </style>
