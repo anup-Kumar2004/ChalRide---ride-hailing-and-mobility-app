@@ -20,7 +20,7 @@
 
 <br/>
 
-[![⬇ Download APK](https://img.shields.io/badge/⬇%20%20DOWNLOAD%20APK-FF6B35?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/your-link-here)
+[![⬇ Download APK](https://img.shields.io/badge/⬇%20%20DOWNLOAD%20APK-FF6B35?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1OlQKwLTSZvhxRkdgu956Y3AmbjrCpT2H/view?usp=sharing)
 &nbsp;&nbsp;
 [![⭐ Star on GitHub](https://img.shields.io/badge/⭐%20Star%20on%20GitHub-161b22?style=for-the-badge&logo=github&logoColor=white)](https://github.com/anup-Kumar2004/ChalRide---ride-hailing-and-mobility-app)
 
