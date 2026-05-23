@@ -37,7 +37,7 @@
 - [Feature Deep-Dive](#-feature-deep-dive)
   - [Auth System](#-auth-system)
   - [Rider Side](#-rider-side)
-  - [Driver Side](#-driver-side)
+  - [Driver Side](#driver-side)
   - [Hidden Engineering](#-hidden-engineering)
 - [Navigation Flow](#-navigation-flow)
 - [Tech Stack](#-tech-stack)
@@ -45,7 +45,7 @@
 - [API Keys](#-api-keys)
 - [Build & Run](#-build--run)
 - [Data Model](#-data-model)
-- [Known Limitations](#-known-limitations)
+- [Known Limitations](#known-limitations)
 
 ---
 
@@ -246,7 +246,7 @@ Phase 2 (after OTP): Pickup → Destination
 
 ---
 
-### 🧑‍✈️ Driver Side
+### Driver Side
 
 #### Going Online
 
@@ -707,7 +707,7 @@ cd ChalRide
 
 ---
 
-## ⚠️ Known Limitations
+## Known Limitations
 
 ```
 ▸ OTP is simulated locally — delivered as a device notification, not real SMS
@@ -755,20 +755,20 @@ app/src/main/java/com/example/chalride/
 
 <br/>
 
-## Built with 🔥 by
+## Built by
 
 **Anup Kumar**
 B.Tech Computer Science · BML Munjal University
 
 <br/>
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-FF6B35?style=for-the-badge&logo=firefox&logoColor=white)](https://anup-kumar2004.github.io)
+[![Portfolio](https://img.shields.io/badge/Portfolio-FF6B35?style=for-the-badge&logo=firefox&logoColor=white)](https://anup-kumar2004.github.io/portfolio/)
 [![GitHub](https://img.shields.io/badge/GitHub-161b22?style=for-the-badge&logo=github&logoColor=white)](https://github.com/anup-Kumar2004)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/your-profile)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](www.linkedin.com/in/anup-kumar-03b0b1354)
 
 <br/>
 
-[![⬇ Download APK](https://img.shields.io/badge/⬇%20%20DOWNLOAD%20APK-FF6B35?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/your-link-here)
+[![⬇ Download APK](https://img.shields.io/badge/⬇%20%20DOWNLOAD%20APK-FF6B35?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1OlQKwLTSZvhxRkdgu956Y3AmbjrCpT2H/view?usp=sharing)
 
 <br/>
 
