@@ -92,7 +92,7 @@ Built over **40+ days**, across **20+ screens**, with **2 foreground services**,
 |:-:|:-:|:-:|
 | <img src="screenshots/destination_search.jpeg" width="180"/> | <img src="screenshots/ride_confirm_part_one.jpeg" width="180"/> | <img src="screenshots/ride_confirm_part_two.jpeg" width="180"/> |
 
-> `Ride Confirm` has two parts — Part 1 shows vehicle cards & nearby drivers, Part 2 shows the radius filter panel.
+> `Ride Confirm has two parts — Part 1 shows the route overview and the collapsed bottom sheet, while Part 2 shows the expanded bottom sheet with vehicle cards, nearby drivers with available vehicle types, and the radius filter panel.   
 
 #### 🔎 Searching & Live Tracking
 | Searching for Driver | Live Tracking |
@@ -109,7 +109,7 @@ Built over **40+ days**, across **20+ screens**, with **2 foreground services**,
 |:-:|:-:|:-:|:-:|
 | <img src="screenshots/rider_side_otp_screen.jpeg" width="160"/> | <img src="screenshots/rider_side_trip_completed_part_one.jpeg" width="160"/> | <img src="screenshots/rider_side_trip_completed_part_two.jpeg" width="160"/> | <img src="screenshots/rider_side_ride_cancellation_screen.jpeg" width="160"/> |
 
-> `Trip Completed` scrolls — Part 1 shows fare & rating, Part 2 shows trip timeline & complaint section.
+> `Trip Completed` scrolls — Part 1 shows fare & trip timeline, Part 2 shows trip details, driver info, rating section & complaint section.
 
 #### 👤 Rider Profile & Trip History
 | Rider Profile | Trip History |
