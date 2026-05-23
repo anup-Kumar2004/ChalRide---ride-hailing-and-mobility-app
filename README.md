@@ -68,35 +68,96 @@ Built over **40+ days**, across **20+ screens**, with **2 foreground services**,
 
 ## 📸 App Screenshots
 
-> *Screenshots show the real app running on physical devices. Open two phones — one as Rider, one as Driver — for the full experience.*
+> *Real screenshots from the live app. Best experienced on two physical devices — one as Rider, one as Driver.*
 
-### Auth & Onboarding
+---
 
-| Role Selection | Login | Register | OTP Verify |
+### 🔐 Auth & Onboarding
+
+| Role Selection | Register | Login | Phone Verify |
 |:-:|:-:|:-:|:-:|
-| ![Role Selection](https://via.placeholder.com/200x400/0F0F1A/6C63FF?text=Role+Select) | ![Login](https://via.placeholder.com/200x400/0F0F1A/6C63FF?text=Login) | ![Register](https://via.placeholder.com/200x400/0F0F1A/6C63FF?text=Register) | ![OTP](https://via.placeholder.com/200x400/0F0F1A/6C63FF?text=OTP+Verify) |
+| <img src="screenshots/role_selection.jpeg" width="180"/> | <img src="screenshots/register.jpeg" width="180"/> | <img src="screenshots/login.jpeg" width="180"/> | <img src="screenshots/phone_number_verify.jpeg" width="180"/> |
 
-### Rider Flow
+---
 
-| Home + GPS | Destination Search | Ride Confirm | Searching |
+### 🧍 Rider Flow
+
+#### 📍 Home & GPS
+| Part 1 — Map loads, GPS fetching | Part 2 — Location confirmed, pickup set |
+|:-:|:-:|
+| <img src="screenshots/rider_home_plus_gps_part_one.jpeg" width="220"/> | <img src="screenshots/rider_home_plus_gps_part_two.jpeg" width="220"/> |
+
+#### 🔍 Destination Search & Route
+| Destination Search | Ride Confirm (Part 1) | Ride Confirm (Part 2) |
+|:-:|:-:|:-:|
+| <img src="screenshots/destination_search.jpeg" width="180"/> | <img src="screenshots/ride_confirm_part_one.jpeg" width="180"/> | <img src="screenshots/ride_confirm_part_two.jpeg" width="180"/> |
+
+> `Ride Confirm` has two parts — Part 1 shows vehicle cards & nearby drivers, Part 2 shows the radius filter panel.
+
+#### 🔎 Searching & Live Tracking
+| Searching for Driver | Live Tracking |
+|:-:|:-:|
+| <img src="screenshots/searching.jpeg" width="220"/> | <img src="screenshots/live_tracking.jpeg" width="220"/> |
+
+#### 📋 Ride Details (Summary Sheet)
+| Part 1 — Driver info & status | Part 2 — Route & ride ID |
+|:-:|:-:|
+| <img src="screenshots/ride_details_part_one.jpeg" width="220"/> | <img src="screenshots/ride_details_part_two.jpeg" width="220"/> |
+
+#### ✅ OTP, Trip Completion & Cancellation
+| Rider OTP Screen | Trip Completed (Part 1) | Trip Completed (Part 2) | Ride Cancelled |
 |:-:|:-:|:-:|:-:|
-| ![Rider Home](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Rider+Home) | ![Search](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Dest+Search) | ![Confirm](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Ride+Confirm) | ![Searching](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Searching) |
+| <img src="screenshots/rider_side_otp_screen.jpeg" width="160"/> | <img src="screenshots/rider_side_trip_completed_part_one.jpeg" width="160"/> | <img src="screenshots/rider_side_trip_completed_part_two.jpeg" width="160"/> | <img src="screenshots/rider_side_ride_cancellation_screen.jpeg" width="160"/> |
 
-| Live Tracking | OTP Screen | Trip Complete | Cancelled |
-|:-:|:-:|:-:|:-:|
-| ![Live](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Live+Ride) | ![OTP](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=OTP+Card) | ![Complete](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Completion) | ![Cancel](https://via.placeholder.com/200x400/0F0F1A/4ECDC4?text=Cancelled) |
+> `Trip Completed` scrolls — Part 1 shows fare & rating, Part 2 shows trip timeline & complaint section.
 
-### Driver Flow
+#### 👤 Rider Profile & Trip History
+| Rider Profile | Trip History |
+|:-:|:-:|
+| <img src="screenshots/rider_profile.jpeg" width="220"/> | <img src="screenshots/rider_trip_history.jpeg" width="220"/> |
 
-| Driver Home | Ride Request | Active Ride | Turn-by-Turn Nav |
-|:-:|:-:|:-:|:-:|
-| ![Driver Home](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Driver+Home) | ![Request](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Ride+Request) | ![Active](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Active+Ride) | ![Nav](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Navigation) |
+---
 
-| OTP Verify | Trip Done | Earnings | Warning Dialog |
-|:-:|:-:|:-:|:-:|
-| ![OTP](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=OTP+Screen) | ![Done](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Trip+Done) | ![Earnings](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Earnings) | ![Warning](https://via.placeholder.com/200x400/0F0F1A/FF6B6B?text=Warning+Dialog) |
+### 🧑‍✈️ Driver Flow
 
-> **💡 Note:** Replace placeholder images above with real screenshots from your device by adding them to a `/screenshots` folder in your repo.
+#### 🏠 Driver Home
+| Part 1 — Offline state & stats | Part 2 — Online, waiting for requests |
+|:-:|:-:|
+| <img src="screenshots/driver_home_part_one.jpg" width="220"/> | <img src="screenshots/driver_home_part_two.jpg" width="220"/> |
+
+#### 🔔 Ride Request & Active Ride
+| Ride Request Sheet | Active Ride Overview | Turn-by-Turn Navigation |
+|:-:|:-:|:-:|
+| <img src="screenshots/ride_request.jpg" width="180"/> | <img src="screenshots/active_ride.jpg" width="180"/> | <img src="screenshots/turn_by_turn_navigation.jpg" width="180"/> |
+
+#### 🔑 OTP Verify at Pickup
+| Driver OTP Verify Screen |
+|:-:|
+| <img src="screenshots/driver_side_otp_verify_screen.jpg" width="220"/> |
+
+#### 🏁 Trip Completed
+| Part 1 — Earnings & trip summary | Part 2 — Stats & action buttons |
+|:-:|:-:|
+| <img src="screenshots/driver_side_trip_completed_part_one.jpg" width="220"/> | <img src="screenshots/driver_side_trip_completed_part_two.jpg" width="220"/> |
+
+#### ❌ Ride Cancellation
+| Driver Ride Cancelled Screen |
+|:-:|
+| <img src="screenshots/driver_side_ride_cancellation_screen.jpg" width="220"/> |
+
+#### 💰 Earnings & Profile
+| Driver Earnings | Driver Profile |
+|:-:|:-:|
+| <img src="screenshots/driver_earnings.jpg" width="220"/> | <img src="screenshots/driver_profile.jpg" width="220"/> |
+
+#### ⚠️ Driver Warning System (3-Stage Dialog)
+| Stage 1 — Notice (Amber) | Stage 2 — Final Warning (Orange-Red) | Stage 3 — Suspended (Deep Red) |
+|:-:|:-:|:-:|
+| <img src="screenshots/driver_warning_dialog_part_one.jpg" width="180"/> | <img src="screenshots/driver_warning_dialog_part_two.jpg" width="180"/> | <img src="screenshots/driver_warning_dialog_part_three.jpg" width="180"/> |
+
+> Each stage has a progressively severe color, unique message, and a filled dot meter showing how many warnings have been used.
+
+---
 
 ---
 
