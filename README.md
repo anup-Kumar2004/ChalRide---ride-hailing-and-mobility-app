@@ -121,7 +121,7 @@ Built over **40+ days**, across **20+ screens**, with **2 foreground services**,
 ### 🧑‍✈️ Driver Flow
 
 #### 🏠 Driver Home
-| Part 1 — Offline state & stats | Part 2 — Online, waiting for requests |
+| Part 1 — Online, bottom sheet collapsed | Part 2 — Online, bottom sheet expanded |
 |:-:|:-:|
 | <img src="screenshots/driver_home_part_one.jpg" width="220"/> | <img src="screenshots/driver_home_part_two.jpg" width="220"/> |
 
@@ -151,7 +151,7 @@ Built over **40+ days**, across **20+ screens**, with **2 foreground services**,
 | <img src="screenshots/driver_earnings.jpg" width="220"/> | <img src="screenshots/driver_profile.jpg" width="220"/> |
 
 #### ⚠️ Driver Warning System (3-Stage Dialog)
-| Stage 1 — Notice (Amber) | Stage 2 — Final Warning (Orange-Red) | Stage 3 — Suspended (Deep Red) |
+| Stage 1 — Notice (offlineCancelCount: 1-3) | Stage 2 — Final Warning (offlineCancelCount: 4-5) | Stage 3 — Suspended (offlineCancelCount: 6+) |
 |:-:|:-:|:-:|
 | <img src="screenshots/driver_warning_dialog_part_one.jpg" width="180"/> | <img src="screenshots/driver_warning_dialog_part_two.jpg" width="180"/> | <img src="screenshots/driver_warning_dialog_part_three.jpg" width="180"/> |
 
